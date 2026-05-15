@@ -13,7 +13,7 @@ class KpiCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.12)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha:0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

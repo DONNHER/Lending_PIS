@@ -6,6 +6,7 @@ import '../repositories/daily_inventory_repository.dart';
 enum DetailState { idle, loading, error }
 
 class ConsignmentDetailViewModel extends ChangeNotifier {
+  // ignore: unused_field
   final ConsignmentProductsRepository _consignmentRepo;
   final DailyInventoryRepository _inventoryRepo;
 

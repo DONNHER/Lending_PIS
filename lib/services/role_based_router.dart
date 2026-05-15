@@ -22,7 +22,7 @@ class RoleBasedRouter {
       case UserRole.admin:
         return ['/dashboard', '/pos', '/consignment-products', '/grocery-products', 
                 '/consignees', '/sales', '/inventory', '/shareholders', 
-                '/reports', '/cashiers', '/profile'];
+                '/reports', '/cashiers', '/profile', '/lending'];
       case UserRole.cashier:
         return ['/pos', '/products', '/grocery-products', 
                 '/sales', '/inventory', '/profile'];

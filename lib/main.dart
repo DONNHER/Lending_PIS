@@ -1,32 +1,37 @@
-import 'package:capstone_application/repositories/consignee_repository.dart';
-import 'package:capstone_application/repositories/consignment_products_repository.dart';
-import 'package:capstone_application/repositories/consignment_repository.dart';
-import 'package:capstone_application/repositories/product_repository.dart';
-import 'package:capstone_application/repositories/storage_repository.dart';
-import 'package:capstone_application/viewmodels/consignee_detail_viewmodel.dart';
-import 'package:capstone_application/viewmodels/consignee_viewmodel.dart';
-import 'package:capstone_application/viewmodels/consignment_products_viewmodels.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Lending Specific Imports
+import 'package:capstone_application/repositories/lending_repository/logs_repository.dart';
+import 'package:capstone_application/viewmodels/lending_viewmodel/logs_viewmodel.dart';
+import 'package:capstone_application/repositories/lending_repository/transactions_repository.dart';
+import 'package:capstone_application/viewmodels/lending_viewmodel/transactions_viewmodel.dart';
+import 'package:capstone_application/repositories/lending_repository/shareholders_repository.dart';
+import 'package:capstone_application/viewmodels/lending_viewmodel/shareholders_viewmodel.dart';
+import 'package:capstone_application/repositories/lending_repository/dashboard_repository.dart';
+import 'package:capstone_application/viewmodels/lending_viewmodel/dashboard_viewmodel.dart';
+import 'package:capstone_application/repositories/lending_repository/loan_requests_repository.dart';
+import 'package:capstone_application/viewmodels/lending_viewmodel/loan_requests_viewmodel.dart';
+import 'package:capstone_application/repositories/lending_repository/loans_repository.dart';
+import 'package:capstone_application/viewmodels/lending_viewmodel/funds_viewmodel.dart';
+
+// Existing Imports
 import 'app_theme.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/daily_inventory_repository.dart';
 import 'repositories/grocery_repository.dart';
 import 'viewmodels/auth_viewmodel.dart';
-import 'viewmodels/consignment_detail_viewmodel.dart';
-import 'viewmodels/grocery_viewmodel.dart';
-import 'views/login_page.dart';
-import 'views/registration_page.dart';
+import 'viewmodels/navigation_viewmodel.dart';
 import 'views/app_shell.dart';
+import 'views/login_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
     url: 'https://frrbgxtnsymfuuwttgfg.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZycmJneHRuc3ltZnV1d3R0Z2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzcxMjksImV4cCI6MjA5Mjg1MzEyOX0.8ALKJysrUiojUuP7o_lcOUjtZDf0HglzmguC8nvnCkM',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZycmJneHRuc3ltZnV1d3R0Z2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzcxMjksImV4cCI6MjA5Mjg1MzEyOX0.8ALKJysrUiojUuP7o_lcOUjtZDf0HglzmguC8nvnCkM',
   );
 
   runApp(const CanteenApp());
@@ -38,71 +43,85 @@ class CanteenApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final supabaseClient = Supabase.instance.client;
-    final authRepository = AuthRepository(supabaseClient);
-    final consigneeRepository = ConsigneeRepository(supabaseClient);
-    final consignmentRepository = ConsignmentRepository(supabaseClient);
-    final storageRepository = StorageRepository(supabaseClient);
-    final consignmentProductsRepository = ConsignmentProductsRepository(
-      supabaseClient,
-    );
-    final productRepository = ProductRepository(supabaseClient);
-    final dailyInventoryRepository = DailyInventoryRepository(supabaseClient);
-    final groceryRepository = GroceryRepository(supabaseClient);
-    
+
     return MultiProvider(
       providers: [
-        // ─── ViewModels ────────────────────────────────────────────
-        ChangeNotifierProvider(create: (_) => AuthViewModel(authRepository)),
-        ChangeNotifierProvider(
-          create: (_) => ConsigneeViewModel(
-            repository: consigneeRepository,
-            storageRepository: storageRepository,
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => ConsigneeDetailViewModel(
-            consigneeRepository: consigneeRepository,
-            consignmentRepository: consignmentRepository,
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => ConsignmentProductsViewModel(
-            consignmentProductsRepository,
-            productRepository,
-            consigneeRepository,
-            storageRepository,
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => ConsignmentDetailViewModel(
-            consignmentProductsRepository,
-            dailyInventoryRepository,
-          ),
-        ),
-        ChangeNotifierProvider(
-  create: (_) => GroceryViewModel(groceryRepository),
-),
+        Provider(create: (_) => AuthRepository(supabaseClient)),
+        Provider(create: (_) => GroceryRepository(supabaseClient)),
+        Provider(create: (_) => DailyInventoryRepository(supabaseClient)),
+        Provider(create: (_) => ActivityRepository(supabaseClient)),
+        Provider(create: (_) => TransactionsRepository(supabaseClient)),
+        Provider(create: (_) => ShareholderRepository(supabaseClient)),
+        Provider(create: (_) => DashboardRepository(supabaseClient)),
+        Provider(create: (_) => LoanRequestRepository(supabaseClient)),
+        Provider(create: (_) => LoanRepository(supabaseClient)),
 
-        // ─── Repositories (for other services that need them) ──────
-        Provider.value(value: authRepository),
-        Provider.value(value: consigneeRepository),
-        Provider.value(value: consignmentRepository),
-        Provider.value(value: storageRepository),
-        Provider.value(value: consignmentProductsRepository),
-        Provider.value(value: productRepository),
-        Provider.value(value: dailyInventoryRepository),
-        Provider.value(value: groceryRepository),
+        ChangeNotifierProvider(
+          create: (context) => AuthViewModel(context.read<AuthRepository>())..restoreSession(),
+        ),
+        
+        // Safer ProxyProvider implementation
+        ChangeNotifierProxyProvider<AuthViewModel, NavigationViewModel>(
+          create: (context) => NavigationViewModel(),
+          update: (context, auth, previousNav) {
+            final nav = previousNav ?? NavigationViewModel();
+            // Sync role whenever auth state changes
+            if (auth.status == AuthStatus.authenticated && auth.currentUser != null) {
+              nav.setUserRole(auth.currentUser!.role);
+            } else {
+              nav.setUserRole(null);
+            }
+            return nav;
+          },
+        ),
+
+        ChangeNotifierProvider(
+          create: (context) => DashboardViewModel(
+            dashboardRepository: context.read<DashboardRepository>(),
+            loanRepository: context.read<LoanRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => LoanRequestViewModel(context.read<LoanRequestRepository>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => TransactionsViewModel(transactionsRepository: context.read<TransactionsRepository>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ShareholderViewModel(repository: context.read<ShareholderRepository>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ActivityLogsViewModel(
+            loanRepository: context.read<LoanRepository>(),
+            transactionRepository: context.read<TransactionsRepository>(),
+            shareholderRepository: context.read<ShareholderRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => FundManagementViewModel(
+            dashboardRepository: context.read<DashboardRepository>(),
+            transactionRepository: context.read<TransactionsRepository>(),
+          ),
+        ),
       ],
       child: MaterialApp(
-        title: 'Engr Canteen',
-        debugShowCheckedModeBanner: false,
+        title: 'Canteen App',
         theme: AppTheme.lightTheme,
-        initialRoute: '/login',
+        debugShowCheckedModeBanner: false,
+        home: Consumer<AuthViewModel>(
+          builder: (context, auth, _) {
+            if (auth.status == AuthStatus.authenticated) {
+              return const AppShell();
+            } else if (auth.status == AuthStatus.loading) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            } else {
+              return const LoginPage();
+            }
+          },
+        ),
         routes: {
           '/login': (context) => const LoginPage(),
-          '/register': (context) => const RegistrationPage(),
           '/dashboard': (context) => const AppShell(),
-          '/pos': (context) => const AppShell(),
         },
       ),
     );

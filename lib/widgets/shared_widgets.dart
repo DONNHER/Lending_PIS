@@ -98,7 +98,7 @@ class GroceryFilterBar extends StatelessWidget {
                   border: Border.all(
                     color: sel
                         ? AppTheme.primary
-                        : AppTheme.primary.withOpacity(0.25),
+                        : AppTheme.primary.withValues(alpha: 0.25),
                   ),
                 ),
                 child: Text(opt,
@@ -140,7 +140,7 @@ class ProductHeaderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.12)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
@@ -177,7 +177,7 @@ class ProductHeaderCard extends StatelessWidget {
               Switch(
                 value: isActive,
                 onChanged: (_) => onToggle(),
-                activeColor: AppTheme.primary,
+                activeThumbColor: AppTheme.primary,
               ),
               Text(
                 isActive ? 'Active' : 'Inactive',
@@ -217,7 +217,7 @@ class StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.12)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.12)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -271,7 +271,7 @@ class TabChip extends StatelessWidget {
           border: Border.all(
             color: selected
                 ? AppTheme.primary
-                : AppTheme.primary.withOpacity(0.3),
+                : AppTheme.primary.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
@@ -312,7 +312,7 @@ class SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +455,7 @@ class DateTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
+              border: Border.all(color: AppTheme.primary.withValues(alpha:0.25)),
             ),
             child: Row(
               children: [
@@ -490,7 +490,7 @@ class PhotoUploadCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha:0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,7 +510,7 @@ class PhotoUploadCard extends StatelessWidget {
                 color: AppTheme.surfaceCard,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.primary.withOpacity(0.3),
+                  color: AppTheme.primary.withValues(alpha:0.3),
                   style: BorderStyle.solid,
                 ),
               ),
@@ -518,12 +518,12 @@ class PhotoUploadCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.cloud_upload_outlined,
-                      color: AppTheme.primary.withOpacity(0.6), size: 36),
+                      color: AppTheme.primary.withValues(alpha:0.6), size: 36),
                   const SizedBox(height: 8),
                   Text('Click to browse an image',
                       style: TextStyle(
                           fontSize: 14,
-                          color: AppTheme.textMuted.withOpacity(0.8))),
+                          color: AppTheme.textMuted.withValues(alpha: 0.8))),
                 ],
               ),
             ),
@@ -553,9 +553,9 @@ class AddButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: AppTheme.primary.withOpacity(0.1),
+          color: AppTheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+          border: Border.all(color: AppTheme.primary.withValues(alpha:0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -591,7 +591,7 @@ class MiniChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(label,
@@ -658,8 +658,8 @@ class StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: active
-            ? AppTheme.success.withOpacity(0.1)
-            : AppTheme.error.withOpacity(0.1),
+            ? AppTheme.success.withValues(alpha:0.1)
+            : AppTheme.error.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

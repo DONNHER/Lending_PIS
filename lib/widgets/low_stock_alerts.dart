@@ -12,12 +12,12 @@ class LowStockAlerts extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.12)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.12)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: AppTheme.warning.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: AppTheme.warning.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 16)),
           const SizedBox(width: 8),
           const Expanded(child: Text('Low Stock Alerts',

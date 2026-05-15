@@ -52,13 +52,11 @@ class _LoginPageState extends State<LoginPage>
       _passwordController.text,
     );
 
-    if (success && mounted) {
-      final dashboardRoute = viewModel.dashboardRoute;
-      if (dashboardRoute != null) {
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil(dashboardRoute, (route) => false);
-      }
-    } else if (mounted && viewModel.errorMessage != null) {
+    // Removed manual Navigator push. 
+    // The MaterialApp home Consumer in main.dart will automatically
+    // switch to AppShell when status becomes authenticated.
+    
+    if (!success && mounted && viewModel.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -85,7 +83,6 @@ class _LoginPageState extends State<LoginPage>
       backgroundColor: const Color(0xFFFFF8F3),
       body: Stack(
         children: [
-          // ── Decorative background blobs ──────────────────────────────
           Positioned(
             top: -60,
             right: -60,
@@ -110,8 +107,6 @@ class _LoginPageState extends State<LoginPage>
               ),
             ),
           ),
-
-          // ── Main content ─────────────────────────────────────────────
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -132,13 +127,8 @@ class _LoginPageState extends State<LoginPage>
                                   CrossAxisAlignment.stretch,
                               children: [
                                 const SizedBox(height: 20),
-
-                                // ── Branding ──────────────────────────
                                 _buildBranding(),
-
                                 const SizedBox(height: 44),
-
-                                // ── Greeting ──────────────────────────
                                 const Text(
                                   'Welcome back',
                                   style: TextStyle(
@@ -157,10 +147,7 @@ class _LoginPageState extends State<LoginPage>
                                     height: 1.5,
                                   ),
                                 ),
-
                                 const SizedBox(height: 32),
-
-                                // ── Email ─────────────────────────────
                                 AuthTextField(
                                   label: 'Email Address',
                                   hint: 'Enter your email',
@@ -185,10 +172,7 @@ class _LoginPageState extends State<LoginPage>
                                     return null;
                                   },
                                 ),
-
                                 const SizedBox(height: 18),
-
-                                // ── Password ──────────────────────────
                                 AuthTextField(
                                   label: 'Password',
                                   hint: 'Enter your password',
@@ -219,16 +203,11 @@ class _LoginPageState extends State<LoginPage>
                                     return null;
                                   },
                                 ),
-
                                 const SizedBox(height: 10),
-
-                                // ── Forgot password ───────────────────
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
-                                    onPressed: () {
-                                      // TODO: forgot password
-                                    },
+                                    onPressed: () {},
                                     style: TextButton.styleFrom(
                                       foregroundColor: AppTheme.primary,
                                       textStyle: const TextStyle(
@@ -243,18 +222,12 @@ class _LoginPageState extends State<LoginPage>
                                         const Text('Forgot Password?'),
                                   ),
                                 ),
-
                                 const SizedBox(height: 28),
-
-                                // ── Sign in button ────────────────────
                                 _SignInButton(
                                   isLoading: viewModel.isLoading,
                                   onPressed: _handleLogin,
                                 ),
-
                                 const SizedBox(height: 28),
-
-                                // ── Divider ───────────────────────────
                                 Row(
                                   children: [
                                     const Expanded(
@@ -276,10 +249,7 @@ class _LoginPageState extends State<LoginPage>
                                             color: Color(0xFFE8DDD5))),
                                   ],
                                 ),
-
                                 const SizedBox(height: 18),
-
-                                // ── Register link ─────────────────────
                                 OutlinedButton(
                                   onPressed: () {
                                     viewModel.clearError();
@@ -309,7 +279,6 @@ class _LoginPageState extends State<LoginPage>
                                   ),
                                   child: const Text('Create an Account'),
                                 ),
-
                                 const SizedBox(height: 32),
                               ],
                             ),
@@ -330,7 +299,6 @@ class _LoginPageState extends State<LoginPage>
   Widget _buildBranding() {
     return Column(
       children: [
-        // Logo mark
         Container(
           width: 72,
           height: 72,
@@ -381,8 +349,6 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 }
-
-// ── Sign In Button ─────────────────────────────────────────────────────────
 
 class _SignInButton extends StatelessWidget {
   final bool isLoading;

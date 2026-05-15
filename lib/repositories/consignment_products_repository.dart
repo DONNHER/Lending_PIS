@@ -162,6 +162,7 @@ class ConsignmentProductsRepository {
           .eq('id', id)
           .single();
 
+      // ignore: unused_local_variable
       final productId = consignment['product_id'] as String;
 
       // Delete the consignment (product will be cascade deleted due to FK constraint)

@@ -26,8 +26,10 @@ class GroceryProductDetailPage extends StatefulWidget {
 
 class _GroceryProductDetailPageState extends State<GroceryProductDetailPage>
     with SingleTickerProviderStateMixin {
+  // ignore: unused_field
   int _tab = 0;
   late final TabController _tabController;
+  
 
   @override
   void initState() {
@@ -35,6 +37,7 @@ class _GroceryProductDetailPageState extends State<GroceryProductDetailPage>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
+        
         setState(() => _tab = _tabController.index);
       }
     });
@@ -372,7 +375,7 @@ class _HeaderBackground extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             AppTheme.primary,
-            AppTheme.primary.withOpacity(0.75),
+            AppTheme.primary.withValues(alpha:0.75),
           ],
         ),
       ),
@@ -390,7 +393,7 @@ class _HeaderBackground extends StatelessWidget {
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: isActive
-                          ? Colors.greenAccent.shade400.withOpacity(0.2)
+                          ? Colors.greenAccent.shade400.withValues(alpha:0.2)
                           : Colors.white24,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
@@ -469,9 +472,9 @@ class _StatPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.18)),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
