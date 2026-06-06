@@ -1,0 +1,6 @@
+# Use your Render URL here (e.g., https://your-backend.onrender.com/api)
+API_URL=https://capstone-application-backend.onrender.com/api
+
+# Supabase configuration
+SUPABASE_URL=https://abnrykjlgczqdwxspudw.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFibnJ5a2psZ2N6cWR3eHNwdWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwODk5NzcsImV4cCI6MjA5NDY2NTk3N30.F6IBOTxaXSOLqyxDs7AvVX2OY_tWlNkKocIVPFQ5-d4

@@ -16,13 +16,17 @@ RUN docker-php-ext-install pdo_pgsql pgsql bcmath
 
 # Set working directory
 WORKDIR /var/www/html
-COPY . .
+
+# Copy the Laravel backend files from the subdirectory
+COPY laravel_backend/ .
 
 # Install Composer dependencies
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
 # Ensure proper Laravel storage permissions
+# Creating necessary directories to avoid permission issues
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Expose port 80 for web traffic

@@ -20,8 +20,8 @@ return [
 
     'allowed_origins' => [
         'http://localhost:*',
-        'https://graceanne.github.io', // Replace with your GitHub username
-        'https://graceanne.github.io/capstone-application', // Replace with your full repo URL
+        'https://donnher.github.io',
+        'https://donnher.github.io/Lending_system',
     ],
 
     'allowed_origins_patterns' => [],

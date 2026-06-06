@@ -37,10 +37,11 @@ import 'views/ShareHolder_screens/notification.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables
-  await dotenv.load(fileName: ".env");
+  // Load environment variables from the non-hidden assets/env path
+  // GitHub Pages blocks files starting with a dot (.)
+  await dotenv.load(fileName: "assets/env");
 
-  // Initialize Supabase from .env
+  // Initialize Supabase from env
   final supabaseUrl = dotenv.env['SUPABASE_URL'];
   final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
 
@@ -51,7 +52,7 @@ void main() async {
     );
   }
 
-  // Initialize Laravel API Service from .env
+  // Initialize Laravel API Service from env
   final apiBaseUrl = dotenv.env['API_URL'] ?? 'http://localhost:8000/api';
   final apiService = ApiService(baseUrl: apiBaseUrl);
 
