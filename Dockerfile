@@ -15,7 +15,6 @@ RUN apk add --no-cache \
     icu-dev
 
 # Install PHP extensions
-# Added intl and zip extension which are required by many Laravel packages
 RUN docker-php-ext-configure intl
 RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip intl
 
@@ -23,16 +22,17 @@ RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip intl
 WORKDIR /var/www/html
 
 # Copy the Laravel backend files
-# If your Lending_PIS repo has composer.json at the root, change this to: COPY . .
-# Based on your logs, it seems laravel_backend/ is present in your build context.
 COPY laravel_backend/ .
+
+# IMPORTANT: Remove any local 'vendor' folder that might have been copied.
+# This prevents "Could not scan for classes" errors caused by local Windows symlinks.
+RUN rm -rf vendor
 
 # Install Composer dependencies
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Added --no-interaction to prevent build hanging
-# Added --ignore-platform-req=php+ to ensure it proceeds if there's a minor mismatch
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+# Install dependencies (freshly, inside the Linux container)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+
 
 # Ensure proper Laravel storage permissions
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
