@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../app_theme.dart';
 import '../models/grocery_batch_model.dart';
 import '../widgets/shared_widgets.dart';
@@ -128,7 +127,7 @@ class _AddEditGroceryBatchPageState extends State<AddEditGroceryBatchPage> {
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceCard,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                    border: Border.all(color: AppTheme.primary.withValues(alpha:0.2)),
                   ),
                   child: const Row(
                     children: [
@@ -223,7 +222,7 @@ class _AddEditGroceryBatchPageState extends State<AddEditGroceryBatchPage> {
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
-                    side: BorderSide(color: AppTheme.primary.withOpacity(0.4)),
+                    side: BorderSide(color: AppTheme.primary.withValues(alpha:0.4)),
                     foregroundColor: AppTheme.textMuted,
                   ),
                   child: const Text('Cancel'),

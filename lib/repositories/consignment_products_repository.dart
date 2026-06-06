@@ -1,7 +1,7 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/consignment_model.dart';
 import '../models/product_model.dart';
 import '../models/consignee_model.dart';
+import '../services/api_service.dart';
 
 class ConsignmentWithDetails {
   final ConsignmentModel consignment;
@@ -16,59 +16,52 @@ class ConsignmentWithDetails {
 }
 
 class ConsignmentProductsRepository {
-  final SupabaseClient _client;
+  final ApiService _api;
 
-  const ConsignmentProductsRepository(this._client);
+  const ConsignmentProductsRepository(this._api);
 
   // ─── Fetch ────────────────────────────────────────────────────────────
 
   Future<List<ConsignmentWithDetails>> getAll() async {
     try {
-      final response = await _client
-          .from('consignments')
-          .select('*, products(*), consignees(*)')
-          .order('id', ascending: false);
+      final response = await _api.get('consignment-products');
+      final List<dynamic> data = response['data'];
 
-      return (response as List).map((json) {
+      return data.map((json) {
         return ConsignmentWithDetails(
           consignment: ConsignmentModel.fromJson(json),
-          product: ProductModel.fromJson(json['products']),
-          consignee: json['consignees'] != null
-              ? ConsigneeModel.fromJson(json['consignees'])
+          product: ProductModel.fromJson(json['product']),
+          consignee: json['consignee'] != null
+              ? ConsigneeModel.fromJson(json['consignee'])
               : null,
         );
       }).toList();
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to fetch consignments: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to fetch consignments: $e');
     }
   }
 
   Future<List<ConsignmentWithDetails>> search(String query) async {
     try {
-      final response = await _client
-          .from('consignments')
-          .select('*, products(*), consignees(*)')
-          .or('products.product_name.ilike.%$query%,products.barcode.ilike.%$query%,consignees.full_name.ilike.%$query%')
-          .order('id', ascending: false);
+      final response = await _api.get('consignment-products/search', queryParams: {'query': query});
+      final List<dynamic> data = response['data'];
 
-      return (response as List).map((json) {
+      return data.map((json) {
         return ConsignmentWithDetails(
           consignment: ConsignmentModel.fromJson(json),
-          product: ProductModel.fromJson(json['products']),
-          consignee: json['consignees'] != null
-              ? ConsigneeModel.fromJson(json['consignees'])
+          product: ProductModel.fromJson(json['product']),
+          consignee: json['consignee'] != null
+              ? ConsigneeModel.fromJson(json['consignee'])
               : null,
         );
       }).toList();
-    } on PostgrestException catch (e) {
-      throw Exception('Search failed: ${e.message}');
+    } catch (e) {
+      throw Exception('Search failed: $e');
     }
   }
 
   // ─── Create Product + Consignment (Transaction) ───────────────────────
 
-  /// Creates a new product AND links it to a consignee
-  /// Returns the created consignment with joined details
   Future<ConsignmentWithDetails> createProductWithConsignment({
     required String productName,
     required String barcode,
@@ -79,42 +72,26 @@ class ConsignmentProductsRepository {
     required double capitalPrice,
   }) async {
     try {
-      // Step 1: Create the product
-      final productResponse = await _client
-          .from('products')
-          .insert({
-            'product_name': productName,
-            'barcode': barcode,
-            'product_image': productImage,
-            'is_active': true,
-            'selling_price': sellingPrice,
-          })
-          .select()
-          .single();
+      final response = await _api.post('consignment-products', body: {
+        'product_name': productName,
+        'barcode': barcode,
+        'product_image': productImage,
+        'selling_price': sellingPrice,
+        'consignee_id': consigneeId,
+        'commission_rate': commissionRate,
+        'capital_price': capitalPrice,
+      });
 
-      final productId = productResponse['id'] as String;
-
-      // Step 2: Create the consignment link
-      final consignmentResponse = await _client
-          .from('consignments')
-          .insert({
-            'product_id': productId,
-            'consignee_id': consigneeId,
-            'commission_rate': commissionRate,
-            'capital_price': capitalPrice,
-          })
-          .select('*, products(*), consignees(*)')
-          .single();
-
+      final json = response['data'];
       return ConsignmentWithDetails(
-        consignment: ConsignmentModel.fromJson(consignmentResponse),
-        product: ProductModel.fromJson(consignmentResponse['products']),
-        consignee: consignmentResponse['consignees'] != null
-            ? ConsigneeModel.fromJson(consignmentResponse['consignees'])
+        consignment: ConsignmentModel.fromJson(json),
+        product: ProductModel.fromJson(json['product']),
+        consignee: json['consignee'] != null
+            ? ConsigneeModel.fromJson(json['consignee'])
             : null,
       );
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to create consignment: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to create consignment: $e');
     }
   }
 
@@ -126,15 +103,12 @@ class ConsignmentProductsRepository {
     required double capitalPrice,
   }) async {
     try {
-      await _client
-          .from('consignments')
-          .update({
-            'commission_rate': commissionRate,
-            'capital_price': capitalPrice,
-          })
-          .eq('id', id);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to update consignment: ${e.message}');
+      await _api.put('consignment-products/$id', body: {
+        'commission_rate': commissionRate,
+        'capital_price': capitalPrice,
+      });
+    } catch (e) {
+      throw Exception('Failed to update consignment: $e');
     }
   }
 
@@ -142,12 +116,9 @@ class ConsignmentProductsRepository {
 
   Future<void> toggleProductStatus(String productId, bool isActive) async {
     try {
-      await _client
-          .from('products')
-          .update({'is_active': isActive})
-          .eq('id', productId);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to update status: ${e.message}');
+      await _api.put('products/$productId/status', body: {'is_active': isActive});
+    } catch (e) {
+      throw Exception('Failed to update status: $e');
     }
   }
 
@@ -155,20 +126,9 @@ class ConsignmentProductsRepository {
 
   Future<void> delete(int id) async {
     try {
-      // First get the product_id from this consignment
-      final consignment = await _client
-          .from('consignments')
-          .select('product_id')
-          .eq('id', id)
-          .single();
-
-      // ignore: unused_local_variable
-      final productId = consignment['product_id'] as String;
-
-      // Delete the consignment (product will be cascade deleted due to FK constraint)
-      await _client.from('consignments').delete().eq('id', id);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to delete consignment: ${e.message}');
+      await _api.delete('consignment-products/$id');
+    } catch (e) {
+      throw Exception('Failed to delete consignment: $e');
     }
   }
 }

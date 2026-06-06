@@ -16,7 +16,6 @@ class _RegistrationPageState extends State<RegistrationPage>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
-  final _middleNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -41,7 +40,6 @@ class _RegistrationPageState extends State<RegistrationPage>
   @override
   void dispose() {
     _firstNameController.dispose();
-    _middleNameController.dispose();
     _lastNameController.dispose();
     _usernameController.dispose();
     _emailController.dispose();
@@ -69,7 +67,6 @@ class _RegistrationPageState extends State<RegistrationPage>
       password: _passwordController.text,
       firstName: _firstNameController.text,
       lastName: _lastNameController.text,
-      middleName: _middleNameController.text,
       role: _selectedRole,
     );
 
@@ -353,15 +350,6 @@ class _RegistrationPageState extends State<RegistrationPage>
         ),
         const SizedBox(height: 18),
         AuthTextField(
-          label: 'Middle Name',
-          hint: 'Enter your middle name (optional)',
-          controller: _middleNameController,
-          textInputAction: TextInputAction.next,
-          prefixIcon: const Icon(Icons.badge_outlined,
-              color: AppTheme.textMuted, size: 20),
-        ),
-        const SizedBox(height: 18),
-        AuthTextField(
           label: 'Last Name *',
           hint: 'Enter your last name',
           controller: _lastNameController,
@@ -553,10 +541,6 @@ class _RegistrationPageState extends State<RegistrationPage>
               value:
                   '${_firstNameController.text} ${_lastNameController.text}',
             ),
-            if (_middleNameController.text.isNotEmpty)
-              _ReviewItem(
-                  label: 'Middle Name',
-                  value: _middleNameController.text),
           ],
         ),
         const SizedBox(height: 14),
@@ -728,10 +712,6 @@ class _RegistrationPageState extends State<RegistrationPage>
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reusable sub-widgets
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _StepCard extends StatelessWidget {
   final IconData icon;

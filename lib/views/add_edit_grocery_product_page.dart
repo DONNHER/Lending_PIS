@@ -334,7 +334,7 @@ class _AddEditGroceryProductPageState extends State<AddEditGroceryProductPage> {
                       label: Text(_isScanning ? 'Scanning...' : 'Scan Barcode'),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
-                        side: BorderSide(color: AppTheme.primary.withOpacity(0.5)),
+                        side: BorderSide(color: AppTheme.primary.withValues(alpha:0.5)),
                         foregroundColor: AppTheme.primary,
                       ),
                     ),
@@ -372,7 +372,7 @@ class _AddEditGroceryProductPageState extends State<AddEditGroceryProductPage> {
                         Switch(
                           value: _isActive,
                           onChanged: (v) => setState(() => _isActive = v),
-                          activeColor: AppTheme.primary,
+                          activeThumbColor: AppTheme.primary,
                         ),
                       ],
                     ),
@@ -409,7 +409,7 @@ class _AddEditGroceryProductPageState extends State<AddEditGroceryProductPage> {
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
-                    side: BorderSide(color: AppTheme.primary.withOpacity(0.4)),
+                    side: BorderSide(color: AppTheme.primary.withValues(alpha:0.4)),
                     foregroundColor: AppTheme.textMuted,
                   ),
                   child: const Text('Cancel'),
@@ -444,7 +444,7 @@ class _ProductImageCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha:0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -464,7 +464,7 @@ class _ProductImageCard extends StatelessWidget {
                 color: AppTheme.surfaceCard,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.primary.withOpacity(0.3),
+                  color: AppTheme.primary.withValues(alpha:0.3),
                 ),
               ),
               child: _buildImageContent(),
@@ -522,17 +522,17 @@ class _ProductImageCard extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(Icons.cloud_upload_outlined,
-            color: AppTheme.primary.withOpacity(0.6), size: 48),
+            color: AppTheme.primary.withValues(alpha:0.6), size: 48),
         const SizedBox(height: 12),
         Text('Tap to add product image',
             style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.textMuted.withOpacity(0.8))),
+                color: AppTheme.textMuted.withValues(alpha:0.8))),
         const SizedBox(height: 4),
         Text('Camera or Gallery',
             style: TextStyle(
                 fontSize: 12,
-                color: AppTheme.textMuted.withOpacity(0.6))),
+                color: AppTheme.textMuted.withValues(alpha:0.6))),
       ],
     );
   }
@@ -560,7 +560,7 @@ class _ImageSourceOption extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.surfaceCard,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+          border: Border.all(color: AppTheme.primary.withValues(alpha:0.2)),
         ),
         child: Column(
           children: [

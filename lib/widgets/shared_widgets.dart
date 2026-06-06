@@ -7,6 +7,187 @@ import '../app_theme.dart';
 String formatDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+// ─── Responsive Layout Helper ─────────────────────────────────────────────────
+
+class Responsive extends StatelessWidget {
+  final Widget mobile;
+  final Widget? tablet;
+  final Widget desktop;
+
+  const Responsive({
+    super.key,
+    required this.mobile,
+    this.tablet,
+    required this.desktop,
+  });
+
+  static bool isMobile(BuildContext context) =>
+      MediaQuery.of(context).size.width < 600;
+
+  static bool isTablet(BuildContext context) =>
+      MediaQuery.of(context).size.width >= 600 &&
+      MediaQuery.of(context).size.width < 1024;
+
+  static bool isDesktop(BuildContext context) =>
+      MediaQuery.of(context).size.width >= 1024;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 1024) {
+          return desktop;
+        } else if (constraints.maxWidth >= 600) {
+          return tablet ?? mobile;
+        } else {
+          return mobile;
+        }
+      },
+    );
+  }
+}
+
+// ─── Skeleton Screen / Loading State ──────────────────────────────────────────
+
+class Skeleton extends StatefulWidget {
+  final double? height;
+  final double? width;
+  final double borderRadius;
+
+  const Skeleton({
+    super.key,
+    this.height,
+    this.width,
+    this.borderRadius = 8,
+  });
+
+  @override
+  State<Skeleton> createState() => _SkeletonState();
+}
+
+class _SkeletonState extends State<Skeleton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        height: widget.height,
+        width: widget.width,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.all(Radius.circular(widget.borderRadius)),
+        ),
+      ),
+    );
+  }
+}
+
+class SkeletonList extends StatelessWidget {
+  final int itemCount;
+  const SkeletonList({super.key, this.itemCount = 5});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: itemCount,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        child: Row(
+          children: [
+            const Skeleton(height: 50, width: 50, borderRadius: 10),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Skeleton(height: 15, width: MediaQuery.of(context).size.width * 0.6),
+                  const SizedBox(height: 8),
+                  Skeleton(height: 12, width: MediaQuery.of(context).size.width * 0.4),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Breadcrumb Navigation ────────────────────────────────────────────────────
+
+class Breadcrumb extends StatelessWidget {
+  final List<BreadcrumbItem> items;
+
+  const Breadcrumb({super.key, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: items.asMap().entries.map((entry) {
+          int idx = entry.key;
+          BreadcrumbItem item = entry.value;
+          bool isLast = idx == items.length - 1;
+
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: isLast ? null : item.onTap,
+                child: Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
+                    color: isLast ? AppTheme.textDark : AppTheme.primary,
+                  ),
+                ),
+              ),
+              if (!isLast)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(Icons.chevron_right_rounded,
+                      size: 16, color: AppTheme.textMuted),
+                ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class BreadcrumbItem {
+  final String label;
+  final VoidCallback? onTap;
+
+  BreadcrumbItem({required this.label, this.onTap});
+}
+
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 class GroceryHeader extends StatelessWidget {
@@ -98,7 +279,7 @@ class GroceryFilterBar extends StatelessWidget {
                   border: Border.all(
                     color: sel
                         ? AppTheme.primary
-                        : AppTheme.primary.withValues(alpha: 0.25),
+                        : AppTheme.primary.withValues(alpha:0.25),
                   ),
                 ),
                 child: Text(opt,
@@ -140,7 +321,7 @@ class ProductHeaderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.12)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha:0.12)),
       ),
       child: Row(
         children: [
@@ -217,7 +398,7 @@ class StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.12)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha:0.12)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -271,7 +452,7 @@ class TabChip extends StatelessWidget {
           border: Border.all(
             color: selected
                 ? AppTheme.primary
-                : AppTheme.primary.withValues(alpha: 0.3),
+                : AppTheme.primary.withValues(alpha:0.3),
           ),
         ),
         child: Row(
@@ -312,7 +493,7 @@ class SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha:0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,7 +734,7 @@ class AddButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: AppTheme.primary.withValues(alpha: 0.1),
+          color: AppTheme.primary.withValues(alpha:0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppTheme.primary.withValues(alpha:0.3)),
         ),
@@ -700,10 +881,12 @@ class IconButtonSmall extends StatelessWidget {
 
 class EmptyState extends StatelessWidget {
   final String message;
+  final IconData icon;
   
   const EmptyState({
     super.key,
     required this.message,
+    this.icon = Icons.inbox_rounded,
   });
 
   @override
@@ -711,8 +894,22 @@ class EmptyState extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Text(message,
-            style: const TextStyle(color: AppTheme.textMuted)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 64, color: AppTheme.textMuted.withValues(alpha: 0.2)),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppTheme.textMuted,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

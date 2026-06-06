@@ -38,7 +38,7 @@ class DailyInventoryCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.secondary.withOpacity(0.15)),
+          border: Border.all(color: AppTheme.secondary.withValues(alpha:0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,7 +78,7 @@ class DailyInventoryCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
                 value: soldRatio, minHeight: 7,
-                backgroundColor: barColor.withOpacity(0.12),
+                backgroundColor: barColor.withValues(alpha:0.12),
                 valueColor: AlwaysStoppedAnimation(barColor),
               ),
             ),
@@ -122,5 +122,5 @@ class DailyInventoryCard extends StatelessWidget {
     );
   }
 
-  Widget _vDivider() => Container(width: 1, height: 30, color: AppTheme.primary.withOpacity(0.1));
+  Widget _vDivider() => Container(width: 1, height: 30, color: AppTheme.primary.withValues(alpha:0.1));
 }

@@ -27,10 +27,10 @@ class ConsigneeCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.primary.withOpacity(0.12)),
+          border: Border.all(color: AppTheme.primary.withValues(alpha:0.12)),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primary.withOpacity(0.04),
+              color: AppTheme.primary.withValues(alpha:0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -114,7 +114,7 @@ class ConsigneeCard extends StatelessWidget {
 
     return CircleAvatar(
       radius: 24,
-      backgroundColor: AppTheme.secondary.withOpacity(0.15),
+      backgroundColor: AppTheme.secondary.withValues(alpha:0.15),
       child: Text(
         initials,
         style: const TextStyle(
@@ -150,8 +150,8 @@ class ConsigneeCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: hasDoc
-            ? AppTheme.success.withOpacity(0.1)   // Green if uploaded
-            : AppTheme.warning.withOpacity(0.1),  // Yellow if missing
+            ? AppTheme.success.withValues(alpha:0.1)   // Green if uploaded
+            : AppTheme.warning.withValues(alpha:0.1),  // Yellow if missing
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

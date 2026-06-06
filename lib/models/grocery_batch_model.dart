@@ -1,3 +1,5 @@
+import '../utils/parsers.dart';
+
 // Tracks individual batches of grocery items with expiration tracking
 class GroceryBatchModel {
   final String id;
@@ -32,13 +34,17 @@ class GroceryBatchModel {
 
   factory GroceryBatchModel.fromJson(Map<String, dynamic> json) {
     return GroceryBatchModel(
-      id: json['id'] as String,
-      productId: json['product_id'] as String,
-      capitalPrice: (json['capital_price'] as num).toDouble(),
-      originalQuantity: json['original_quantity'] as int,
-      remainingQuantity: json['remaining_quantity'] as int,
-      purchaseDate: DateTime.parse(json['purchase_date'] as String),
-      expirationDate: DateTime.parse(json['expiration_date'] as String),
+      id: json['id']?.toString() ?? '',
+      productId: json['product_id']?.toString() ?? '',
+      capitalPrice: Parsers.parseDouble(json['capital_price']),
+      originalQuantity: Parsers.parseInt(json['original_quantity']),
+      remainingQuantity: Parsers.parseInt(json['remaining_quantity']),
+      purchaseDate: json['purchase_date'] != null 
+          ? DateTime.parse(json['purchase_date'] as String)
+          : DateTime.now(),
+      expirationDate: json['expiration_date'] != null 
+          ? DateTime.parse(json['expiration_date'] as String)
+          : DateTime.now(),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,

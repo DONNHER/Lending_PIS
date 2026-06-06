@@ -1,0 +1,70 @@
+Index: lib/viewmodels/add_share_capital_viewmodel.dart
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/lib/viewmodels/add_share_capital_viewmodel.dart b/lib/viewmodels/add_share_capital_viewmodel.dart
+--- a/lib/viewmodels/add_share_capital_viewmodel.dart
++++ b/lib/viewmodels/add_share_capital_viewmodel.dart
+@@ -11,7 +11,7 @@
+   bool _isLoading = false;
+   String? _errorMessage;
+ 
+-  final amountController = TextEditingController(text: '2000.00');
++  final amountController = TextEditingController(text: '5,000.00');
+   String selectedPaymentMethod = 'Cash';
+ 
+   AddShareCapitalViewModel({
+@@ -24,18 +24,18 @@
+   bool get isLoading => _isLoading;
+   String? get errorMessage => _errorMessage;
+ 
+-  // Investment details from image
+-  String get fundId => 'FND-2024-08';
+-  String get lastMonthDivid => 'Aug 14, 2025';
++  // Loan description details from image
++  String get currentLoanId => 'LA-RB-2025-01';
++  String get startDate => 'Aug 14, 2025';
+   String get endDate => 'Aug 14, 2025';
+-  double get currentProfitFund => 150.00;
+-  double get principal => double.tryParse(amountController.text.replaceAll(',', '')) ?? 0.0;
+-  double get maturity => principal + currentProfitFund;
++  double get interestAmount => 500.00;
++  double get principal => double.tryParse(amountController.text.replaceAll(',', '').replaceAll('₱', '').trim()) ?? 0.0;
++  double get totalDue => principal + interestAmount;
+ 
+   void updateUI() => notifyListeners();
+ 
+   Future<bool> executeInvestment() async {
+-    final amount = double.tryParse(amountController.text.replaceAll(',', ''));
++    final amount = double.tryParse(amountController.text.replaceAll(',', '').replaceAll('₱', '').trim());
+     if (amount == null || amount <= 0) {
+       _errorMessage = 'Please enter a valid amount';
+       notifyListeners();
+@@ -47,25 +47,8 @@
+     notifyListeners();
+ 
+     try {
+-      // 1. Create the transaction record
+-      final tx = TransactionModel(
+-        id: '', 
+-        referenceId: fundId,
+-        type: 'Share Purchase',
+-        method: selectedPaymentMethod,
+-        clientName: shareholder.fullName,
+-        amount: amount,
+-        status: 'Completed',
+-        date: DateTime.now(),
+-      );
+-
+-      // In a real app:
+-      // await _transactionRepo.addTransaction(tx);
+-      // await _shareholderRepo.updateShareCapital(shareholder.id, amount);
+-      
+-      // Simulating a small delay
++      // Logic for processing the capital addition
+       await Future.delayed(const Duration(seconds: 1));
+-      
+       return true;
+     } catch (e) {
+       _errorMessage = e.toString();

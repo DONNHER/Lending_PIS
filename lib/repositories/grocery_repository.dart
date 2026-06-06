@@ -1,15 +1,11 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/grocery_model.dart';
 import '../models/grocery_batch_model.dart';
 import '../models/product_model.dart';
+import '../services/api_service.dart';
 
 class GroceryWithDetails {
   final GroceryModel grocery;
   final ProductModel product;
-  // ✅ FIX: was `final List<GroceryBatchModel> batches` initialised with
-  //    `const []` (an *unmodifiable* list).  Calling `.addAll()` on it threw
-  //    an Unsupported operation at runtime and silently left batches empty.
-  //    Changed to a plain growable list so the repository can populate it.
   final List<GroceryBatchModel> batches;
 
   GroceryWithDetails({
@@ -20,40 +16,29 @@ class GroceryWithDetails {
 }
 
 class GroceryRepository {
-  final SupabaseClient _client;
+  final ApiService _api;
 
-  static const String _groceriesTable = 'groceries';
-  static const String _groceryBatchesTable = 'grocery_batches';
-
-  const GroceryRepository(this._client);
+  const GroceryRepository(this._api);
 
   // ─── Fetch All Grocery Products ───────────────────────────────────────
 
   Future<List<GroceryWithDetails>> getAll() async {
     try {
-      final response = await _client
-          .from(_groceriesTable)
-          .select('*, products(*)')
-          .order('id', ascending: false);
+      final response = await _api.get('groceries');
+      final List<dynamic> data = response['data'];
 
-      final groceries = await Future.wait(
-        (response as List).map((json) async {
-          final grocery = GroceryModel.fromJson(json);
-          final product = ProductModel.fromJson(json['products']);
-          // ✅ FIX: batches are stored with the products-table ID, not the
-          //    groceries-table ID. Must pass product.id here.
-          final batches = await getBatches(product.id);
-          return GroceryWithDetails(
-            grocery: grocery,
-            product: product,
-            batches: batches,
-          );
-        }),
-      );
-
-      return groceries;
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to fetch grocery products: ${e.message}');
+      return data.map((json) {
+        return GroceryWithDetails(
+          grocery: GroceryModel.fromJson(json),
+          product: ProductModel.fromJson(json['product']),
+          batches: (json['batches'] as List?)
+                  ?.map((b) => GroceryBatchModel.fromJson(b))
+                  .toList() ??
+              [],
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch grocery products: $e');
     }
   }
 
@@ -61,49 +46,33 @@ class GroceryRepository {
 
   Future<List<GroceryWithDetails>> search(String query) async {
     try {
-      final response = await _client
-          .from(_groceriesTable)
-          .select('*, products(*)')
-          .or(
-            'products.product_name.ilike.%$query%,products.barcode.ilike.%$query%',
-          )
-          .order('id', ascending: false);
+      final response = await _api.get('groceries/search', queryParams: {'query': query});
+      final List<dynamic> data = response['data'];
 
-      final groceries = await Future.wait(
-        (response as List).map((json) async {
-          final grocery = GroceryModel.fromJson(json);
-          final product = ProductModel.fromJson(json['products']);
-          // ✅ FIX: same as getAll — use product.id not grocery.id
-          final batches = await getBatches(product.id);
-          return GroceryWithDetails(
-            grocery: grocery,
-            product: product,
-            batches: batches,
-          );
-        }),
-      );
-
-      return groceries;
-    } on PostgrestException catch (e) {
-      throw Exception('Search failed: ${e.message}');
+      return data.map((json) {
+        return GroceryWithDetails(
+          grocery: GroceryModel.fromJson(json),
+          product: ProductModel.fromJson(json['product']),
+          batches: (json['batches'] as List?)
+                  ?.map((b) => GroceryBatchModel.fromJson(b))
+                  .toList() ??
+              [],
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception('Search failed: $e');
     }
   }
 
   // ─── Get Batches ──────────────────────────────────────────────────────
 
-  Future<List<GroceryBatchModel>> getBatches(String groceryId) async {
+  Future<List<GroceryBatchModel>> getBatches(String productId) async {
     try {
-      final response = await _client
-          .from(_groceryBatchesTable)
-          .select()
-          .eq('product_id', groceryId)
-          .order('purchase_date', ascending: false);
-
-      return (response as List)
-          .map((json) => GroceryBatchModel.fromJson(json))
-          .toList();
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to fetch batches: ${e.message}');
+      final response = await _api.get('products/$productId/batches');
+      final List<dynamic> data = response['data'];
+      return data.map((json) => GroceryBatchModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch batches: $e');
     }
   }
 
@@ -116,36 +85,20 @@ class GroceryRepository {
     required double sellingPrice,
   }) async {
     try {
-      // Step 1: Create the product
-      final productResponse = await _client
-          .from('products')
-          .insert({
-            'product_name': productName,
-            'barcode': barcode,
-            'product_image': productImage,
-            'is_active': true,
-            'selling_price': sellingPrice,
-          })
-          .select()
-          .single();
+      final response = await _api.post('groceries', body: {
+        'product_name': productName,
+        'barcode': barcode,
+        'product_image': productImage,
+        'selling_price': sellingPrice,
+      });
 
-      final product = ProductModel.fromJson(productResponse);
-
-      // Step 2: Create the grocery link
-      final groceryResponse = await _client
-          .from(_groceriesTable)
-          .insert({'product_id': product.id})
-          .select()
-          .single();
-
-      final grocery = GroceryModel.fromJson(groceryResponse);
-
+      final json = response['data'];
       return GroceryWithDetails(
-        grocery: grocery,
-        product: product,
+        grocery: GroceryModel.fromJson(json),
+        product: ProductModel.fromJson(json['product']),
       );
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to create grocery product: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to create grocery product: $e');
     }
   }
 
@@ -158,18 +111,15 @@ class GroceryRepository {
     required bool isActive,
   }) async {
     try {
-      await _client
-          .from('products')
-          .update({
-            'product_name': productName,
-            'barcode': barcode,
-            'product_image': productImage,
-            'selling_price': sellingPrice,
-            'is_active': isActive,
-          })
-          .eq('id', productId);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to update product: ${e.message}');
+      await _api.put('products/$productId', body: {
+        'product_name': productName,
+        'barcode': barcode,
+        'product_image': productImage,
+        'selling_price': sellingPrice,
+        'is_active': isActive,
+      });
+    } catch (e) {
+      throw Exception('Failed to update product: $e');
     }
   }
 
@@ -177,12 +127,9 @@ class GroceryRepository {
 
   Future<void> toggleProductStatus(String productId, bool isActive) async {
     try {
-      await _client
-          .from('products')
-          .update({'is_active': isActive})
-          .eq('id', productId);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to update status: ${e.message}');
+      await _api.put('products/$productId/status', body: {'is_active': isActive});
+    } catch (e) {
+      throw Exception('Failed to update status: $e');
     }
   }
 
@@ -190,9 +137,9 @@ class GroceryRepository {
 
   Future<void> delete(String groceryId) async {
     try {
-      await _client.from(_groceriesTable).delete().eq('id', groceryId);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to delete grocery product: ${e.message}');
+      await _api.delete('groceries/$groceryId');
+    } catch (e) {
+      throw Exception('Failed to delete grocery product: $e');
     }
   }
 
@@ -206,22 +153,18 @@ class GroceryRepository {
     required DateTime expirationDate,
   }) async {
     try {
-      final response = await _client
-          .from(_groceryBatchesTable)
-          .insert({
-            'product_id': productId,
-            'capital_price': capitalPrice,
-            'original_quantity': quantity,
-            'remaining_quantity': quantity,
-            'purchase_date': purchaseDate.toIso8601String().split('T')[0],
-            'expiration_date': expirationDate.toIso8601String().split('T')[0],
-          })
-          .select()
-          .single();
+      final response = await _api.post('batches', body: {
+        'product_id': productId,
+        'capital_price': capitalPrice,
+        'original_quantity': quantity,
+        'remaining_quantity': quantity,
+        'purchase_date': purchaseDate.toIso8601String().split('T')[0],
+        'expiration_date': expirationDate.toIso8601String().split('T')[0],
+      });
 
-      return GroceryBatchModel.fromJson(response);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to add batch: ${e.message}');
+      return GroceryBatchModel.fromJson(response['data']);
+    } catch (e) {
+      throw Exception('Failed to add batch: $e');
     }
   }
 
@@ -234,26 +177,23 @@ class GroceryRepository {
     required DateTime expirationDate,
   }) async {
     try {
-      await _client
-          .from(_groceryBatchesTable)
-          .update({
-            'capital_price': capitalPrice,
-            'original_quantity': originalQuantity,
-            'remaining_quantity': remainingQuantity,
-            'purchase_date': purchaseDate.toIso8601String().split('T')[0],
-            'expiration_date': expirationDate.toIso8601String().split('T')[0],
-          })
-          .eq('id', batchId);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to update batch: ${e.message}');
+      await _api.put('batches/$batchId', body: {
+        'capital_price': capitalPrice,
+        'original_quantity': originalQuantity,
+        'remaining_quantity': remainingQuantity,
+        'purchase_date': purchaseDate.toIso8601String().split('T')[0],
+        'expiration_date': expirationDate.toIso8601String().split('T')[0],
+      });
+    } catch (e) {
+      throw Exception('Failed to update batch: $e');
     }
   }
 
   Future<void> deleteBatch(String batchId) async {
     try {
-      await _client.from(_groceryBatchesTable).delete().eq('id', batchId);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to delete batch: ${e.message}');
+      await _api.delete('batches/$batchId');
+    } catch (e) {
+      throw Exception('Failed to delete batch: $e');
     }
   }
 }

@@ -38,12 +38,12 @@ class AppTheme {
 
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: primary.withValues(alpha: 0.2)),
+          borderSide: BorderSide(color: primary.withValues(alpha:0.2)),
         ),
 
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: primary.withValues(alpha: 0.2)),
+          borderSide: BorderSide(color: primary.withValues(alpha:0.2)),
         ),
 
         focusedBorder: OutlineInputBorder(
@@ -81,7 +81,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
-          side: BorderSide(color: primary.withValues(alpha: 0.3)),
+          side: BorderSide(color: primary.withValues(alpha:0.3)),
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -99,7 +99,7 @@ class AppTheme {
 
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: primary.withValues(alpha: 0.15),
+        indicatorColor: primary.withValues(alpha:0.15),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(color: primary, fontWeight: FontWeight.w600);
@@ -116,7 +116,7 @@ class AppTheme {
 
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: primary.withValues(alpha: .15),
+        indicatorColor: primary.withValues(alpha:0.15),
         selectedIconTheme: const IconThemeData(color: primary),
         unselectedIconTheme: const IconThemeData(color: textMuted),
         selectedLabelTextStyle: const TextStyle(

@@ -4,6 +4,8 @@ import '../app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../widgets/auth_text_field.dart';
 import 'registration_page.dart';
+import 'forgot_password_page.dart';
+import 'mfa_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -52,28 +54,38 @@ class _LoginPageState extends State<LoginPage>
       _passwordController.text,
     );
 
-    // Removed manual Navigator push. 
-    // The MaterialApp home Consumer in main.dart will automatically
-    // switch to AppShell when status becomes authenticated.
-    
-    if (!success && mounted && viewModel.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded,
-                  color: Colors.white, size: 18),
-              const SizedBox(width: 10),
-              Expanded(child: Text(viewModel.errorMessage!)),
-            ],
+    if (success && mounted) {
+      final dashboardRoute = viewModel.dashboardRoute;
+      if (dashboardRoute != null) {
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil(dashboardRoute, (route) => false);
+      }
+    } else if (mounted) {
+      if (viewModel.isMfaRequired) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MfaPage(email: viewModel.pendingMfaEmail!),
           ),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+        );
+      } else if (viewModel.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded,
+                    color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Text(viewModel.errorMessage!)),
+              ],
+            ),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
     }
   }
 
@@ -83,6 +95,7 @@ class _LoginPageState extends State<LoginPage>
       backgroundColor: const Color(0xFFFFF8F3),
       body: Stack(
         children: [
+          // ── Decorative background blobs ──────────────────────────────
           Positioned(
             top: -60,
             right: -60,
@@ -107,6 +120,8 @@ class _LoginPageState extends State<LoginPage>
               ),
             ),
           ),
+
+          // ── Main content ─────────────────────────────────────────────
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -127,8 +142,13 @@ class _LoginPageState extends State<LoginPage>
                                   CrossAxisAlignment.stretch,
                               children: [
                                 const SizedBox(height: 20),
+
+                                // ── Branding ──────────────────────────
                                 _buildBranding(),
+
                                 const SizedBox(height: 44),
+
+                                // ── Greeting ──────────────────────────
                                 const Text(
                                   'Welcome back',
                                   style: TextStyle(
@@ -147,7 +167,10 @@ class _LoginPageState extends State<LoginPage>
                                     height: 1.5,
                                   ),
                                 ),
+
                                 const SizedBox(height: 32),
+
+                                // ── Email ─────────────────────────────
                                 AuthTextField(
                                   label: 'Email Address',
                                   hint: 'Enter your email',
@@ -172,7 +195,10 @@ class _LoginPageState extends State<LoginPage>
                                     return null;
                                   },
                                 ),
+
                                 const SizedBox(height: 18),
+
+                                // ── Password ──────────────────────────
                                 AuthTextField(
                                   label: 'Password',
                                   hint: 'Enter your password',
@@ -203,31 +229,60 @@ class _LoginPageState extends State<LoginPage>
                                     return null;
                                   },
                                 ),
-                                const SizedBox(height: 10),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () {},
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: AppTheme.primary,
-                                      textStyle: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+
+                                const SizedBox(height: 12),
+
+                                // ── Remember Me ───────────────────────
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: Checkbox(
+                                        value: viewModel.rememberMe,
+                                        onChanged: (val) => viewModel.setRememberMe(val ?? false),
+                                        activeColor: AppTheme.primary,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                       ),
-                                      padding: EdgeInsets.zero,
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                    child:
-                                        const Text('Forgot Password?'),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    const Text('Remember Me', style: TextStyle(fontSize: 13, color: AppTheme.textDark)),
+                                    const Spacer(),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const ForgotPasswordPage(),
+                                          ),
+                                        );
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: AppTheme.primary,
+                                        textStyle: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child:
+                                          const Text('Forgot Password?'),
+                                    ),
+                                  ],
                                 ),
+
                                 const SizedBox(height: 28),
+
+                                // ── Sign in button ────────────────────
                                 _SignInButton(
                                   isLoading: viewModel.isLoading,
                                   onPressed: _handleLogin,
                                 ),
+
                                 const SizedBox(height: 28),
+
+                                // ── Divider ───────────────────────────
                                 Row(
                                   children: [
                                     const Expanded(
@@ -249,7 +304,10 @@ class _LoginPageState extends State<LoginPage>
                                             color: Color(0xFFE8DDD5))),
                                   ],
                                 ),
+
                                 const SizedBox(height: 18),
+
+                                // ── Register link ─────────────────────
                                 OutlinedButton(
                                   onPressed: () {
                                     viewModel.clearError();
@@ -279,6 +337,7 @@ class _LoginPageState extends State<LoginPage>
                                   ),
                                   child: const Text('Create an Account'),
                                 ),
+
                                 const SizedBox(height: 32),
                               ],
                             ),
@@ -299,6 +358,7 @@ class _LoginPageState extends State<LoginPage>
   Widget _buildBranding() {
     return Column(
       children: [
+        // Logo mark
         Container(
           width: 72,
           height: 72,
@@ -349,6 +409,8 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 }
+
+// ── Sign In Button ─────────────────────────────────────────────────────────
 
 class _SignInButton extends StatelessWidget {
   final bool isLoading;

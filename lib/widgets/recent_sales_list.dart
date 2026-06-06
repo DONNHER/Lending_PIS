@@ -13,7 +13,7 @@ class RecentSalesList extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.12)),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +45,7 @@ class _RecentSaleTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(children: [
         Container(width: 38, height: 38,
-          decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha:0.1), borderRadius: BorderRadius.circular(10)),
           child: const Icon(Icons.receipt_rounded, color: AppTheme.primary, size: 18)),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -58,7 +58,7 @@ class _RecentSaleTile extends StatelessWidget {
           const SizedBox(height: 2),
           Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: sale.isPaid ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.error.withValues(alpha: 0.1),
+              color: sale.isPaid ? AppTheme.success.withValues(alpha:0.1) : AppTheme.error.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(20)),
             child: Text(sale.isPaid ? 'Paid' : 'Unpaid', style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w600,

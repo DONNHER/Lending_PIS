@@ -1,30 +1,18 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/consignment_daily_inventory.dart';
+import '../services/api_service.dart';
 
 class DailyInventoryRepository {
-  final SupabaseClient _client;
-  static const String _tableName = 'consignment_daily_inventory';
+  final ApiService _api;
 
-  const DailyInventoryRepository(this._client);
+  const DailyInventoryRepository(this._api);
 
-  // ✅ FIX: DB has no consignment_id column — filter by product_id instead.
-  //    The old getByConsignmentId() was querying a non-existent column and
-  //    always returned an empty list.
-  Future<List<ConsignmentDailyInventoryModel>> getByProductId(
-      String productId) async {
+  Future<List<ConsignmentDailyInventoryModel>> getByProductId(String productId) async {
     try {
-      final response = await _client
-          .from(_tableName)
-          .select()
-          .eq('product_id', productId)
-          // ✅ FIX: actual column name is 'consingment_date' (typo is in DB)
-          .order('consingment_date', ascending: false);
-
-      return (response as List)
-          .map((json) => ConsignmentDailyInventoryModel.fromJson(json))
-          .toList();
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to fetch inventory records: ${e.message}');
+      final response = await _api.get('inventory/product/$productId');
+      final List<dynamic> data = response['data'];
+      return data.map((json) => ConsignmentDailyInventoryModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch inventory records: $e');
     }
   }
 
@@ -35,16 +23,14 @@ class DailyInventoryRepository {
     required int quantitySold,
   }) async {
     try {
-      await _client.from(_tableName).insert({
+      await _api.post('inventory', body: {
         'product_id': productId,
-        // ✅ FIX: column name in DB is 'consingment_date' (typo is in DB)
-        'consingment_date': consignmentDate.toIso8601String().split('T')[0],
+        'inventory_date': consignmentDate.toIso8601String().split('T')[0],
         'quantity_received': quantityReceived,
         'quantity_sold': quantitySold,
-        // ✅ FIX: removed 'consignment_id' — column does not exist in DB
       });
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to add inventory: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to add inventory: $e');
     }
   }
 
@@ -55,26 +41,21 @@ class DailyInventoryRepository {
     required DateTime consignmentDate,
   }) async {
     try {
-      await _client
-          .from(_tableName)
-          .update({
-            'quantity_received': quantityReceived,
-            'quantity_sold': quantitySold,
-            // ✅ FIX: column name in DB is 'consingment_date' (typo is in DB)
-            'consingment_date':
-                consignmentDate.toIso8601String().split('T')[0],
-          })
-          .eq('id', id);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to update inventory: ${e.message}');
+      await _api.put('inventory/$id', body: {
+        'quantity_received': quantityReceived,
+        'quantity_sold': quantitySold,
+        'inventory_date': consignmentDate.toIso8601String().split('T')[0],
+      });
+    } catch (e) {
+      throw Exception('Failed to update inventory: $e');
     }
   }
 
   Future<void> delete(String id) async {
     try {
-      await _client.from(_tableName).delete().eq('id', id);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to delete inventory: ${e.message}');
+      await _api.delete('inventory/$id');
+    } catch (e) {
+      throw Exception('Failed to delete inventory: $e');
     }
   }
 }

@@ -700,7 +700,7 @@ class _UploadDropzone extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: accentColor.withValues(alpha:  0.12),
+                color: accentColor.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.add_photo_alternate_outlined,

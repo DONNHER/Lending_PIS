@@ -19,13 +19,20 @@ class ProductModel {
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
     return ProductModel(
-      id: json['id'] as String,
-      productName: json['product_name'] as String,
-      barcode: json['barcode'] as String,
-      productImage: json['product_image'] as String?,
-      isActive: json['is_active'] as bool,
-      sellingPrice: (json['selling_price'] as num).toDouble(),
+      id: json['id']?.toString() ?? '',
+      productName: json['product_name']?.toString() ?? 'Unnamed',
+      barcode: json['barcode']?.toString() ?? '',
+      productImage: json['product_image']?.toString(),
+      isActive: json['is_active'] is bool ? json['is_active'] : (json['is_active']?.toString() == '1' || json['is_active']?.toString() == 'true'),
+      sellingPrice: parseDouble(json['selling_price']),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,

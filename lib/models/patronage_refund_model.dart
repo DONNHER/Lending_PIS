@@ -1,3 +1,5 @@
+import '../utils/parsers.dart';
+
 // Records patronage refunds given to shareholders
 class PatronageRefundModel {
   final int id; // bigint auto-increment
@@ -18,12 +20,14 @@ class PatronageRefundModel {
 
   factory PatronageRefundModel.fromJson(Map<String, dynamic> json) {
     return PatronageRefundModel(
-      id: json['id'] as int,
-      saleId: json['sale_id'] as String,
-      shareholderId: json['shareholder_id'] as String,
-      ratePercentage: (json['rate_percentage'] as num).toDouble(),
-      refundAmount: (json['refund_amount'] as num).toDouble(),
-      createdAt: DateTime.parse(json['created_at'] as String),
+      id: Parsers.parseInt(json['id']),
+      saleId: json['sale_id']?.toString() ?? '',
+      shareholderId: json['shareholder_id']?.toString() ?? '',
+      ratePercentage: Parsers.parseDouble(json['rate_percentage']),
+      refundAmount: Parsers.parseDouble(json['refund_amount']),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
 

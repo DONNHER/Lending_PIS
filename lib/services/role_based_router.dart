@@ -8,7 +8,7 @@ class RoleBasedRouter {
       case UserRole.cashier:
         return '/pos';
       case UserRole.shareholder:
-        return '/dashboard';
+        return '/shareholder-dashboard';
     }
   }
 
@@ -22,12 +22,12 @@ class RoleBasedRouter {
       case UserRole.admin:
         return ['/dashboard', '/pos', '/consignment-products', '/grocery-products', 
                 '/consignees', '/sales', '/inventory', '/shareholders', 
-                '/reports', '/cashiers', '/profile', '/lending'];
+                '/reports', '/cashiers', '/profile'];
       case UserRole.cashier:
         return ['/pos', '/products', '/grocery-products', 
                 '/sales', '/inventory', '/profile'];
       case UserRole.shareholder:
-        return ['/dashboard', '/sales', '/shareholders', 
+        return ['/shareholder-dashboard', '/sales', '/shareholders', 
                 '/reports', '/profile'];
     }
   }

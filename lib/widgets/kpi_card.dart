@@ -1,46 +1,55 @@
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
-import '../models/dashboard_models.dart';
+import '../models/lending_models.dart';
 
 class KpiCard extends StatelessWidget {
-  final KpiCardModel data;
+  final KpiCardData data;
   const KpiCard({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withValues(alpha:0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha:0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: data.iconBackgroundColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(data.icon, color: data.iconBackgroundColor, size: 18),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFDF4F0),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const Spacer(),
-            Icon(data.isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-              color: data.isPositive ? AppTheme.success : AppTheme.error, size: 14),
-          ]),
-          const SizedBox(height: 8),
-          Text(data.value, style: const TextStyle(
-            fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textDark, letterSpacing: -0.5)),
-          const SizedBox(height: 2),
-          Text(data.label, style: const TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textMuted)),
-          const SizedBox(height: 2),
-          Text(data.subtext, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(
-            fontSize: 10, color: data.isPositive ? AppTheme.success : AppTheme.error)),
+            child: Icon(data.icon, color: const Color(0xFF8B4513), size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            data.label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTheme.textMuted,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            data.value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textDark,
+            ),
+          ),
         ],
       ),
     );

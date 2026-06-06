@@ -1,3 +1,5 @@
+import '../utils/parsers.dart';
+
 // Individual items within a sale transaction
 class SaleItemModel {
   final String id;
@@ -19,11 +21,11 @@ class SaleItemModel {
 
   factory SaleItemModel.fromJson(Map<String, dynamic> json) {
     return SaleItemModel(
-      id: json['id'] as String,
-      saleId: json['sale_id'] as String,
-      productId: json['product_id'] as String,
-      quantity: json['quantity'] as int,
-      sellingPrice: (json['selling_price'] as num).toDouble(),
+      id: json['id']?.toString() ?? '',
+      saleId: json['sale_id']?.toString() ?? '',
+      productId: json['product_id']?.toString() ?? '',
+      quantity: Parsers.parseInt(json['quantity']),
+      sellingPrice: Parsers.parseDouble(json['selling_price']),
     );
   }
 

@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../models/consignee_model.dart';
 import '../models/product_model.dart';
-// import '../models/consignment_model.dart';
 import '../repositories/consignee_repository.dart';
 import '../repositories/consignment_repository.dart';
+import '../utils/parsers.dart';
 
 /// Represents a consigned product with its consignment details
 class ConsignedProduct {
@@ -22,10 +22,10 @@ class ConsignedProduct {
   /// Factory to create from joined query result
   factory ConsignedProduct.fromJson(Map<String, dynamic> json) {
     return ConsignedProduct(
-      consignmentId: json['id'] as int,
+      consignmentId: Parsers.parseInt(json['id']),
       product: ProductModel.fromJson(json['products'] as Map<String, dynamic>),
-      commissionRate: (json['commission_rate'] as num).toDouble(),
-      capitalPrice: (json['capital_price'] as num).toDouble(),
+      commissionRate: Parsers.parseDouble(json['commission_rate']),
+      capitalPrice: Parsers.parseDouble(json['capital_price']),
     );
   }
 }

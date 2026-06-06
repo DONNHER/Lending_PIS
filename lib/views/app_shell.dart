@@ -1,291 +1,1573 @@
-import 'package:capstone_application/screens/dashboard.dart';
-import 'package:capstone_application/screens/activity_logs.dart';
-import 'package:capstone_application/screens/fund_management.dart';
-import 'package:capstone_application/screens/loan_request_management.dart';
-import 'package:capstone_application/screens/transaction_management.dart';
-import 'package:capstone_application/screens/user_management.dart';
+import 'package:capstone_application/views/loans_page.dart';
+
+import 'package:capstone_application/views/shareholders_page.dart';
+
+import 'package:capstone_application/views/activity_logs_page.dart';
+
+import 'package:capstone_application/views/transactions_page.dart';
+
+import 'package:capstone_application/views/update_interest_page.dart';
 
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
+
 import '../app_theme.dart';
+
 import '../models/nav_item_model.dart';
+
 import '../viewmodels/auth_viewmodel.dart';
+
 import '../viewmodels/navigation_viewmodel.dart';
 
-class AppShell extends StatelessWidget {
+import 'dashboard_page.dart';
+
+
+
+class AppShell extends StatefulWidget {
+
   const AppShell({super.key});
 
-  // Centralized Background Color to match your pages
-  static const Color backgroundPeach = Color(0xFFFDFBFA);
+
 
   @override
+
+  State<AppShell> createState() => _AppShellState();
+
+}
+
+
+
+class _AppShellState extends State<AppShell> {
+
+  late final NavigationViewModel _navViewModel;
+
+
+
+  @override
+
+  void initState() {
+
+    super.initState();
+
+    _navViewModel = NavigationViewModel();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+      final auth = context.read<AuthViewModel>();
+
+      _navViewModel.setUserRole(auth.currentUser?.role);
+
+    });
+
+  }
+
+
+
+  @override
+
+  void dispose() {
+
+    _navViewModel.dispose();
+
+    super.dispose();
+
+  }
+
+
+
+  @override
+
   Widget build(BuildContext context) {
-    final nav = context.watch<NavigationViewModel>();
-    final auth = context.watch<AuthViewModel>();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // We use 900 as a standard desktop/tablet breakpoint
-        final isLargeScreen = constraints.maxWidth >= 900;
-        
+    return ChangeNotifierProvider.value(
+
+      value: _navViewModel,
+
+      child: LayoutBuilder(
+
+        builder: (context, constraints) {
+
+          final isTablet = constraints.maxWidth >= 600;
+
+          return isTablet ? _buildTabletLayout() : _buildPhoneLayout();
+
+        },
+
+      ),
+
+    );
+
+  }
+
+
+
+// ── Phone Layout ─────────────────────────────────────────────────────────
+
+  Widget _buildPhoneLayout() {
+
+    return Consumer2<NavigationViewModel, AuthViewModel>(
+
+      builder: (context, nav, auth, _) {
+
+        final filteredItems = nav.getFilteredNavItems();
+
+        final bottomItems = nav.getBottomNavItems();
+
+        final drawerItems = nav.getDrawerItems();
+
+        final bottomIndex = nav.getBottomNavIndex();
+
+
+
         return Scaffold(
-          backgroundColor: backgroundPeach,
-          // Only show AppBar on mobile/small screens
-          appBar: !isLargeScreen ? _buildPhoneAppBar(context, auth, nav) : null,
-          drawer: !isLargeScreen ? _buildDrawer(context, nav, auth) : null,
-          body: isLargeScreen 
-              ? _buildTabletLayout(context, nav, auth) 
-              : _buildPhoneLayout(context, nav),
-          bottomNavigationBar: !isLargeScreen ? _buildBottomNav(nav) : null,
+
+          backgroundColor: const Color(0xFFF7F8FA),
+
+          appBar: _buildPhoneAppBar(drawerItems),
+
+          drawer: drawerItems.isNotEmpty
+
+              ? _buildDrawer(nav, auth, drawerItems)
+
+              : null,
+
+          body: _buildPage(filteredItems, nav.selectedIndex),
+
+          bottomNavigationBar: bottomItems.length >= 2
+
+              ? _CompactBottomNav(
+
+            items: bottomItems,
+
+            selectedIndex: bottomIndex,
+
+            onTap: nav.navigateTo,
+
+          )
+
+              : null,
+
         );
+
       },
+
     );
+
   }
 
-  // ── Phone/Mobile Layout ───────────────────────────────────────────────────
-  Widget _buildPhoneLayout(NavigationViewModel nav) {
-    final filteredItems = nav.getFilteredNavItems();
-    return SafeArea(
-      child: _buildPage(filteredItems, nav.selectedIndex),
-    );
-  }
 
-  // ── Tablet/Desktop Layout (Side Bar) ──────────────────────────────────────
-  Widget _buildTabletLayout(BuildContext context, NavigationViewModel nav, AuthViewModel auth) {
-    final filteredItems = nav.getFilteredNavItems();
 
-    return Row(
-      children: [
-        // FIXED SIDEBAR: It occupies its own space, pushing the body to the right
-        _TabletRail(
-          items: filteredItems,
-          selectedIndex: nav.selectedIndex,
-          onDestinationSelected: nav.navigateTo,
-          auth: auth,
-        ),
-        const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE6DED8)),
-        // EXPANDED BODY: Takes the remaining horizontal space
-        Expanded(
-          child: Column(
-            children: [
-              // Custom Header for Tablet since AppBar is hidden
-              _buildTabletHeader(filteredItems, nav.selectedIndex, auth, context),
-              Expanded(
-                child: _buildPage(filteredItems, nav.selectedIndex),
-              ),
-            ],
+// ── Tablet Layout ─────────────────────────────────────────────────────────
+
+  Widget _buildTabletLayout() {
+
+    return Consumer<NavigationViewModel>(
+
+      builder: (context, nav, _) {
+
+        final filteredItems = nav.getFilteredNavItems();
+
+
+
+        if (filteredItems.length < 2) {
+
+          return Scaffold(
+
+            body: SafeArea(child: _buildPage(filteredItems, nav.selectedIndex)),
+
+          );
+
+        }
+
+
+
+        return Scaffold(
+
+          body: SafeArea(
+
+            child: Row(
+
+              children: [
+
+                _TabletRail(
+
+                  items: filteredItems,
+
+                  selectedIndex: nav.selectedIndex,
+
+                  onDestinationSelected: nav.navigateTo,
+
+                ),
+
+                const VerticalDivider(width: 1),
+
+                Expanded(child: _buildPage(filteredItems, nav.selectedIndex)),
+
+              ],
+
+            ),
+
           ),
-        ),
-      ],
+
+        );
+
+      },
+
     );
+
   }
 
-  // ── Header for Tablet (Replaces AppBar) ──────────────────────────────────
-  Widget _buildTabletHeader(List<NavItemModel> items, int index, AuthViewModel auth, BuildContext context) {
-    String title = items.isNotEmpty ? items[index].label : "Lending System";
-    return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE6DED8))),
-      ),
-      child: Row(
-        children: [
-          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF3A2318))),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Colors.grey),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-          _buildProfileButton(context, auth),
-        ],
-      ),
-    );
-  }
 
-  // ── App Bar (Mobile) ──────────────────────────────────────────────────────
-  AppBar _buildPhoneAppBar(BuildContext context, AuthViewModel auth, NavigationViewModel nav) {
+
+// ── App Bar ───────────────────────────────────────────────────────────────
+
+  AppBar _buildPhoneAppBar(List<NavItemModel> drawerItems) {
+
     return AppBar(
+
       backgroundColor: Colors.white,
+
       elevation: 0,
+
+      surfaceTintColor: Colors.transparent,
+
       centerTitle: false,
-      title: const Text('Engr Canteen', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF3A2318))),
-      iconTheme: const IconThemeData(color: Color(0xFF3A2318)),
-      actions: [
-        _buildProfileButton(context, auth),
-        const SizedBox(width: 8),
-      ],
-    );
-  }
 
-  Widget _buildProfileButton(BuildContext context, AuthViewModel auth) {
-    return InkWell(
-      onTap: () => _showProfileMenu(context, auth),
-      child: const CircleAvatar(
-        radius: 16,
-        backgroundColor: AppTheme.primary,
-        child: Icon(Icons.person, size: 20, color: Colors.white),
-      ),
-    );
-  }
+      titleSpacing: 16,
 
-  // ── Bottom Nav Logic ──────────────────────────────────────────────────────
-  Widget? _buildBottomNav(NavigationViewModel nav) {
-    final bottomItems = nav.getBottomNavItems();
-    if (bottomItems.length < 2) return null;
+      title: Row(
 
-    return _CompactBottomNav(
-      items: bottomItems,
-      selectedIndex: nav.getBottomNavIndex(),
-      onTap: nav.navigateTo,
-    );
-  }
-
-  // ── Drawer ────────────────────────────────────────────────────────────────
-  Widget _buildDrawer(BuildContext context, NavigationViewModel nav, AuthViewModel auth) {
-    final drawerItems = nav.getDrawerItems();
-    return Drawer(
-      backgroundColor: backgroundPeach,
-      child: Column(
         children: [
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(color: AppTheme.primary),
-            accountName: const Text("Administrator", style: TextStyle(fontWeight: FontWeight.bold)),
-            accountEmail: Text(auth.currentUserEmail ?? "admin@system.com"),
-            currentAccountPicture: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.person, color: AppTheme.primary)),
-          ),
-          Expanded(
-            child: ListView(
-              children: drawerItems.map((item) {
-                final allItems = nav.getFilteredNavItems();
-                final index = allItems.indexOf(item);
-                return ListTile(
-                  leading: Icon(item.icon, color: nav.selectedIndex == index ? AppTheme.primary : Colors.grey),
-                  title: Text(item.label, style: TextStyle(color: nav.selectedIndex == index ? AppTheme.primary : const Color(0xFF3A2318))),
-                  selected: nav.selectedIndex == index,
-                  onTap: () {
-                    Navigator.pop(context);
-                    nav.navigateTo(index);
-                  },
-                );
-              }).toList(),
+
+          Container(
+
+            width: 30,
+
+            height: 30,
+
+            decoration: BoxDecoration(
+
+              color: AppTheme.primary,
+
+              borderRadius: BorderRadius.circular(9),
+
             ),
+
+            child: const Icon(
+
+              Icons.account_balance_rounded,
+
+              color: Colors.white,
+
+              size: 16,
+
+            ),
+
           ),
+
+          const SizedBox(width: 9),
+
+          const Text(
+
+            'Engr Canteen',
+
+            style: TextStyle(
+
+              fontWeight: FontWeight.w700,
+
+              fontSize: 16,
+
+              color: AppTheme.textDark,
+
+            ),
+
+          ),
+
         ],
-      ),
-    );
-  }
 
-  void _showProfileMenu(BuildContext context, AuthViewModel auth) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Text("Account Settings", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      ),
+
+      actions: [
+
+        Padding(
+
+          padding: const EdgeInsets.only(right: 12),
+
+          child: GestureDetector(
+
+            onTap: () => _showProfileMenu(context),
+
+            child: Container(
+
+              width: 34,
+
+              height: 34,
+
+              decoration: BoxDecoration(
+
+                color: AppTheme.primary.withOpacity(0.1),
+
+                shape: BoxShape.circle,
+
+              ),
+
+              child: const Icon(
+
+                Icons.person_rounded,
+
+                color: AppTheme.primary,
+
+                size: 18,
+
+              ),
+
             ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                auth.logout();
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
+
+          ),
+
         ),
+
+      ],
+
+      bottom: PreferredSize(
+
+        preferredSize: const Size.fromHeight(1),
+
+        child: Container(height: 1, color: const Color(0xFFF0F1F5)),
+
       ),
+
     );
+
   }
 
-  // ── Page Router ───────────────────────────────────────────────────────────
+
+
+  Widget _buildDrawer(
+
+      NavigationViewModel nav,
+
+      AuthViewModel auth,
+
+      List<NavItemModel> drawerItems,
+
+      ) {
+
+    return Drawer(
+
+      backgroundColor: Colors.white,
+
+      child: Column( // Main container
+
+        children: [
+
+// 1. Fixed Header (Doesn't scroll)
+
+          SafeArea(
+
+            bottom: false, // Only apply top padding for the status bar
+
+            child: Padding(
+
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+
+              child: Row(
+
+                children: [
+
+                  Container(
+
+                    width: 38,
+
+                    height: 38,
+
+                    decoration: BoxDecoration(
+
+                      color: AppTheme.primary,
+
+                      borderRadius: BorderRadius.circular(11),
+
+                    ),
+
+                    child: const Icon(Icons.account_balance_rounded,
+
+                        color: Colors.white, size: 20),
+
+                  ),
+
+                  const SizedBox(width: 11),
+
+                  const Column(
+
+                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                    children: [
+
+                      Text(
+
+                        'Engr Canteen',
+
+                        style: TextStyle(
+
+                          fontWeight: FontWeight.w700,
+
+                          fontSize: 15,
+
+                          color: AppTheme.textDark,
+
+                        ),
+
+                      ),
+
+                      Text(
+
+                        'Lending',
+
+                        style: TextStyle(
+
+                          fontSize: 11,
+
+                          color: AppTheme.textMuted,
+
+                        ),
+
+                      ),
+
+                    ],
+
+                  ),
+
+                ],
+
+              ),
+
+            ),
+
+          ),
+
+          const Divider(height: 1, color: Color(0xFFF0F1F5)),
+
+
+
+// 2. Scrollable Section (Items)
+
+          Expanded(
+
+            child: SingleChildScrollView(
+
+              physics: const BouncingScrollPhysics(),
+
+              child: Column(
+
+                crossAxisAlignment: CrossAxisAlignment.start,
+
+                children: [
+
+                  Padding(
+
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+
+                    child: Text(
+
+                      'MORE',
+
+                      style: TextStyle(
+
+                        fontSize: 10,
+
+                        fontWeight: FontWeight.w700,
+
+                        color: AppTheme.textMuted.withOpacity(0.7),
+
+                        letterSpacing: 1.4,
+
+                      ),
+
+                    ),
+
+                  ),
+
+                  ...drawerItems.map((item) {
+
+                    final allItems = nav.getFilteredNavItems();
+
+                    final itemIndex = allItems.indexOf(item);
+
+                    final isSelected = nav.selectedIndex == itemIndex;
+
+                    return Padding(
+
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+
+                      child: ListTile(
+
+                        dense: true,
+
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+
+                        leading: Icon(
+
+                          isSelected ? item.activeIcon : item.icon,
+
+                          color: isSelected ? AppTheme.primary : AppTheme.textMuted,
+
+                          size: 20,
+
+                        ),
+
+                        title: Text(
+
+                          item.label,
+
+                          style: TextStyle(
+
+                            fontSize: 14,
+
+                            color: isSelected ? AppTheme.primary : AppTheme.textDark,
+
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+
+                          ),
+
+                        ),
+
+                        selected: isSelected,
+
+                        selectedTileColor: AppTheme.primary.withOpacity(0.08),
+
+                        shape: RoundedRectangleBorder(
+
+                          borderRadius: BorderRadius.circular(10),
+
+                        ),
+
+                        onTap: () {
+
+                          Navigator.pop(context);
+
+                          nav.navigateTo(itemIndex);
+
+                        },
+
+                      ),
+
+                    );
+
+                  }),
+
+                ],
+
+              ),
+
+            ),
+
+          ),
+
+
+
+// 3. Fixed Footer (Logout - Pinned to bottom)
+
+          const Divider(height: 1, color: Color(0xFFF0F1F5)),
+
+          SafeArea(
+
+            top: false, // Only apply bottom padding for home indicator
+
+            child: Padding(
+
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+
+              child: ListTile(
+
+                dense: true,
+
+                leading: const Icon(Icons.logout_rounded, color: AppTheme.error, size: 20),
+
+                title: const Text(
+
+                  'Logout',
+
+                  style: TextStyle(
+
+                    color: AppTheme.error,
+
+                    fontWeight: FontWeight.w500,
+
+                    fontSize: 14,
+
+                  ),
+
+                ),
+
+                shape: RoundedRectangleBorder(
+
+                  borderRadius: BorderRadius.circular(10),
+
+                ),
+
+                onTap: () {
+
+                  Navigator.pop(context);
+
+                  auth.logout();
+
+                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+
+                },
+
+              ),
+
+            ),
+
+          ),
+
+        ],
+
+      ),
+
+    );
+
+  }
+
+
+
+// ── Profile Sheet ─────────────────────────────────────────────────────────
+
+  void _showProfileMenu(BuildContext context) {
+
+    final auth = context.read<AuthViewModel>();
+
+    final user = auth.currentUser;
+
+
+
+    showModalBottomSheet(
+
+      context: context,
+
+      backgroundColor: Colors.white,
+
+      shape: const RoundedRectangleBorder(
+
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+
+      ),
+
+      builder: (_) => Padding(
+
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+
+        child: Column(
+
+          mainAxisSize: MainAxisSize.min,
+
+          children: [
+
+// Handle
+
+            Container(
+
+              width: 36,
+
+              height: 4,
+
+              decoration: BoxDecoration(
+
+                color: const Color(0xFFE5E7EB),
+
+                borderRadius: BorderRadius.circular(2),
+
+              ),
+
+            ),
+
+            const SizedBox(height: 20),
+
+            CircleAvatar(
+
+              radius: 30,
+
+              backgroundColor: AppTheme.primary.withOpacity(0.12),
+
+              child: const Icon(Icons.person_rounded,
+
+                  color: AppTheme.primary, size: 30),
+
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+
+              user?.fullName ?? 'User',
+
+              style: const TextStyle(
+
+                fontWeight: FontWeight.w700,
+
+                fontSize: 17,
+
+                color: AppTheme.textDark,
+
+              ),
+
+            ),
+
+            const SizedBox(height: 2),
+
+            Text(
+
+              user?.email ?? '',
+
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+
+            ),
+
+            if (user != null) ...[
+
+              const SizedBox(height: 6),
+
+              Container(
+
+                padding:
+
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+
+                decoration: BoxDecoration(
+
+                  color: AppTheme.primary.withOpacity(0.1),
+
+                  borderRadius: BorderRadius.circular(20),
+
+                ),
+
+                child: Text(
+
+                  user.role.name[0].toUpperCase() +
+
+                      user.role.name.substring(1),
+
+                  style: const TextStyle(
+
+                    fontSize: 11,
+
+                    color: AppTheme.primary,
+
+                    fontWeight: FontWeight.w600,
+
+                  ),
+
+                ),
+
+              ),
+
+            ],
+
+            const SizedBox(height: 20),
+
+            OutlinedButton.icon(
+
+              icon: const Icon(Icons.logout_rounded, size: 16),
+
+              label: const Text('Logout'),
+
+              style: OutlinedButton.styleFrom(
+
+                foregroundColor: AppTheme.error,
+
+                side: const BorderSide(color: AppTheme.error),
+
+                minimumSize: const Size.fromHeight(46),
+
+                shape: RoundedRectangleBorder(
+
+                    borderRadius: BorderRadius.circular(12)),
+
+                textStyle: const TextStyle(
+
+                    fontSize: 14, fontWeight: FontWeight.w600),
+
+              ),
+
+              onPressed: () {
+
+                Navigator.pop(context);
+
+                auth.logout();
+
+                Navigator.of(context)
+
+                    .pushNamedAndRemoveUntil('/login', (route) => false);
+
+              },
+
+            ),
+
+            const SizedBox(height: 4),
+
+          ],
+
+        ),
+
+      ),
+
+    );
+
+  }
+
+
+
+// ── Page Router ───────────────────────────────────────────────────────────
+
   Widget _buildPage(List<NavItemModel> items, int selectedIndex) {
-    if (items.isEmpty) return const Center(child: Text("Access Denied"));
-    if (selectedIndex < 0 || selectedIndex >= items.length) selectedIndex = 0;
+
+    if (items.isEmpty || selectedIndex >= items.length) {
+
+      return const Center(child: Text('No accessible pages'));
+
+    }
+
+
 
     final route = items[selectedIndex].route;
 
+
+
     switch (route) {
-      case '/dashboard': return const DashboardPage();
-      case '/loan-requests': return const LoanRequestManagementPage();
-      case '/activity-logs': return const ActivityLogsPage();
-      case '/fund-management': return const FundManagementPage();
-      case '/shareholders': return const UserManagementPage();
-      case '/transactions': return const TransactionManagementPage();
-      default: return Center(child: Text('Route $route not implemented'));
+
+      case '/dashboard':
+
+        return const DashboardPage();
+
+      case '/loans':
+
+        return const LoansPage();
+
+      case '/shareholders':
+
+        return ShareholdersPage();
+
+      case '/transactions':
+
+        return TransactionsPage();
+
+      case '/update-interest':
+
+        return const UpdateInterestPage();
+
+      case '/activity-logs':
+
+        return ActivityLogsPage();
+
+      default:
+
+        return _placeholderPage(
+
+          title: route
+
+              .replaceAll('/', '')
+
+              .replaceAll('-', ' ')
+
+              .split(' ')
+
+              .map((w) => w.isNotEmpty
+
+              ? w[0].toUpperCase() + w.substring(1)
+
+              : w)
+
+              .join(' '),
+
+          icon: items[selectedIndex].icon,
+
+        );
+
     }
+
   }
+
+
+
+  Widget _placeholderPage(
+
+      {required String title, required IconData icon}) {
+
+    return Center(
+
+      child: Column(
+
+        mainAxisAlignment: MainAxisAlignment.center,
+
+        children: [
+
+          Container(
+
+            width: 72,
+
+            height: 72,
+
+            decoration: BoxDecoration(
+
+              color: AppTheme.primary.withOpacity(0.1),
+
+              borderRadius: BorderRadius.circular(20),
+
+            ),
+
+            child: Icon(icon, color: AppTheme.primary, size: 34),
+
+          ),
+
+          const SizedBox(height: 16),
+
+          Text(
+
+            title,
+
+            style: const TextStyle(
+
+              fontSize: 20,
+
+              fontWeight: FontWeight.w700,
+
+              color: AppTheme.textDark,
+
+            ),
+
+          ),
+
+          const SizedBox(height: 6),
+
+          const Text(
+
+            'Coming soon',
+
+            style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+
+          ),
+
+        ],
+
+      ),
+
+    );
+
+  }
+
 }
 
-// ── Supporting Widgets ──────────────────────────────────────────────────────
+
+
+// ─── Compact Bottom Nav ──────────────────────────────────────────────────────
+
+// Icons only with a small label — uniform size regardless of label length.
+
+// Sits in a fixed-height container so it never grows.
+
+
 
 class _CompactBottomNav extends StatelessWidget {
+
   final List<NavItemModel> items;
+
   final int selectedIndex;
+
   final ValueChanged<int> onTap;
-  const _CompactBottomNav({required this.items, required this.selectedIndex, required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFE6DED8)))),
-      child: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: onTap,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primary,
-        unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        items: items.map((i) => BottomNavigationBarItem(
-          icon: Icon(i.icon), 
-          activeIcon: Icon(i.activeIcon),
-          label: i.label,
-        )).toList(),
-      ),
-    );
-  }
-}
 
-class _TabletRail extends StatelessWidget {
-  final List<NavItemModel> items;
-  final int selectedIndex;
-  final ValueChanged<int> onDestinationSelected;
-  final AuthViewModel auth;
 
-  const _TabletRail({
+  const _CompactBottomNav({
+
     required this.items,
+
     required this.selectedIndex,
-    required this.onDestinationSelected,
-    required this.auth,
+
+    required this.onTap,
+
   });
 
+
+
   @override
+
   Widget build(BuildContext context) {
-    return NavigationRail(
-      selectedIndex: selectedIndex,
-      onDestinationSelected: onDestinationSelected,
-      labelType: NavigationRailLabelType.all,
-      backgroundColor: Colors.white,
-      minWidth: 80,
-      leading: const Column(
-        children: [
-          SizedBox(height: 24),
-          Icon(Icons.account_balance_wallet_rounded, color: AppTheme.primary, size: 32),
-          SizedBox(height: 24),
+
+    return Container(
+
+      decoration: BoxDecoration(
+
+        color: Colors.white,
+
+        border: Border(
+
+          top: BorderSide(color: const Color(0xFFF0F1F5), width: 1),
+
+        ),
+
+        boxShadow: [
+
+          BoxShadow(
+
+            color: Colors.black.withOpacity(0.04),
+
+            blurRadius: 12,
+
+            offset: const Offset(0, -4),
+
+          ),
+
         ],
+
       ),
-      destinations: items.map((i) => NavigationRailDestination(
-        icon: Icon(i.icon, color: Colors.grey), 
-        selectedIcon: Icon(i.activeIcon, color: AppTheme.primary),
-        label: Text(i.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
-      )).toList(),
+
+      child: SafeArea(
+
+        top: false,
+
+        child: SizedBox(
+
+          height: 58, // fixed compact height — never changes with labels
+
+          child: Row(
+
+            children: List.generate(items.length, (i) {
+
+              final item = items[i];
+
+              final isSelected = i == selectedIndex;
+
+              return Expanded(
+
+                child: GestureDetector(
+
+                  behavior: HitTestBehavior.opaque,
+
+                  onTap: () => onTap(i),
+
+                  child: Column(
+
+                    mainAxisAlignment: MainAxisAlignment.center,
+
+                    children: [
+
+                      AnimatedContainer(
+
+                        duration: const Duration(milliseconds: 200),
+
+                        curve: Curves.easeOut,
+
+                        padding: const EdgeInsets.symmetric(
+
+                            horizontal: 14, vertical: 5),
+
+                        decoration: BoxDecoration(
+
+                          color: isSelected
+
+                              ? AppTheme.primary.withOpacity(0.12)
+
+                              : Colors.transparent,
+
+                          borderRadius: BorderRadius.circular(20),
+
+                        ),
+
+                        child: Icon(
+
+                          isSelected ? item.activeIcon : item.icon,
+
+                          color: isSelected
+
+                              ? AppTheme.primary
+
+                              : AppTheme.textMuted,
+
+                          size: 22,
+
+                        ),
+
+                      ),
+
+                      const SizedBox(height: 3),
+
+                      Text(
+
+                        item.label,
+
+                        maxLines: 1,
+
+                        overflow: TextOverflow.ellipsis,
+
+                        style: TextStyle(
+
+                          fontSize: 10,
+
+                          fontWeight: isSelected
+
+                              ? FontWeight.w600
+
+                              : FontWeight.w400,
+
+                          color: isSelected
+
+                              ? AppTheme.primary
+
+                              : AppTheme.textMuted,
+
+                        ),
+
+                      ),
+
+                    ],
+
+                  ),
+
+                ),
+
+              );
+
+            }),
+
+          ),
+
+        ),
+
+      ),
+
     );
+
   }
+
+}
+
+
+
+// ─── Tablet Rail ─────────────────────────────────────────────────────────────
+
+
+
+class _TabletRail extends StatefulWidget {
+
+  final List<NavItemModel> items;
+
+  final int selectedIndex;
+
+  final ValueChanged<int> onDestinationSelected;
+
+
+
+  const _TabletRail({
+
+    required this.items,
+
+    required this.selectedIndex,
+
+    required this.onDestinationSelected,
+
+  });
+
+
+
+  @override
+
+  State<_TabletRail> createState() => _TabletRailState();
+
+}
+
+
+
+class _TabletRailState extends State<_TabletRail> {
+
+  bool _extended = false;
+
+
+
+  @override
+
+  Widget build(BuildContext context) {
+
+    if (widget.items.length < 2) return const SizedBox.shrink();
+
+
+
+    return Container(
+
+      color: Theme.of(context).colorScheme.surface,
+
+      child: Column(
+
+        children: [
+
+          AnimatedContainer(
+
+            duration: const Duration(milliseconds: 200),
+
+            padding:
+
+            const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+
+            child: _extended
+
+                ? Row(
+
+              children: [
+
+                _logoIcon(),
+
+                const SizedBox(width: 10),
+
+                const Expanded(
+
+                  child: Column(
+
+                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                    children: [
+
+                      Text(
+
+                        'Engr Canteen',
+
+                        style: TextStyle(
+
+                          fontWeight: FontWeight.w700,
+
+                          fontSize: 14,
+
+                          color: AppTheme.textDark,
+
+                        ),
+
+                      ),
+
+                      Text(
+
+                        'Lending',
+
+                        style: TextStyle(
+
+                          fontSize: 11,
+
+                          color: AppTheme.textMuted,
+
+                        ),
+
+                      ),
+
+                    ],
+
+                  ),
+
+                ),
+
+              ],
+
+            )
+
+                : _logoIcon(),
+
+          ),
+
+          const Divider(height: 1),
+
+          Expanded(
+
+            child: NavigationRail(
+
+              extended: _extended,
+
+              selectedIndex: widget.selectedIndex,
+
+              onDestinationSelected: widget.onDestinationSelected,
+
+              labelType: _extended
+
+                  ? NavigationRailLabelType.none
+
+                  : NavigationRailLabelType.selected,
+
+              leading: const SizedBox.shrink(),
+
+              trailing: Expanded(
+
+                child: Align(
+
+                  alignment: Alignment.bottomCenter,
+
+                  child: Padding(
+
+                    padding: const EdgeInsets.only(bottom: 16),
+
+                    child: Column(
+
+                      mainAxisSize: MainAxisSize.min,
+
+                      children: [
+
+                        const Divider(),
+
+                        IconButton(
+
+                          icon: Icon(
+
+                            _extended
+
+                                ? Icons.chevron_left_rounded
+
+                                : Icons.chevron_right_rounded,
+
+                            color: AppTheme.textMuted,
+
+                          ),
+
+                          onPressed: () =>
+
+                              setState(() => _extended = !_extended),
+
+                          tooltip: _extended ? 'Collapse' : 'Expand',
+
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        IconButton(
+
+                          icon: const Icon(
+
+                            Icons.account_circle_outlined,
+
+                            color: AppTheme.textMuted,
+
+                          ),
+
+                          onPressed: () {
+
+                            final auth = context.read<AuthViewModel>();
+
+                            final user = auth.currentUser;
+
+                            showModalBottomSheet(
+
+                              context: context,
+
+                              backgroundColor: Colors.white,
+
+                              shape: const RoundedRectangleBorder(
+
+                                borderRadius: BorderRadius.vertical(
+
+                                    top: Radius.circular(24)),
+
+                              ),
+
+                              builder: (_) => Padding(
+
+                                padding: const EdgeInsets.fromLTRB(
+
+                                    24, 12, 24, 24),
+
+                                child: Column(
+
+                                  mainAxisSize: MainAxisSize.min,
+
+                                  children: [
+
+                                    Container(
+
+                                      width: 36,
+
+                                      height: 4,
+
+                                      decoration: BoxDecoration(
+
+                                        color: const Color(0xFFE5E7EB),
+
+                                        borderRadius:
+
+                                        BorderRadius.circular(2),
+
+                                      ),
+
+                                    ),
+
+                                    const SizedBox(height: 20),
+
+                                    CircleAvatar(
+
+                                      radius: 30,
+
+                                      backgroundColor: AppTheme.primary
+
+                                          .withOpacity(0.12),
+
+                                      child: const Icon(
+
+                                          Icons.person_rounded,
+
+                                          color: AppTheme.primary,
+
+                                          size: 30),
+
+                                    ),
+
+                                    const SizedBox(height: 10),
+
+                                    Text(
+
+                                      user?.fullName ?? 'User',
+
+                                      style: const TextStyle(
+
+                                        fontWeight: FontWeight.w700,
+
+                                        fontSize: 17,
+
+                                        color: AppTheme.textDark,
+
+                                      ),
+
+                                    ),
+
+                                    Text(
+
+                                      user?.email ?? '',
+
+                                      style: const TextStyle(
+
+                                          color: AppTheme.textMuted,
+
+                                          fontSize: 12),
+
+                                    ),
+
+                                    const SizedBox(height: 20),
+
+                                    OutlinedButton.icon(
+
+                                      icon: const Icon(
+
+                                          Icons.logout_rounded,
+
+                                          size: 16),
+
+                                      label: const Text('Logout'),
+
+                                      style: OutlinedButton.styleFrom(
+
+                                        foregroundColor: AppTheme.error,
+
+                                        side: const BorderSide(
+
+                                            color: AppTheme.error),
+
+                                        minimumSize:
+
+                                        const Size.fromHeight(46),
+
+                                        shape: RoundedRectangleBorder(
+
+                                          borderRadius:
+
+                                          BorderRadius.circular(12),
+
+                                        ),
+
+                                      ),
+
+                                      onPressed: () {
+
+                                        Navigator.pop(context);
+
+                                        auth.logout();
+
+                                        Navigator.of(context)
+
+                                            .pushNamedAndRemoveUntil(
+
+                                            '/login', (route) => false);
+
+                                      },
+
+                                    ),
+
+                                    const SizedBox(height: 4),
+
+                                  ],
+
+                                ),
+
+                              ),
+
+                            );
+
+                          },
+
+                          tooltip: 'Profile',
+
+                        ),
+
+                      ],
+
+                    ),
+
+                  ),
+
+                ),
+
+              ),
+
+              destinations: widget.items
+
+                  .map((item) => NavigationRailDestination(
+
+                icon: Icon(item.icon),
+
+                selectedIcon: Icon(item.activeIcon),
+
+                label: Text(item.label),
+
+              ))
+
+                  .toList(),
+
+            ),
+
+          ),
+
+        ],
+
+      ),
+
+    );
+
+  }
+
+
+
+  Widget _logoIcon() {
+
+    return Container(
+
+      width: 36,
+
+      height: 36,
+
+      decoration: BoxDecoration(
+
+        color: AppTheme.primary,
+
+        borderRadius: BorderRadius.circular(10),
+
+      ),
+
+      child: const Icon(Icons.account_balance_rounded,
+
+          color: Colors.white, size: 18),
+
+    );
+
+  }
+
 }

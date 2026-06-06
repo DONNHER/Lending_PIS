@@ -1,66 +1,52 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/api_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class StorageRepository {
-  final SupabaseClient _client;
-  static const String _bucketName = 'consignee-documents';
+  final ApiService _api;
 
-  const StorageRepository(this._client);
+  const StorageRepository(this._api);
 
-  /// Upload file bytes directly to Supabase Storage.
   Future<String> uploadFile({
-  required List<int> fileBytes,
-  required String fileName,
-  required String folder,
-}) async {
-  final filePath = '$folder/$fileName';
-  try {
-    debugPrint('=== UPLOAD ATTEMPT ===');
-    debugPrint('Bucket: $_bucketName');
-    debugPrint('Path: $filePath');
-    debugPrint('Bytes length: ${fileBytes.length}');
-    debugPrint('Auth user: ${_client.auth.currentUser?.id}');
-    debugPrint('Auth session: ${_client.auth.currentSession?.accessToken != null ? 'HAS TOKEN' : 'NO TOKEN'}');
-
-    await _client.storage
-        .from(_bucketName)
-        .uploadBinary(
-          filePath,
-          Uint8List.fromList(fileBytes),
-          fileOptions: const FileOptions(upsert: true),
-        );
-
-    final url = _client.storage.from(_bucketName).getPublicUrl(filePath);
-    debugPrint('Upload success: $url');
-    return url;
-  } on StorageException catch (e) {
-    debugPrint('=== STORAGE EXCEPTION ===');
-    debugPrint('Message: ${e.message}');
-    debugPrint('Status: ${e.statusCode}');
-    debugPrint('Error: ${e.error}');
-    rethrow;
-  } catch (e) {
-    debugPrint('=== UNEXPECTED ERROR ===');
-    debugPrint('$e');
-    rethrow;
-  }
-}
-
-  /// Delete a file from storage using its public URL.
-  Future<void> deleteFile(String fileUrl) async {
+    required List<int> fileBytes,
+    required String fileName,
+    required String folder,
+  }) async {
     try {
-      final uri = Uri.parse(fileUrl);
-      final pathSegments = uri.pathSegments;
-      final publicIndex = pathSegments.indexOf('public');
+      final token = await _api.getToken();
+      final uri = Uri.parse('${_api.baseUrl}/upload');
+      
+      final request = http.MultipartRequest('POST', uri);
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        fileBytes,
+        filename: fileName,
+      ));
+      request.fields['folder'] = folder;
+      
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.headers['Accept'] = 'application/json';
 
-      if (publicIndex != -1 && publicIndex + 2 < pathSegments.length) {
-        final filePath = pathSegments.sublist(publicIndex + 2).join('/');
-        await _client.storage.from(_bucketName).remove([filePath]);
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['url'];
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Upload failed with status: ${response.statusCode}');
       }
     } catch (e) {
-      // Non-fatal: log and continue — a failed delete shouldn't
-      // block the user from saving their record.
-      debugPrint('Warning: Failed to delete file from storage: $e');
+      debugPrint('StorageRepo Error: $e');
+      rethrow;
     }
+  }
+
+  Future<void> deleteFile(String fileUrl) async {
+    // Implement if needed
   }
 }

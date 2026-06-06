@@ -1,103 +1,66 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/consignee_model.dart';
+import '../services/api_service.dart';
 
-// Handles all database operations for consignees
-// This keeps Supabase-specific code isolated from ViewModels
 class ConsigneeRepository {
-  final SupabaseClient _client;
-  static const String _tableName = 'consignees';
+  final ApiService _api;
 
-  const ConsigneeRepository(this._client);
+  const ConsigneeRepository(this._api);
 
-  /// Fetch all consignees from the database
-  /// Returns empty list if none found
   Future<List<ConsigneeModel>> getAll() async {
     try {
-      final response = await _client
-          .from(_tableName)
-          .select()
-          .order('created_at', ascending: false); // Newest first
-
-      return (response as List)
-          .map((json) => ConsigneeModel.fromJson(json))
-          .toList();
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to fetch consignees: ${e.message}');
+      final response = await _api.get('consignees');
+      final List<dynamic> data = response is List ? response : (response['data'] ?? []);
+      return data.map((json) => ConsigneeModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch consignees: $e');
     }
   }
 
-  /// Search consignees by name, phone, or address
   Future<List<ConsigneeModel>> search(String query) async {
     try {
-      final response = await _client
-          .from(_tableName)
-          .select()
-          .or(
-            'full_name.ilike.%$query%,phone.ilike.%$query%,address.ilike.%$query%',
-          )
-          .order('created_at', ascending: false);
-
-      return (response as List)
-          .map((json) => ConsigneeModel.fromJson(json))
-          .toList();
-    } on PostgrestException catch (e) {
-      throw Exception('Search failed: ${e.message}');
+      final response = await _api.get('consignees/search', queryParams: {'query': query});
+      final List<dynamic> data = response is List ? response : (response['data'] ?? []);
+      return data.map((json) => ConsigneeModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Search failed: $e');
     }
   }
 
-  /// Add a new consignee, returns the created record with its ID
   Future<ConsigneeModel> add(ConsigneeModel consignee) async {
     try {
-      // Insert and return the created row (includes generated id, created_at)
-      final response = await _client
-          .from(_tableName)
-          .insert(consignee.toJson())
-          .select()
-          .single();
-
-      return ConsigneeModel.fromJson(response);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to add consignee: ${e.message}');
+      final response = await _api.post('consignees', body: consignee.toJson());
+      final data = response is Map ? (response['data'] ?? response) : response;
+      return ConsigneeModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to add consignee: $e');
     }
   }
 
-  /// Update an existing consignee
   Future<ConsigneeModel> update(ConsigneeModel consignee) async {
     try {
-      final response = await _client
-          .from(_tableName)
-          .update(consignee.toJson())
-          .eq('id', consignee.id)
-          .select()
-          .single();
-
-      return ConsigneeModel.fromJson(response);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to update consignee: ${e.message}');
+      final response = await _api.put('consignees/${consignee.id}', body: consignee.toJson());
+      final data = response is Map ? (response['data'] ?? response) : response;
+      return ConsigneeModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to update consignee: $e');
     }
   }
 
-  /// Delete a consignee by ID
   Future<void> delete(String id) async {
     try {
-      await _client.from(_tableName).delete().eq('id', id);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to delete consignee: ${e.message}');
+      await _api.delete('consignees/$id');
+    } catch (e) {
+      throw Exception('Failed to delete consignee: $e');
     }
   }
 
-  /// Get a single consignee by ID
   Future<ConsigneeModel> getById(String id) async {
     try {
-      final response = await _client
-          .from(_tableName)
-          .select()
-          .eq('id', id)
-          .single();
-
-      return ConsigneeModel.fromJson(response);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to fetch consignee: ${e.message}');
+      final response = await _api.get('consignees/$id');
+      final data = response is Map ? (response['data'] ?? response) : response;
+      return ConsigneeModel.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to fetch consignee: $e');
     }
   }
 }

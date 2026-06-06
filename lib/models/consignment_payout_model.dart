@@ -1,3 +1,5 @@
+import '../utils/parsers.dart';
+
 // Records payouts made to consignees for sold items
 class ConsignmentPayoutModel {
   final String id;
@@ -12,9 +14,9 @@ class ConsignmentPayoutModel {
 
   factory ConsignmentPayoutModel.fromJson(Map<String, dynamic> json) {
     return ConsignmentPayoutModel(
-      id: json['id'] as String,
-      consignmentDailyInventoryId: json['consignment_daily_inventory_id'] as String,
-      payoutAmount: (json['payout_amount'] as num).toDouble(),
+      id: json['id']?.toString() ?? '',
+      consignmentDailyInventoryId: json['consignment_daily_inventory_id']?.toString() ?? '',
+      payoutAmount: Parsers.parseDouble(json['payout_amount']),
     );
   }
 

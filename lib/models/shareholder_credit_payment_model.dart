@@ -1,3 +1,5 @@
+import '../utils/parsers.dart';
+
 // Records individual payments made toward shareholder credits
 class ShareholderCreditPaymentModel {
   final int id; // bigint auto-increment
@@ -14,10 +16,12 @@ class ShareholderCreditPaymentModel {
 
   factory ShareholderCreditPaymentModel.fromJson(Map<String, dynamic> json) {
     return ShareholderCreditPaymentModel(
-      id: json['id'] as int,
-      shareholderCreditId: json['shareholder_credit_id'] as String,
-      amountPaid: (json['amount_paid'] as num).toDouble(),
-      createdAt: DateTime.parse(json['created_at'] as String),
+      id: Parsers.parseInt(json['id']),
+      shareholderCreditId: json['shareholder_credit_id']?.toString() ?? '',
+      amountPaid: Parsers.parseDouble(json['amount_paid']),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
 

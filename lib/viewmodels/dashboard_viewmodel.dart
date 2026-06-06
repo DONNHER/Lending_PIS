@@ -1,44 +1,61 @@
 import 'package:flutter/material.dart';
-import '../app_theme.dart';
-import '../models/dashboard_models.dart';
-
-enum DashboardPeriod { today, thisWeek, thisMonth }
+import 'package:intl/intl.dart';
+import '../models/shareholder_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/lending_models.dart';
+import '../repositories/lending_repository.dart';
+import '../repositories/shareholder_repository.dart';
 
 class DashboardViewModel extends ChangeNotifier {
-  DashboardPeriod _selectedPeriod = DashboardPeriod.today;
-  List<KpiCardModel> _kpiCards = [];
-  List<SaleBarModel> _weeklySales = [];
-  List<RecentSaleModel> _recentSales = [];
-  List<LowStockItemModel> _lowStockItems = [];
+  final LendingRepository _lendingRepository;
+  final ShareholderRepository _shareholderRepository;
+
+  List<KpiCardData> _kpiCards = [];
+  List<LendingChartData> _chartData = [];
+  List<TransactionModel> _recentTransactions = [];
   String _greeting = '';
   String _currentDate = '';
   bool _isLoading = false;
 
-  DashboardViewModel() {
+  ChartFilter _selectedFilter = ChartFilter.month;
+
+  String _searchQuery = '';
+  List<ShareholderModel> _availableShareholders = [];
+  List<ShareholderModel> _searchResults = [];
+  RealtimeChannel? _dashboardRealtimeSubscription;
+  final NumberFormat _currencyFormat = NumberFormat.currency(locale: 'en_PH', symbol: '₱');
+
+  DashboardViewModel(this._lendingRepository, this._shareholderRepository) {
     _updateGreetingAndDate();
-    _loadData();
+    _initDashboard();
   }
 
   // Getters
-  DashboardPeriod get selectedPeriod => _selectedPeriod;
-  List<KpiCardModel> get kpiCards => _kpiCards;
-  List<SaleBarModel> get weeklySales => _weeklySales;
-  List<RecentSaleModel> get recentSales => _recentSales;
-  List<LowStockItemModel> get lowStockItems => _lowStockItems;
+  List<KpiCardData> get kpiCards => _kpiCards;
+  List<LendingChartData> get chartData => _chartData;
+  List<TransactionModel> get recentTransactions => _recentTransactions;
   String get greeting => _greeting;
   String get currentDate => _currentDate;
   bool get isLoading => _isLoading;
+  List<ShareholderModel> get searchResults => _searchResults;
+  ChartFilter get selectedFilter => _selectedFilter;
 
-  void setPeriod(DashboardPeriod period) {
-    _selectedPeriod = period;
+  Future<void> _initDashboard() async {
+    await _loadData(showLoading: true);
+    await _loadShareholders();
+    _initRealtimeListeners();
+  }
+
+  void setChartFilter(ChartFilter filter) {
+    _selectedFilter = filter;
     notifyListeners();
-    _loadData();
+    _loadChartMetricsOnly();
   }
 
   void _updateGreetingAndDate() {
     final now = DateTime.now();
     final hour = now.hour;
-    
+
     if (hour < 12) {
       _greeting = 'Good morning! 👋';
     } else if (hour < 17) {
@@ -47,48 +64,99 @@ class DashboardViewModel extends ChangeNotifier {
       _greeting = 'Good evening! 🌙';
     }
 
-    final days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    _currentDate = '${days[now.weekday-1]}, ${months[now.month-1]} ${now.day}, ${now.year}';
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    _currentDate = '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}, ${now.year}';
   }
 
-  void _loadData() {
-    _isLoading = true;
+  Future<void> _loadChartMetricsOnly() async {
+    try {
+      _chartData = await _lendingRepository.getLendingChartMetrics(_selectedFilter);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating chart filters: $e');
+    }
+  }
+
+  Future<void> _loadData({bool showLoading = true}) async {
+    if (showLoading) {
+      _isLoading = true;
+      notifyListeners();
+    }
+
+    try {
+      final interestRate = await _lendingRepository.getCurrentInterestRate();
+      final totalDisbursed = await _lendingRepository.getTotalDisbursedLoans();
+      final totalCapital = await _lendingRepository.getTotalShareholderCapital();
+      final recentTrans = await _lendingRepository.getRecentLoanTransactions(limit: 5);
+
+      final freshChartMetrics = await _lendingRepository.getLendingChartMetrics(_selectedFilter);
+
+      _kpiCards = [
+        KpiCardData(
+          label: 'Total Disbursed Loans',
+          value: _currencyFormat.format(totalDisbursed),
+          icon: Icons.assignment_outlined,
+        ),
+        KpiCardData(
+          label: "Shareholder's Capital",
+          value: _currencyFormat.format(totalCapital),
+          icon: Icons.account_balance_wallet_outlined,
+        ),
+        KpiCardData(
+          label: 'Current Interest Rate',
+          value: '${(interestRate * 100).toStringAsFixed(1)}%',
+          icon: Icons.schedule_rounded,
+        ),
+      ];
+
+      _recentTransactions = recentTrans;
+      _chartData = freshChartMetrics;
+    } catch (e) {
+      debugPrint('Error loading dashboard data: $e');
+    } finally {
+      if (showLoading) _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void _initRealtimeListeners() {
+    _dashboardRealtimeSubscription = Supabase.instance.client
+        .channel('public:shareholder_transactions_dashboard')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'transactions',
+          callback: (payload) async => await _loadData(showLoading: false),
+        )
+        .subscribe();
+  }
+
+  Future<void> _loadShareholders() async {
+    try {
+      _availableShareholders = await _shareholderRepository.getShareholders(limit: 100);
+    } catch (e) {}
+  }
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    if (query.isEmpty) {
+      _searchResults = [];
+    } else {
+      final q = query.toLowerCase();
+      _searchResults = _availableShareholders.where((s) => s.fullName.toLowerCase().contains(q)).toList();
+    }
     notifyListeners();
+  }
 
-    // Mock data - replace with repository call later
-    _kpiCards = [
-      KpiCardModel(label: 'Total Sales', value: '₱9,140', subtext: '+12% vs yesterday',
-        icon: Icons.trending_up_rounded, iconBackgroundColor: Color(0xFF2E7D32), isPositive: true),
-      KpiCardModel(label: 'Revenue', value: '₱7,320', subtext: 'Cash collected',
-        icon: Icons.payments_rounded, iconBackgroundColor: AppTheme.primary, isPositive: true),
-      KpiCardModel(label: 'Outstanding', value: '₱1,820', subtext: '3 unpaid credits',
-        icon: Icons.credit_score_rounded, iconBackgroundColor: Color(0xFFC62828), isPositive: false),
-      KpiCardModel(label: 'Transactions', value: '24', subtext: 'Sales today',
-        icon: Icons.receipt_rounded, iconBackgroundColor: Color(0xFF6B3F1A), isPositive: true),
-    ];
+  Future<void> refreshData() async {
+    await _loadData(showLoading: false);
+    await _loadShareholders();
+  }
 
-    _weeklySales = [
-      SaleBarModel(day: 'Mon', amount: 1240), SaleBarModel(day: 'Tue', amount: 980),
-      SaleBarModel(day: 'Wed', amount: 1560), SaleBarModel(day: 'Thu', amount: 720),
-      SaleBarModel(day: 'Fri', amount: 1890), SaleBarModel(day: 'Sat', amount: 2100),
-      SaleBarModel(day: 'Sun', amount: 650),
-    ];
-
-    _recentSales = [
-      RecentSaleModel(id: 'SALE-2026-012', cashier: 'Goku', amount: 145.00, isPaid: true, time: '10:42 AM'),
-      RecentSaleModel(id: 'SALE-2026-011', cashier: 'Sir Bo', amount: 320.00, isPaid: false, time: '10:15 AM'),
-      RecentSaleModel(id: 'SALE-2026-010', cashier: 'Goku', amount: 75.00, isPaid: true, time: '9:58 AM'),
-      RecentSaleModel(id: 'SALE-2026-009', cashier: 'Admin', amount: 210.00, isPaid: true, time: '9:30 AM'),
-    ];
-
-    _lowStockItems = [
-      LowStockItemModel(name: 'Turon', type: 'Consignment', remaining: 5, total: 20),
-      LowStockItemModel(name: 'Coke Sakto', type: 'Grocery', remaining: 0, total: 30),
-      LowStockItemModel(name: 'Kalamares', type: 'Consignment', remaining: 10, total: 50),
-    ];
-
-    _isLoading = false;
-    notifyListeners();
+  @override
+  void dispose() {
+    if (_dashboardRealtimeSubscription != null) Supabase.instance.client.removeChannel(_dashboardRealtimeSubscription!);
+    super.dispose();
   }
 }

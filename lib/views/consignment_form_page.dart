@@ -179,7 +179,7 @@ class _ConsignmentFormPageState extends State<ConsignmentFormPage> {
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                         side: BorderSide(
-                          color: AppTheme.primary.withOpacity(0.4),
+                          color: AppTheme.primary.withValues(alpha:0.4),
                         ),
                         foregroundColor: AppTheme.primary,
                       ),
@@ -233,8 +233,9 @@ class _ConsignmentFormPageState extends State<ConsignmentFormPage> {
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Required';
                         final rate = double.tryParse(v);
-                        if (rate == null || rate < 0 || rate > 100)
+                        if (rate == null || rate < 0 || rate > 100) {
                           return 'Enter 0-100';
+                        }
                         return null;
                       },
                     ),
@@ -307,7 +308,7 @@ class _ConsignmentFormPageState extends State<ConsignmentFormPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+          border: Border.all(color: AppTheme.primary.withValues(alpha:0.2)),
         ),
         child: _productImage != null
             ? ClipRRect(
@@ -343,7 +344,7 @@ class _ConsignmentFormPageState extends State<ConsignmentFormPage> {
                 children: [
                   Icon(
                     Icons.cloud_upload_outlined,
-                    color: AppTheme.primary.withOpacity(0.5),
+                    color: AppTheme.primary.withValues(alpha:0.5),
                     size: 40,
                   ),
                   const SizedBox(height: 8),
@@ -366,7 +367,7 @@ class _ConsignmentFormPageState extends State<ConsignmentFormPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+          border: Border.all(color: AppTheme.primary.withValues(alpha:0.2)),
         ),
         child: const Row(
           children: [
@@ -386,7 +387,7 @@ class _ConsignmentFormPageState extends State<ConsignmentFormPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.secondary.withOpacity(0.25)),
+        border: Border.all(color: AppTheme.secondary.withValues(alpha:0.25)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<ConsigneeModel>(
@@ -444,7 +445,7 @@ class _ConsignmentFormPageState extends State<ConsignmentFormPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.secondary.withOpacity(0.06),
+        color: AppTheme.secondary.withValues(alpha:0.06),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -488,7 +489,7 @@ class _ConsignmentFormPageState extends State<ConsignmentFormPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.secondary.withOpacity(0.15)),
+        border: Border.all(color: AppTheme.secondary.withValues(alpha:0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
