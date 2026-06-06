@@ -12,6 +12,7 @@ class GroceryViewModel extends ChangeNotifier {
   String? _errorMessage;
   String _searchQuery = '';
   String _filter = 'All'; // All | Active | Inactive
+  bool _isInitialized = false; // 🚀 Caching flag
 
   GroceryViewModel(this._repository);
 
@@ -22,6 +23,7 @@ class GroceryViewModel extends ChangeNotifier {
   GroceryState get state => _state;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _state == GroceryState.loading;
+  bool get isInitialized => _isInitialized; // 🚀 Initialization status
   String get searchQuery => _searchQuery;
   String get filter => _filter;
 
@@ -58,13 +60,17 @@ class GroceryViewModel extends ChangeNotifier {
 
   // ─── Methods ──────────────────────────────────────────────────────────
 
-  Future<void> loadGroceries() async {
+  Future<void> loadGroceries({bool forceRefresh = false}) async {
+    // 🚀 Avoid redundant loading unless forced
+    if (_isInitialized && !forceRefresh && _groceries.isNotEmpty) return;
+
     _state = GroceryState.loading;
     _errorMessage = null;
     notifyListeners();
 
     try {
       _groceries = await _repository.getAll();
+      _isInitialized = true;
       _state = GroceryState.idle;
       debugPrint('Loaded ${_groceries.length} grocery products');
     } catch (e) {
@@ -128,7 +134,7 @@ class GroceryViewModel extends ChangeNotifier {
       );
 
       // Reload to get fresh data
-      await loadGroceries();
+      await loadGroceries(forceRefresh: true);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -142,7 +148,7 @@ class GroceryViewModel extends ChangeNotifier {
     try {
       final newStatus = !grocery.product.isActive;
       await _repository.toggleProductStatus(grocery.product.id, newStatus);
-      await loadGroceries();
+      await loadGroceries(forceRefresh: true);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -155,7 +161,7 @@ class GroceryViewModel extends ChangeNotifier {
   Future<bool> deleteProduct(GroceryWithDetails grocery) async {
     try {
       await _repository.delete(grocery.grocery.id);
-      await loadGroceries();
+      await loadGroceries(forceRefresh: true);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -166,7 +172,6 @@ class GroceryViewModel extends ChangeNotifier {
   }
 
   // ─── Batch Operations ─────────────────────────────────────────────────
-  // Update these methods in your ViewModel:
 
   Future<bool> addBatch({
     required GroceryWithDetails grocery,
@@ -184,19 +189,13 @@ class GroceryViewModel extends ChangeNotifier {
         expirationDate: expirationDate,
       );
 
-      // Update the specific grocery in our list
       final index = _groceries.indexWhere(
         (g) => g.grocery.id == grocery.grocery.id,
       );
       if (index != -1) {
         _groceries[index].batches.add(batch);
-        debugPrint(
-          'Added batch to ${_groceries[index].product.productName}, now has ${_groceries[index].batches.length} batches',
-        );
       } else {
-        // If not found, add batch to the original object and refresh
         grocery.batches.add(batch);
-        debugPrint('Added batch directly to grocery object');
       }
 
       notifyListeners();
@@ -216,19 +215,13 @@ class GroceryViewModel extends ChangeNotifier {
     try {
       await _repository.deleteBatch(batch.id);
 
-      // Update the specific grocery in our list
       final index = _groceries.indexWhere(
         (g) => g.grocery.id == grocery.grocery.id,
       );
       if (index != -1) {
         _groceries[index].batches.removeWhere((b) => b.id == batch.id);
-        debugPrint(
-          'Removed batch from ${_groceries[index].product.productName}, now has ${_groceries[index].batches.length} batches',
-        );
       } else {
-        // If not found, remove from original object
         grocery.batches.removeWhere((b) => b.id == batch.id);
-        debugPrint('Removed batch directly from grocery object');
       }
 
       notifyListeners();
@@ -254,13 +247,12 @@ class GroceryViewModel extends ChangeNotifier {
         batchId: batch.id,
         capitalPrice: capitalPrice,
         originalQuantity: quantity,
-        remainingQuantity: quantity, // Reset remaining to new quantity on edit
+        remainingQuantity: quantity, 
         purchaseDate: purchaseDate,
         expirationDate: expirationDate,
       );
 
-      // Reload to get fresh data
-      await loadGroceries();
+      await loadGroceries(forceRefresh: true);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -268,5 +260,12 @@ class GroceryViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  void reset() {
+    _isInitialized = false;
+    _groceries = [];
+    _state = GroceryState.idle;
+    notifyListeners();
   }
 }

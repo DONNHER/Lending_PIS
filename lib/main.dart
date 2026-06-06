@@ -28,6 +28,11 @@ import 'viewmodels/share_capital_viewmodel.dart';
 import 'viewmodels/shareholder_transaction_viewmodel.dart';
 import 'viewmodels/consignment_detail_viewmodel.dart';
 import 'viewmodels/grocery_viewmodel.dart';
+import 'viewmodels/dashboard_viewmodel.dart';
+import 'viewmodels/loan_request_viewmodel.dart';
+import 'viewmodels/shareholder_viewmodel.dart';
+import 'viewmodels/transaction_viewmodel.dart';
+import 'viewmodels/activity_log_viewmodel.dart';
 import 'views/login_page.dart';
 import 'views/registration_page.dart';
 import 'views/app_shell.dart';
@@ -36,12 +41,8 @@ import 'views/ShareHolder_screens/notification.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Load environment variables from the non-hidden assets/env path
-  // GitHub Pages blocks files starting with a dot (.)
   await dotenv.load(fileName: "assets/env");
 
-  // Initialize Supabase from env
   final supabaseUrl = dotenv.env['SUPABASE_URL'];
   final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
 
@@ -52,7 +53,6 @@ void main() async {
     );
   }
 
-  // Initialize Laravel API Service from env
   final apiBaseUrl = dotenv.env['API_URL'] ?? 'http://localhost:8000/api';
   final apiService = ApiService(baseUrl: apiBaseUrl);
 
@@ -104,23 +104,11 @@ class CanteenApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider(
-          create: (context) => ConsigneeDetailViewModel(
-            consigneeRepository: context.read<ConsigneeRepository>(),
-            consignmentRepository: context.read<ConsignmentRepository>(),
-          ),
-        ),
-        ChangeNotifierProvider(
           create: (context) => ConsignmentProductsViewModel(
             context.read<ConsignmentProductsRepository>(),
             context.read<ProductRepository>(),
             context.read<ConsigneeRepository>(),
             context.read<StorageRepository>(),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => ConsignmentDetailViewModel(
-            context.read<ConsignmentProductsRepository>(),
-            context.read<DailyInventoryRepository>(),
           ),
         ),
         ChangeNotifierProvider(
@@ -134,7 +122,61 @@ class CanteenApp extends StatelessWidget {
           ),
         ),
 
-        // ─── Shareholder ViewModels with ProxyProvider ────────────────
+        // ─── Admin Management ViewModels (Global Persistence) ───────
+        ChangeNotifierProxyProvider<AuthViewModel, DashboardViewModel>(
+          create: (context) => DashboardViewModel(
+            context.read<LendingRepository>(),
+            context.read<ShareholderRepository>(),
+          ),
+          update: (context, auth, model) {
+            if (auth.isAuthenticated && model != null && !model.isInitialized) {
+              model.initDashboard();
+            }
+            return model!;
+          },
+        ),
+
+        ChangeNotifierProxyProvider<AuthViewModel, LoanRequestViewModel>(
+          create: (context) => LoanRequestViewModel(context.read<LendingRepository>()),
+          update: (context, auth, model) {
+            if (auth.isAuthenticated && model != null && !model.isInitialized) {
+              model.fetchLoanRequests();
+            }
+            return model!;
+          },
+        ),
+
+        ChangeNotifierProxyProvider<AuthViewModel, ShareholderViewModel>(
+          create: (context) => ShareholderViewModel(context.read<ShareholderRepository>()),
+          update: (context, auth, model) {
+            if (auth.isAuthenticated && model != null && !model.isInitialized) {
+              model.fetchShareholders();
+            }
+            return model!;
+          },
+        ),
+
+        ChangeNotifierProxyProvider<AuthViewModel, TransactionViewModel>(
+          create: (context) => TransactionViewModel(context.read<TransactionRepository>()),
+          update: (context, auth, model) {
+            if (auth.isAuthenticated && model != null && !model.isInitialized) {
+              model.fetchTransactions();
+            }
+            return model!;
+          },
+        ),
+
+        ChangeNotifierProxyProvider<AuthViewModel, ActivityLogViewModel>(
+          create: (context) => ActivityLogViewModel(context.read<ActivityLogRepository>()),
+          update: (context, auth, model) {
+            if (auth.isAuthenticated && model != null && !model.isInitialized) {
+              model.fetchLogs();
+            }
+            return model!;
+          },
+        ),
+
+        // ─── Shareholder Personal ViewModels ────────────────────────
         ChangeNotifierProxyProvider<AuthViewModel, ShareCapitalViewModel>(
           create: (context) => ShareCapitalViewModel(
             context.read<ShareholderRepository>(),
@@ -142,7 +184,7 @@ class CanteenApp extends StatelessWidget {
             context.read<LendingRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && model != null) {
+            if (auth.isAuthenticated && model != null && !model.isInitialized) {
               model.fetchData();
             }
             return model!;
@@ -155,7 +197,7 @@ class CanteenApp extends StatelessWidget {
             context.read<ShareholderRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && model != null) {
+            if (auth.isAuthenticated && model != null && !model.isInitialized) {
               model.fetchData();
             }
             return model!;
@@ -168,11 +210,25 @@ class CanteenApp extends StatelessWidget {
             context.read<ShareholderRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && model != null) {
+            if (auth.isAuthenticated && model != null && !model.isInitialized) {
               model.fetchData();
             }
             return model!;
           },
+        ),
+        
+        // Detail ViewModels (Keep local as they depend on specific IDs usually)
+        ChangeNotifierProvider(
+          create: (context) => ConsigneeDetailViewModel(
+            consigneeRepository: context.read<ConsigneeRepository>(),
+            consignmentRepository: context.read<ConsignmentRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ConsignmentDetailViewModel(
+            context.read<ConsignmentProductsRepository>(),
+            context.read<DailyInventoryRepository>(),
+          ),
         ),
       ],
       child: MaterialApp(

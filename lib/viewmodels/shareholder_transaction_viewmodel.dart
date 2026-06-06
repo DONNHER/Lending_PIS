@@ -11,6 +11,7 @@ class ShareholderTransactionViewModel extends ChangeNotifier {
   List<TransactionModel> _allTransactions = [];
   List<TransactionModel> _filteredTransactions = [];
   bool _isLoading = false;
+  bool _isInitialized = false; // 🚀 Caching flag
   String _selectedFilter = 'All';
   String? _errorMessage;
 
@@ -18,10 +19,13 @@ class ShareholderTransactionViewModel extends ChangeNotifier {
 
   List<TransactionModel> get transactions => _filteredTransactions;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized; // 🚀 Getter
   String get selectedFilter => _selectedFilter;
   String? get errorMessage => _errorMessage;
 
-  Future<void> fetchData() async {
+  Future<void> fetchData({bool forceRefresh = false}) async {
+    if (_isInitialized && !forceRefresh) return; // 🚀 Cache hit
+
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
@@ -35,12 +39,14 @@ class ShareholderTransactionViewModel extends ChangeNotifier {
       if (shareholder == null) {
         _errorMessage = "Shareholder profile not found.";
         _isLoading = false;
+        _isInitialized = true; // Mark as attempted
         notifyListeners();
         return;
       }
 
       // 2. Fetch all transactions for this shareholder
       _allTransactions = await _transactionRepo.getTransactionsByShareholderId(shareholder.id);
+      _isInitialized = true;
       _applyFilter();
     } catch (e) {
       _errorMessage = e.toString();
@@ -73,5 +79,13 @@ class ShareholderTransactionViewModel extends ChangeNotifier {
           .where((tx) => tx.type.toLowerCase().contains('capital'))
           .toList();
     }
+  }
+
+  void reset() {
+    _isInitialized = false;
+    _allTransactions = [];
+    _filteredTransactions = [];
+    _selectedFilter = 'All';
+    notifyListeners();
   }
 }

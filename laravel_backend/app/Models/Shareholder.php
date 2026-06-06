@@ -10,14 +10,6 @@ use App\Traits\Loggable;
 use App\Traits\AdvancedDataControls;
 use App\Traits\Versionable;
 
-/**
- * Class Shareholder
- * 
- * Represents a member of the cooperative who holds share capital.
- * Tracks their personal details, total capital investment, and status.
- * 
- * @package App\Models
- */
 class Shareholder extends Model
 {
     use HasFactory, HasUuids, Loggable, AdvancedDataControls, SoftDeletes, Versionable;
@@ -25,37 +17,36 @@ class Shareholder extends Model
     protected $fillable = [
         'user_id',
         'email',
-        'firstname',
-        'lastname',
-        'share_capital',
+        'first_name',
+        'last_name',
+        'full_name',
+        'address',
+        'contact_number',
+        'total_share_capital',
+        'creditscore',
+        'id_image_url',
+        'membership_fee',
         'status',
         'version',
     ];
 
     protected $casts = [
-        'share_capital' => 'decimal:2',
+        'total_share_capital' => 'decimal:2',
+        'membership_fee' => 'decimal:2',
+        'creditscore' => 'integer',
         'version' => 'integer',
     ];
 
-    /**
-     * Relationship: Linked system user account.
-     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Relationship: All loans taken by this shareholder.
-     */
     public function loans()
     {
         return $this->hasMany(Loan::class);
     }
 
-    /**
-     * Relationship: Financial transactions performed by this shareholder.
-     */
     public function transactions()
     {
         return $this->hasMany(Transaction::class);

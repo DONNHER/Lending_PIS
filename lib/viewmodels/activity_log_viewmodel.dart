@@ -9,6 +9,7 @@ class ActivityLogViewModel extends ChangeNotifier {
   List<ActivityLogModel> _logs = [];
   bool _isLoading = false;
   bool _isFetching = false;
+  bool _isInitialized = false; // 🚀 Caching flag
   int _totalRows = 0;
   int _currentPage = 1;
   int _rowsPerPage = 10;
@@ -23,6 +24,7 @@ class ActivityLogViewModel extends ChangeNotifier {
 
   List<ActivityLogModel> get logs => _logs;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized; // 🚀 Getter
   int get totalRows => _totalRows;
   int get currentPage => _currentPage;
   int get rowsPerPage => _rowsPerPage;
@@ -47,9 +49,12 @@ class ActivityLogViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchLogs() async {
+  Future<void> fetchLogs({bool forceRefresh = false}) async {
     if (_isFetching || _isDisposed) return;
     
+    // 🚀 Avoid redundant loading unless forced
+    if (_isInitialized && !forceRefresh && _logs.isNotEmpty) return;
+
     _isFetching = true;
     _isLoading = true;
     _errorMessage = null;
@@ -58,46 +63,56 @@ class ActivityLogViewModel extends ChangeNotifier {
     try {
       final offset = (_currentPage - 1) * _rowsPerPage;
 
-      final fetchedLogs = await _repository.getActivityLogs(
-        offset: offset,
-        limit: _rowsPerPage,
-        dateFilter: _selectedDateFilter,
-        startDate: _startDate,
-        endDate: _endDate,
-        userId: _filteredShareholderId == null ? initialUserId : null,
-        shareholderId: _filteredShareholderId,
-      );
+      // Concurrent fetching for better performance
+      final results = await Future.wait([
+        _repository.getActivityLogs(
+          offset: offset,
+          limit: _rowsPerPage,
+          dateFilter: _selectedDateFilter,
+          startDate: _startDate,
+          endDate: _endDate,
+          userId: _filteredShareholderId == null ? initialUserId : null,
+          shareholderId: _filteredShareholderId,
+        ),
+        _repository.getActivityLogsCount(
+          userId: _filteredShareholderId == null ? initialUserId : null,
+          shareholderId: _filteredShareholderId,
+          dateFilter: _selectedDateFilter,
+          startDate: _startDate,
+          endDate: _endDate,
+        ),
+      ]);
 
-      final count = await _repository.getActivityLogsCount(
-        userId: _filteredShareholderId == null ? initialUserId : null,
-        shareholderId: _filteredShareholderId,
-        dateFilter: _selectedDateFilter,
-        startDate: _startDate,
-        endDate: _endDate,
-      );
-      
-      _totalRows = count;
-      _logs = fetchedLogs;
+      if (!_isDisposed) {
+        _logs = results[0] as List<ActivityLogModel>;
+        _totalRows = results[1] as int;
+        _isInitialized = true;
+      }
     } catch (e) {
       debugPrint('Error fetching logs: $e');
-      _errorMessage = e.toString();
+      if (!_isDisposed) {
+        _errorMessage = e.toString();
+      }
     } finally {
       _isFetching = false;
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
     }
   }
 
   void fetchRequestsByShareholder(String shareholderId) {
+    if (_filteredShareholderId == shareholderId && _isInitialized) return;
     _filteredShareholderId = shareholderId;
     _currentPage = 1;
-    fetchLogs();
+    fetchLogs(forceRefresh: true);
   }
 
   void clearShareholderFilter() {
     _filteredShareholderId = null;
     _currentPage = 1;
-    fetchLogs();
+    fetchLogs(forceRefresh: true);
   }
 
   void setDateFilter(String filter) {
@@ -105,7 +120,7 @@ class ActivityLogViewModel extends ChangeNotifier {
     _startDate = null;
     _endDate = null;
     _currentPage = 1;
-    fetchLogs();
+    fetchLogs(forceRefresh: true);
   }
 
   void setDateRange(DateTime start, DateTime end) {
@@ -113,28 +128,36 @@ class ActivityLogViewModel extends ChangeNotifier {
     _startDate = start;
     _endDate = end;
     _currentPage = 1;
-    fetchLogs();
+    fetchLogs(forceRefresh: true);
   }
 
   void setPage(int page) {
     if (page >= 1 && page <= totalPages) {
       _currentPage = page;
-      fetchLogs();
+      fetchLogs(forceRefresh: true);
     }
   }
 
   void setRowsPerPage(int rows) {
     _rowsPerPage = rows;
     _currentPage = 1;
-    fetchLogs();
+    fetchLogs(forceRefresh: true);
   }
 
   Future<void> deleteLog(String id) async {
     try {
       await _repository.deleteActivityLog(id);
-      await fetchLogs();
+      await fetchLogs(forceRefresh: true);
     } catch (e) {
       debugPrint('Delete error: $e');
     }
+  }
+
+  void reset() {
+    _isInitialized = false;
+    _logs = [];
+    _currentPage = 1;
+    _totalRows = 0;
+    notifyListeners();
   }
 }

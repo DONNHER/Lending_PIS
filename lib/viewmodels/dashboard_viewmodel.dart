@@ -16,6 +16,7 @@ class DashboardViewModel extends ChangeNotifier {
   String _greeting = '';
   String _currentDate = '';
   bool _isLoading = false;
+  bool _isInitialized = false; // 🚀 Caching flag
 
   ChartFilter _selectedFilter = ChartFilter.month;
 
@@ -27,7 +28,8 @@ class DashboardViewModel extends ChangeNotifier {
 
   DashboardViewModel(this._lendingRepository, this._shareholderRepository) {
     _updateGreetingAndDate();
-    _initDashboard();
+    // We don't call _initDashboard here anymore. 
+    // It will be called by ProxyProvider or the View when needed.
   }
 
   // Getters
@@ -37,13 +39,21 @@ class DashboardViewModel extends ChangeNotifier {
   String get greeting => _greeting;
   String get currentDate => _currentDate;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized; // 🚀 Getter for initialized status
   List<ShareholderModel> get searchResults => _searchResults;
   ChartFilter get selectedFilter => _selectedFilter;
 
-  Future<void> _initDashboard() async {
+  Future<void> initDashboard({bool forceRefresh = false}) async {
+    if (_isInitialized && !forceRefresh) return; // 🚀 Avoid redundant loading
+    
     await _loadData(showLoading: true);
     await _loadShareholders();
-    _initRealtimeListeners();
+    
+    if (_dashboardRealtimeSubscription == null) {
+      _initRealtimeListeners();
+    }
+    
+    _isInitialized = true;
   }
 
   void setChartFilter(ChartFilter filter) {
@@ -85,12 +95,20 @@ class DashboardViewModel extends ChangeNotifier {
     }
 
     try {
-      final interestRate = await _lendingRepository.getCurrentInterestRate();
-      final totalDisbursed = await _lendingRepository.getTotalDisbursedLoans();
-      final totalCapital = await _lendingRepository.getTotalShareholderCapital();
-      final recentTrans = await _lendingRepository.getRecentLoanTransactions(limit: 5);
+      // Use concurrent fetching for speed
+      final results = await Future.wait([
+        _lendingRepository.getCurrentInterestRate(),
+        _lendingRepository.getTotalDisbursedLoans(),
+        _lendingRepository.getTotalShareholderCapital(),
+        _lendingRepository.getRecentLoanTransactions(limit: 5),
+        _lendingRepository.getLendingChartMetrics(_selectedFilter),
+      ]);
 
-      final freshChartMetrics = await _lendingRepository.getLendingChartMetrics(_selectedFilter);
+      final interestRate = results[0] as double;
+      final totalDisbursed = results[1] as double;
+      final totalCapital = results[2] as double;
+      final recentTrans = results[3] as List<TransactionModel>;
+      final freshChartMetrics = results[4] as List<LendingChartData>;
 
       _kpiCards = [
         KpiCardData(

@@ -30,6 +30,7 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
   late TextEditingController _controller;
   final LayerLink _layerLink = LayerLink();
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
   OverlayEntry? _overlayEntry;
 
   @override
@@ -100,35 +101,41 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
                         style: TextStyle(color: AppTheme.textMuted),
                       ),
                     )
-                  : ListView.separated(
-                      padding: EdgeInsets.zero,
-                      shrinkWrap: true,
-                      itemCount: widget.results.length,
-                      separatorBuilder: (_, __) =>
-                          const Divider(height: 1, indent: 16, endIndent: 16),
-                      itemBuilder: (context, index) {
-                        final item = widget.results[index];
-                        return ListTile(
-                          dense: true,
-                          title: Text(
-                            item.fullName,
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textDark),
-                          ),
-                          onTap: () {
-                            if (widget.navigateToDetail) {
-                              _controller.text = item.fullName;
-                            } else {
-                              // If it's a picker (like in loan application), clear text after selection
-                              _controller.clear();
-                              widget.onSearch('');
-                            }
-                            widget.onSelected?.call(item);
-                            _removeOverlay();
-                            _focusNode.unfocus();
-                          },
-                        );
-                      },
+                  : Scrollbar(
+                      controller: _scrollController,
+                      thumbVisibility: true,
+                      child: ListView.separated(
+                        controller: _scrollController,
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: widget.results.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, indent: 16, endIndent: 16),
+                        itemBuilder: (context, index) {
+                          final item = widget.results[index];
+                          return ListTile(
+                            dense: true,
+                            mouseCursor: SystemMouseCursors.click,
+                            title: Text(
+                              item.fullName,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textDark),
+                            ),
+                            onTap: () {
+                              if (widget.navigateToDetail) {
+                                _controller.text = item.fullName;
+                              } else {
+                                // If it's a picker (like in loan application), clear text after selection
+                                _controller.clear();
+                                widget.onSearch('');
+                              }
+                              widget.onSelected?.call(item);
+                              _removeOverlay();
+                              _focusNode.unfocus();
+                            },
+                          );
+                        },
+                      ),
                     ),
             ),
           ),
@@ -142,6 +149,7 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
     _removeOverlay();
     _controller.dispose();
     _focusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 

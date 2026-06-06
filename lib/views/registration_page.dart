@@ -109,8 +109,12 @@ class _RegistrationPageState extends State<RegistrationPage>
   }
 
   void _nextStep() {
-    if (_currentStep == 0 && !_validatePersonalInfo()) return;
-    if (_currentStep == 1 && !_validateAccountInfo()) return;
+    // Manually trigger validation for the current visible fields
+    if (!_formKey.currentState!.validate()) {
+      _showSnackbar('Please fix the errors before continuing', isError: true);
+      return;
+    }
+    
     _animCtrl.forward(from: 0);
     setState(() => _currentStep++);
   }
@@ -118,33 +122,6 @@ class _RegistrationPageState extends State<RegistrationPage>
   void _previousStep() {
     _animCtrl.forward(from: 0);
     setState(() => _currentStep--);
-  }
-
-  bool _validatePersonalInfo() {
-    if (_firstNameController.text.trim().isEmpty ||
-        _lastNameController.text.trim().isEmpty) {
-      _showSnackbar('First name and last name are required', isError: true);
-      return false;
-    }
-    return true;
-  }
-
-  bool _validateAccountInfo() {
-    if (_usernameController.text.trim().isEmpty ||
-        _emailController.text.trim().isEmpty ||
-        _passwordController.text.isEmpty) {
-      _showSnackbar('Please fill in all required fields', isError: true);
-      return false;
-    }
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackbar('Passwords do not match', isError: true);
-      return false;
-    }
-    if (_passwordController.text.length < 6) {
-      _showSnackbar('Password must be at least 6 characters', isError: true);
-      return false;
-    }
-    return true;
   }
 
   // ─── Build ─────────────────────────────────────────────────────────────
@@ -211,6 +188,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                 builder: (context, viewModel, _) {
                   return Form(
                     key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

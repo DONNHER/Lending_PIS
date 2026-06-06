@@ -20,22 +20,28 @@ class LoansPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) {
-        final vm = LoanRequestViewModel(context.read<LendingRepository>());
-
-        if (shareholderId != null && shareholderId!.isNotEmpty) {
-          vm.fetchRequestsByShareholder(shareholderId!);
-        }
-        return vm;
-      },
-      child: const _LoansBody(),
-    );
+    // 🚀 Uses the global LoanRequestViewModel provided in main.dart
+    return const _LoansBody();
   }
 }
 
-class _LoansBody extends StatelessWidget {
+class _LoansBody extends StatefulWidget {
   const _LoansBody();
+
+  @override
+  State<_LoansBody> createState() => _LoansBodyState();
+}
+
+class _LoansBodyState extends State<_LoansBody> {
+  @override
+  void initState() {
+    super.initState();
+    // Ensure data is loaded if this is the first time or context changed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final vm = context.read<LoanRequestViewModel>();
+      vm.fetchLoanRequests();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,35 +83,27 @@ class _LoansBody extends StatelessWidget {
                           LoanRequestsTable(
                             loanRequests: viewModel.loanRequests,
                             onView: (req) {
-                              debugPrint('======================================');
-                              debugPrint('👉 [LoansPage]: Row clicked!');
-                              debugPrint('🆔 Passed Loan Request ID: "${req.id}"');
-                              debugPrint('📊 Raw Status: "${req.status}"');
-
                               Widget destinationPage;
                               final status = req.status.toString().toLowerCase();
 
                               if (status.contains('pending')) {
-                                debugPrint('🎯 Routing to: LoanEvaluationPage');
                                 destinationPage = LoanEvaluationPage(request: req);
                               }
                               else if (status.contains('approved')) {
-                                debugPrint('🎯 Routing to: LoanApprovalPage');
                                 destinationPage = LoanApprovalPage(initialRequest: req);
                               }
                               else {
-                                debugPrint('🎯 Routing to: LoanDetailsPage (using id: ${req.id})');
                                 destinationPage = LoanDetailsPage(loanId: req.id, shareholderId: req.shareholderId);
                               }
-                              debugPrint('======================================');
 
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (context) => destinationPage),
-                              );
+                              ).then((_) => viewModel.fetchLoanRequests(forceRefresh: true));
                             },
                           ),
-                          if (viewModel.isLoading)
+                          // 🚀 Only show full loading if initialized for the first time
+                          if (viewModel.isLoading && !viewModel.isInitialized)
                             Container(
                               color: Colors.white.withOpacity(0.6),
                               child: const Center(
@@ -122,7 +120,7 @@ class _LoansBody extends StatelessWidget {
                   totalPages: viewModel.totalPages,
                   totalRows: viewModel.totalRows,
                   rowsPerPage: viewModel.rowsPerPage,
-                  onPageChanged: viewModel.setPage,
+                  onPageChanged: (page) => viewModel.setPage(page),
                   onRowsPerPageChanged: (val) {
                     if (val != null) viewModel.setRowsPerPage(val);
                   },
@@ -176,7 +174,6 @@ class _LoansBody extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ✨ Dynamic back navigation action when shareholder profile criteria is applied
               if (viewModel.filteredShareholderId != null) ...[
                 IconButton(
                   tooltip: 'Back to Profile',
@@ -194,7 +191,7 @@ class _LoansBody extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const AddLoanPage()),
-                  );
+                  ).then((_) => viewModel.fetchLoanRequests(forceRefresh: true));
                 },
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('New Loan'),

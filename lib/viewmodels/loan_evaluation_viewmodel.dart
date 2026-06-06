@@ -28,6 +28,8 @@ class LoanEvaluationViewModel extends ChangeNotifier {
       _shareholder ??= ShareholderModel(
         id: request.shareholderId,
         userId: '',
+        firstName: request.shareholderName.split(' ').first,
+        lastName: request.shareholderName.contains(' ') ? request.shareholderName.split(' ').last : '',
         fullName: request.shareholderName,
         email: '',
         contactNumber: '',

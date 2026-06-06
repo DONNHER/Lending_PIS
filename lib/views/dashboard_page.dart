@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../app_theme.dart';
 import '../models/lending_models.dart';
 import '../repositories/lending_repository.dart';
-import '../repositories/shareholder_repository.dart';
 import '../viewmodels/dashboard_viewmodel.dart';
 import '../viewmodels/navigation_viewmodel.dart';
 import '../widgets/kpi_card.dart';
@@ -20,13 +19,8 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => DashboardViewModel(
-        context.read<LendingRepository>(),
-        context.read<ShareholderRepository>(),
-      ),
-      child: const _DashboardBody(),
-    );
+    // 🚀 Uses the global DashboardViewModel provided in main.dart
+    return const _DashboardBody();
   }
 }
 
@@ -130,7 +124,8 @@ class _DashboardBody extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (viewModel.isLoading)
+                // 🚀 Only show full loading if initialized for the first time
+                if (viewModel.isLoading && !viewModel.isInitialized)
                   Container(
                     color: Colors.white.withOpacity(0.6),
                     child: const Center(

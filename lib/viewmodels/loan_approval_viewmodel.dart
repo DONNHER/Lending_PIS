@@ -9,21 +9,26 @@ class LoanApprovalViewModel extends ChangeNotifier {
   List<LoanRequestModel> _approvedLoans = [];
   LoanRequestModel? _selectedLoan;
   bool _isLoading = false;
+  bool _isInitialized = false; // 🚀 Caching flag
   bool _isProcessingAction = false;
   String? _errorMessage;
 
   LoanApprovalViewModel(this._repository, {this.initialRequest}) {
     _selectedLoan = initialRequest;
-    fetchApprovedLoans();
+    // We remove automatic fetch from constructor to allow external control
   }
 
   List<LoanRequestModel> get approvedLoans => _approvedLoans;
   LoanRequestModel? get selectedLoan => _selectedLoan;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized; // 🚀 Getter
   bool get isProcessingAction => _isProcessingAction;
   String? get errorMessage => _errorMessage;
 
-  Future<void> fetchApprovedLoans() async {
+  Future<void> fetchApprovedLoans({bool forceRefresh = false}) async {
+    // 🚀 Avoid redundant loading unless forced
+    if (_isInitialized && !forceRefresh && _approvedLoans.isNotEmpty) return;
+
     _isLoading = true;
     notifyListeners();
 
@@ -38,6 +43,7 @@ class LoanApprovalViewModel extends ChangeNotifier {
       }
       
       _approvedLoans = loans;
+      _isInitialized = true;
 
       if (_selectedLoan != null) {
         final index = _approvedLoans.indexWhere((l) => l.id == _selectedLoan!.id);
@@ -94,7 +100,7 @@ class LoanApprovalViewModel extends ChangeNotifier {
       );
 
       await _repository.disburseLoan(loan);
-      await fetchApprovedLoans();
+      await fetchApprovedLoans(forceRefresh: true);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -103,5 +109,12 @@ class LoanApprovalViewModel extends ChangeNotifier {
       _isProcessingAction = false;
       notifyListeners();
     }
+  }
+
+  void reset() {
+    _isInitialized = false;
+    _approvedLoans = [];
+    _selectedLoan = null;
+    notifyListeners();
   }
 }

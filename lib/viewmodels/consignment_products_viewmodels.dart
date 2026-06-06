@@ -19,6 +19,7 @@ class ConsignmentProductsViewModel extends ChangeNotifier {
   String? _errorMessage;
   String _searchQuery = '';
   String _statusFilter = 'All';
+  bool _isInitialized = false; // 🚀 Caching flag
 
   List<ProductModel> _products = [];
   List<ConsigneeModel> _consignees = [];
@@ -30,7 +31,8 @@ class ConsignmentProductsViewModel extends ChangeNotifier {
     this._consigneeRepository,
     this._storageRepository,
   ) {
-    _loadDropdownData();
+    // Dropdown data can be lazy loaded or loaded once
+    loadDropdownData();
   }
 
   // ─── Getters ──────────────────────────────────────────────────────────
@@ -38,13 +40,12 @@ class ConsignmentProductsViewModel extends ChangeNotifier {
   ProductsViewState get state => _state;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _state == ProductsViewState.loading;
+  bool get isInitialized => _isInitialized; // 🚀 Getter for initialized status
   String get statusFilter => _statusFilter;
   List<ProductModel> get products => _products;
   List<ConsigneeModel> get consignees => _consignees;
   bool get isDropdownDataLoaded => _isDropdownDataLoaded;
 
-  // ✅ FIX: expose the raw unfiltered list so the detail page can resolve
-  //    the live object by ID regardless of search/filter state.
   List<ConsignmentWithDetails> get allConsignments => _allConsignments;
 
   List<ConsignmentWithDetails> get consignments {
@@ -67,10 +68,17 @@ class ConsignmentProductsViewModel extends ChangeNotifier {
 
   // ─── Dropdown Data ────────────────────────────────────────────────────
 
-  Future<void> _loadDropdownData() async {
+  Future<void> loadDropdownData({bool force = false}) async {
+    if (_isDropdownDataLoaded && !force) return;
+    
     try {
-      _products = await _productRepository.getAll();
-      _consignees = await _consigneeRepository.getAll();
+      final results = await Future.wait([
+        _productRepository.getAll(),
+        _consigneeRepository.getAll(),
+      ]);
+      
+      _products = results[0] as List<ProductModel>;
+      _consignees = results[1] as List<ConsigneeModel>;
       _isDropdownDataLoaded = true;
       notifyListeners();
     } catch (e) {
@@ -81,11 +89,15 @@ class ConsignmentProductsViewModel extends ChangeNotifier {
 
   // ─── Consignment Methods ──────────────────────────────────────────────
 
-  Future<void> loadConsignments() async {
+  Future<void> loadConsignments({bool forceRefresh = false}) async {
+    // 🚀 Avoid redundant loading unless forced
+    if (_isInitialized && !forceRefresh && _allConsignments.isNotEmpty) return;
+
     _state = ProductsViewState.loading;
     notifyListeners();
     try {
       _allConsignments = await _repository.getAll();
+      _isInitialized = true;
       _state = ProductsViewState.idle;
     } catch (e) {
       _state = ProductsViewState.error;
@@ -136,7 +148,7 @@ class ConsignmentProductsViewModel extends ChangeNotifier {
         commissionRate: commissionRate,
         capitalPrice: capitalPrice,
       );
-      await loadConsignments();
+      await loadConsignments(forceRefresh: true);
       return true;
     } catch (e) {
       _state = ProductsViewState.error;
@@ -149,7 +161,7 @@ class ConsignmentProductsViewModel extends ChangeNotifier {
   Future<bool> toggleStatus(String productId, bool currentStatus) async {
     try {
       await _repository.toggleProductStatus(productId, !currentStatus);
-      await loadConsignments();
+      await loadConsignments(forceRefresh: true);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -161,12 +173,20 @@ class ConsignmentProductsViewModel extends ChangeNotifier {
   Future<bool> deleteConsignment(int consignmentId) async {
     try {
       await _repository.delete(consignmentId);
-      await loadConsignments();
+      await loadConsignments(forceRefresh: true);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
       return false;
     }
+  }
+
+  void reset() {
+    _isInitialized = false;
+    _isDropdownDataLoaded = false;
+    _allConsignments = [];
+    _state = ProductsViewState.idle;
+    notifyListeners();
   }
 }

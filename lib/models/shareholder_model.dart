@@ -3,6 +3,8 @@ import '../utils/parsers.dart';
 class ShareholderModel {
   final String id;
   final String userId;
+  final String firstName;
+  final String lastName;
   final String fullName;
   final String email;
   final String contactNumber;
@@ -10,10 +12,13 @@ class ShareholderModel {
   final double totalShareCapital;
   final int creditScore;
   final String? idImageUrl;
+  final double? membershipFee;
 
   ShareholderModel({
     required this.id,
     required this.userId,
+    required this.firstName,
+    required this.lastName,
     required this.fullName,
     required this.email,
     required this.contactNumber,
@@ -21,12 +26,15 @@ class ShareholderModel {
     required this.totalShareCapital,
     required this.creditScore,
     this.idImageUrl,
+    this.membershipFee,
   });
 
   factory ShareholderModel.fromJson(Map<String, dynamic> json) {
     return ShareholderModel(
       id: json['id']?.toString() ?? '',
       userId: json['user_id']?.toString() ?? json['userid']?.toString() ?? '',
+      firstName: json['first_name']?.toString() ?? json['firstname']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? json['lastname']?.toString() ?? '',
       fullName: json['full_name']?.toString() ?? 'Unnamed',
       email: json['email']?.toString() ?? '',
       contactNumber: json['contact_number']?.toString() ?? '',
@@ -34,6 +42,24 @@ class ShareholderModel {
       totalShareCapital: Parsers.parseDouble(json['total_share_capital']),
       creditScore: Parsers.parseInt(json['creditscore'] ?? json['credit_score']),
       idImageUrl: json['id_image_url']?.toString(),
+      membershipFee: Parsers.parseDouble(json['membership_fee']),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'first_name': firstName,
+      'last_name': lastName,
+      'full_name': fullName,
+      'email': email,
+      'contact_number': contactNumber,
+      'address': address,
+      'total_share_capital': totalShareCapital,
+      'creditscore': creditScore,
+      'id_image_url': idImageUrl,
+      'membership_fee': membershipFee,
+    };
   }
 }

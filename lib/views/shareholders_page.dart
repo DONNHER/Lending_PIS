@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_theme.dart';
-import '../repositories/shareholder_repository.dart';
 import '../viewmodels/shareholder_viewmodel.dart';
 import '../widgets/page_turner.dart';
 import '../widgets/shareholder_table.dart';
@@ -13,10 +12,8 @@ class ShareholdersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ShareholderViewModel(context.read<ShareholderRepository>()),
-      child: const _ShareholdersBody(),
-    );
+    // 🚀 Uses the global ShareholderViewModel provided in main.dart
+    return const _ShareholdersBody();
   }
 }
 
@@ -68,10 +65,11 @@ class _ShareholdersBody extends StatelessWidget {
                                 MaterialPageRoute(
                                   builder: (context) => ShareholderDetailPage(shareholderId: shareholder.id),
                                 ),
-                              ).then((_) => viewModel.fetchShareholders());
+                              ).then((_) => viewModel.fetchShareholders(forceRefresh: true));
                             },
                           ),
-                          if (viewModel.isLoading)
+                          // 🚀 Only show loading if we have no data yet
+                          if (viewModel.isLoading && !viewModel.isInitialized)
                             Container(
                               color: Colors.white.withOpacity(0.6),
                               child: const Center(
@@ -148,7 +146,7 @@ class _ShareholdersBody extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => const AddShareholderPage()),
                   );
                   if (result == true) {
-                    viewModel.fetchShareholders();
+                    viewModel.fetchShareholders(forceRefresh: true);
                   }
                 },
                 icon: const Icon(Icons.add, size: 18),
@@ -198,12 +196,6 @@ class _ShareholdersBody extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                null,
-                size: 16,
-                color: isActive ? Colors.white : AppTheme.textDark,
               ),
             ],
           ),

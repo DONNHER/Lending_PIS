@@ -61,68 +61,97 @@ class _AuthTextFieldState extends State<AuthTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _isFocused
-              ? AppTheme.primary
-              : AppTheme.primary.withOpacity(0.3),
-          width: _isFocused ? 2 : 1,
-        ),
-        boxShadow: _isFocused
-            ? [
-                BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.12),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+    return FormField<String>(
+      validator: widget.validator,
+      initialValue: widget.controller.text,
+      builder: (FormFieldState<String> fieldState) {
+        final bool hasError = fieldState.hasError;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: hasError
+                      ? AppTheme.error
+                      : _isFocused
+                          ? AppTheme.primary
+                          : AppTheme.primary.withOpacity(0.3),
+                  width: _isFocused || hasError ? 2 : 1,
                 ),
-              ]
-            : [],
-      ),
-      child: TextFormField(
-        controller: widget.controller,
-        focusNode: _focusNode,
-        obscureText: widget.obscureText,
-        keyboardType: widget.keyboardType,
-        textInputAction: widget.textInputAction,
-        onChanged: widget.onChanged,
-        onFieldSubmitted: widget.onSubmitted,
-        validator: widget.validator,
-        enabled: widget.enabled,
-        maxLines: widget.maxLines,
-        minLines: widget.minLines,
-        style: const TextStyle(
-          fontSize: 15,
-          color: AppTheme.textDark,
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          labelText: widget.label,
-          hintText: widget.hint,
-
-          // 🚨 Force-remove ALL borders
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          errorBorder: InputBorder.none,
-          focusedErrorBorder: InputBorder.none,
-          disabledBorder: InputBorder.none,
-
-          prefixIcon: widget.prefixIcon,
-          suffixIcon: widget.suffixIcon,
-
-          contentPadding: const EdgeInsets.symmetric(vertical: 16),
-
-          labelStyle: TextStyle(
-            color: _isFocused ? AppTheme.primary : AppTheme.textMuted,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
+                boxShadow: _isFocused
+                    ? [
+                        BoxShadow(
+                          color: (hasError ? AppTheme.error : AppTheme.primary)
+                              .withOpacity(0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: TextField(
+                controller: widget.controller,
+                focusNode: _focusNode,
+                obscureText: widget.obscureText,
+                keyboardType: widget.keyboardType,
+                textInputAction: widget.textInputAction,
+                onChanged: (value) {
+                  // This triggers the FormField validation immediately
+                  fieldState.didChange(value);
+                  if (widget.onChanged != null) widget.onChanged!(value);
+                },
+                onSubmitted: widget.onSubmitted,
+                enabled: widget.enabled,
+                maxLines: widget.maxLines,
+                minLines: widget.minLines,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppTheme.textDark,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  labelText: widget.label,
+                  hintText: widget.hint,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  prefixIcon: widget.prefixIcon,
+                  suffixIcon: widget.suffixIcon,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                  labelStyle: TextStyle(
+                    color: hasError
+                        ? AppTheme.error
+                        : _isFocused
+                            ? AppTheme.primary
+                            : AppTheme.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            if (hasError)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, top: 6),
+                child: Text(
+                  fieldState.errorText!,
+                  style: const TextStyle(
+                    color: AppTheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
