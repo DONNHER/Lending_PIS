@@ -16,7 +16,7 @@ class DashboardViewModel extends ChangeNotifier {
   String _greeting = '';
   String _currentDate = '';
   bool _isLoading = false;
-  bool _isInitialized = false; // 🚀 Caching flag
+  bool _isInitialized = false;
 
   ChartFilter _selectedFilter = ChartFilter.month;
 
@@ -26,10 +26,11 @@ class DashboardViewModel extends ChangeNotifier {
   RealtimeChannel? _dashboardRealtimeSubscription;
   final NumberFormat _currencyFormat = NumberFormat.currency(locale: 'en_PH', symbol: '₱');
 
+  // Dashboard Stats from Laravel DashboardController
+  Map<String, dynamic>? _rawStats;
+
   DashboardViewModel(this._lendingRepository, this._shareholderRepository) {
     _updateGreetingAndDate();
-    // We don't call _initDashboard here anymore. 
-    // It will be called by ProxyProvider or the View when needed.
   }
 
   // Getters
@@ -39,12 +40,12 @@ class DashboardViewModel extends ChangeNotifier {
   String get greeting => _greeting;
   String get currentDate => _currentDate;
   bool get isLoading => _isLoading;
-  bool get isInitialized => _isInitialized; // 🚀 Getter for initialized status
+  bool get isInitialized => _isInitialized;
   List<ShareholderModel> get searchResults => _searchResults;
   ChartFilter get selectedFilter => _selectedFilter;
 
   Future<void> initDashboard({bool forceRefresh = false}) async {
-    if (_isInitialized && !forceRefresh) return; // 🚀 Avoid redundant loading
+    if (_isInitialized && !forceRefresh) return;
     
     await _loadData(showLoading: true);
     await _loadShareholders();
@@ -95,13 +96,15 @@ class DashboardViewModel extends ChangeNotifier {
     }
 
     try {
-      // Use concurrent fetching for speed
+      final String range = _selectedFilter == ChartFilter.week ? 'week' : (_selectedFilter == ChartFilter.year ? 'year' : 'month');
+      
       final results = await Future.wait([
         _lendingRepository.getCurrentInterestRate(),
         _lendingRepository.getTotalDisbursedLoans(),
         _lendingRepository.getTotalShareholderCapital(),
         _lendingRepository.getRecentLoanTransactions(limit: 5),
         _lendingRepository.getLendingChartMetrics(_selectedFilter),
+        _lendingRepository.getDashboardStats(range: range), // 🚀 Added general stats
       ]);
 
       final interestRate = results[0] as double;
@@ -109,24 +112,41 @@ class DashboardViewModel extends ChangeNotifier {
       final totalCapital = results[2] as double;
       final recentTrans = results[3] as List<TransactionModel>;
       final freshChartMetrics = results[4] as List<LendingChartData>;
+      _rawStats = results[5] as Map<String, dynamic>?;
 
       _kpiCards = [
         KpiCardData(
-          label: 'Total Disbursed Loans',
+          label: 'Total Disbursed',
           value: _currencyFormat.format(totalDisbursed),
           icon: Icons.assignment_outlined,
         ),
         KpiCardData(
-          label: "Shareholder's Capital",
+          label: "Total Capital",
           value: _currencyFormat.format(totalCapital),
           icon: Icons.account_balance_wallet_outlined,
         ),
-        KpiCardData(
-          label: 'Current Interest Rate',
+      ];
+
+      // 🚀 Add the User Stats metrics if available
+      if (_rawStats != null && _rawStats!['user_stats'] != null) {
+        final userStats = _rawStats!['user_stats'];
+        _kpiCards.add(KpiCardData(
+          label: 'Total Users',
+          value: userStats['total_users'].toString(),
+          icon: Icons.people_outline,
+        ));
+        _kpiCards.add(KpiCardData(
+          label: 'Active Now',
+          value: userStats['active_now'].toString(),
+          icon: Icons.online_prediction_outlined,
+        ));
+      } else {
+         _kpiCards.add(KpiCardData(
+          label: 'Interest Rate',
           value: '${(interestRate * 100).toStringAsFixed(1)}%',
           icon: Icons.schedule_rounded,
-        ),
-      ];
+        ));
+      }
 
       _recentTransactions = recentTrans;
       _chartData = freshChartMetrics;

@@ -19,7 +19,6 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🚀 Uses the global DashboardViewModel provided in main.dart
     return const _DashboardBody();
   }
 }
@@ -34,105 +33,57 @@ class _DashboardBody extends StatelessWidget {
         return Scaffold(
           backgroundColor: const Color(0xFFFDF8F5),
           body: SafeArea(
-            child: Stack(
-              children: [
-                RefreshIndicator(
-                  onRefresh: () async => viewModel.refreshData(),
-                  color: const Color(0xFFC06C4D),
-                  child: CustomScrollView(
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: DashboardHeader(
-                          greeting: viewModel.greeting,
-                          currentDate: viewModel.currentDate,
-                          searchResults: viewModel.searchResults,
-                          onSearch: viewModel.setSearchQuery,
-                          onResultTap: (shareholder) {
-                            if (shareholder == null) return;
-
-                            viewModel.setSearchQuery('');
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ShareholderDetailPage(
-                                  shareholderId: shareholder.id,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      SliverToBoxAdapter(child: _buildSectionTitle('Reports Overview')),
-                      SliverToBoxAdapter(child: _buildKpiRow(viewModel)),
-                      SliverToBoxAdapter(child: _buildSectionTitle('Revenue & Collection Trend')),
-                      SliverToBoxAdapter(child: _buildChartSection(viewModel)),
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        sliver: SliverToBoxAdapter(
-                          child: RecentLoansTable(
-                            transactions: viewModel.recentTransactions,
-                            onTap: (tx) async {
-                              final repo = context.read<LendingRepository>();
-                              if (tx.type == 'Loan Disbursement' && tx.referenceId.isNotEmpty) {
-                                if (!context.mounted) return;
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => LoanDetailsPage(
-                                      loanId: tx.referenceId,
-                                      shareholderId: tx.shareholderId ?? '',
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
-                              if (tx.type == 'Loan Payment' && tx.referenceId.isNotEmpty) {
-                                if (!context.mounted) return;
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => LoanPaymentPage(loanId: tx.referenceId),
-                                  ),
-                                );
-                                return;
-                              }
-                              final fullRequest = tx.referenceId.isNotEmpty
-                                  ? await repo.getLoanRequestById(tx.referenceId)
-                                  : await repo.getLoanRequestById(tx.id);
-                              if (fullRequest != null && context.mounted) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => LoanEvaluationPage(request: fullRequest),
-                                  ),
-                                );
-                              }
-                            },
-                            onSeeAll: () {
-                              final nav = context.read<NavigationViewModel>();
-                              final items = nav.getFilteredNavItems();
-                              final index = items.indexWhere((item) => item.route == '/loans');
-                              if (index != -1) {
-                                nav.navigateTo(index);
-                              }
-                            },
+            child: RefreshIndicator(
+              onRefresh: () async => viewModel.refreshData(),
+              color: const Color(0xFFC06C4D),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: DashboardHeader(
+                      greeting: viewModel.greeting,
+                      currentDate: viewModel.currentDate,
+                      searchResults: viewModel.searchResults,
+                      onSearch: viewModel.setSearchQuery,
+                      onResultTap: (shareholder) {
+                        if (shareholder == null) return;
+                        viewModel.setSearchQuery('');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ShareholderDetailPage(
+                              shareholderId: shareholder.id,
+                            ),
                           ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                    ],
-                  ),
-                ),
-                // 🚀 Only show full loading if initialized for the first time
-                if (viewModel.isLoading && !viewModel.isInitialized)
-                  Container(
-                    color: Colors.white.withOpacity(0.6),
-                    child: const Center(
-                      child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
+                        );
+                      },
                     ),
                   ),
-              ],
+                  
+                  // localized loading bar under header
+                  if (viewModel.isLoading)
+                    const SliverToBoxAdapter(
+                      child: LinearProgressIndicator(
+                        minHeight: 2,
+                        backgroundColor: Colors.transparent,
+                        color: Color(0xFFC06C4D),
+                      ),
+                    ),
+
+                  SliverToBoxAdapter(child: _buildSectionTitle('Reports Overview')),
+                  SliverToBoxAdapter(child: _buildKpiRow(viewModel)),
+                  
+                  SliverToBoxAdapter(child: _buildSectionTitle('Revenue & Collection Trend')),
+                  SliverToBoxAdapter(child: _buildChartSection(viewModel)),
+                  
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    sliver: SliverToBoxAdapter(
+                      child: _buildRecentLoansSection(context, viewModel),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                ],
+              ),
             ),
           ),
         );
@@ -151,6 +102,13 @@ class _DashboardBody extends StatelessWidget {
   }
 
   Widget _buildKpiRow(DashboardViewModel viewModel) {
+    if (viewModel.isLoading && viewModel.kpiCards.isEmpty) {
+      return const SizedBox(
+        height: 100,
+        child: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D), strokeWidth: 3)),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: LayoutBuilder(builder: (context, constraints) {
@@ -210,11 +168,76 @@ class _DashboardBody extends StatelessWidget {
             const SizedBox(height: 20),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 230),
-              child: LendingBarChart(data: viewModel.chartData),
+              child: viewModel.isLoading && viewModel.chartData.isEmpty
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D), strokeWidth: 3))
+                  : LendingBarChart(data: viewModel.chartData),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRecentLoansSection(BuildContext context, DashboardViewModel viewModel) {
+    if (viewModel.isLoading && viewModel.recentTransactions.isEmpty) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D), strokeWidth: 3)),
+      );
+    }
+
+    return RecentLoansTable(
+      transactions: viewModel.recentTransactions,
+      onTap: (tx) async {
+        final repo = context.read<LendingRepository>();
+        if (tx.type == 'Loan Disbursement' && tx.referenceId.isNotEmpty) {
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LoanDetailsPage(
+                loanId: tx.referenceId,
+                shareholderId: tx.shareholderId ?? '',
+              ),
+            ),
+          );
+          return;
+        }
+        if (tx.type == 'Loan Payment' && tx.referenceId.isNotEmpty) {
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LoanPaymentPage(loanId: tx.referenceId),
+            ),
+          );
+          return;
+        }
+        final fullRequest = tx.referenceId.isNotEmpty
+            ? await repo.getLoanRequestById(tx.referenceId)
+            : await repo.getLoanRequestById(tx.id);
+        if (fullRequest != null && context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LoanEvaluationPage(request: fullRequest),
+            ),
+          );
+        }
+      },
+      onSeeAll: () {
+        final nav = context.read<NavigationViewModel>();
+        final items = nav.getFilteredNavItems();
+        final index = items.indexWhere((item) => item.route == '/loans');
+        if (index != -1) {
+          nav.navigateTo(index);
+        }
+      },
     );
   }
 

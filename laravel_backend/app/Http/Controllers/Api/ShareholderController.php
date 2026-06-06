@@ -24,7 +24,8 @@ class ShareholderController extends Controller
             $query->withTrashed();
         }
 
-        $query = Shareholder::applyControls($query, $request, $searchable);
+        // ✅ FIXED: Removed redundant $query argument
+        $query->applyControls($request, $searchable);
 
         return response()->json(Shareholder::getPaginatedResponse($query, $request));
     }

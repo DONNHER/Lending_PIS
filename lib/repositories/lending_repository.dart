@@ -13,6 +13,18 @@ class LendingRepository {
     return Parsers.parseDouble(value);
   }
 
+  Future<Map<String, dynamic>?> getDashboardStats({String range = 'week'}) async {
+    try {
+      final response = await _api.get('/dashboard/stats', queryParams: {'range': range});
+      if (response != null && response['success'] == true) {
+        return response;
+      }
+    } catch (e) {
+      debugPrint('Error fetching dashboard stats: $e');
+    }
+    return null;
+  }
+
   Future<List<LendingChartData>> getLendingChartMetrics(ChartFilter filter) async {
     try {
       final response = await _api.get('/lending/metrics', queryParams: {'filter': filter.name});

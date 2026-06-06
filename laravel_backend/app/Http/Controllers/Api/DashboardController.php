@@ -15,19 +15,9 @@ use Carbon\Carbon;
  * Class DashboardController
  * 
  * Aggregates system-wide data for the Administrator and Staff dashboards.
- * Provides charts, health metrics, and quick-access statistics.
- * Optimized for PostgreSQL (Supabase).
- * 
- * @package App\Http\Controllers\Api
  */
 class DashboardController extends Controller
 {
-    /**
-     * Fetch comprehensive dashboard statistics.
-     * 
-     * @param Request $request Supports 'range' (day, week, month, year)
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function getStats(Request $request)
     {
         $range = $request->get('range', 'week');
@@ -44,9 +34,6 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * Helper to determine start date based on the selected range.
-     */
     private function getStartDate($range)
     {
         return match ($range) {
@@ -58,20 +45,15 @@ class DashboardController extends Controller
         };
     }
 
-    /**
-     * Calculate user registration trends and current active count.
-     */
     private function getUserStats($startDate)
     {
         $totalUsers = User::count();
         
-        // Active now: users who had activity in the last 15 minutes
         $activeNow = DB::table('personal_access_tokens')
             ->where('last_used_at', '>', now()->subMinutes(15))
             ->distinct('tokenable_id')
             ->count();
 
-        // PostgreSQL compliant grouping
         $newRegistrations = User::where('created_at', '>=', $startDate)
             ->select(DB::raw('CAST(created_at AS DATE) as date'), DB::raw('count(*) as count'))
             ->groupBy('date')
@@ -93,10 +75,6 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Fetch system activity stats and format for chart display.
-     * Optimized with cross-database support for DATE_FORMAT/TO_CHAR.
-     */
     private function getTransactionStats($startDate, $range)
     {
         $isPgSql = DB::getDriverName() === 'pgsql';
@@ -120,12 +98,13 @@ class DashboardController extends Controller
             $labelExpr = "DATE_FORMAT(created_at, '$format')";
         }
 
+        // ✅ FIXED: PostgreSQL requires grouping by the expression, not the alias
         $chartData = $query->select(
                 DB::raw("$labelExpr as label"), 
                 DB::raw('count(*) as count')
             )
-            ->groupBy('label')
-            ->orderBy('label')
+            ->groupBy(DB::raw($labelExpr))
+            ->orderBy(DB::raw($labelExpr))
             ->get();
 
         return [
@@ -142,9 +121,6 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Gather technical environment data (Disk space, versions).
-     */
     private function getSystemHealth()
     {
         $isPgSql = DB::getDriverName() === 'pgsql';
@@ -162,25 +138,14 @@ class DashboardController extends Controller
             }
         } catch (\Exception $e) {}
 
-        $storagePath = storage_path();
-        $freeSpace = @disk_free_space($storagePath) ?: 0;
-        $totalSpace = @disk_total_space($storagePath) ?: 1;
-        $usedSpace = $totalSpace - $freeSpace;
-
         return [
             'database_size_mb' => $dbSize,
-            'storage_used_percent' => round(($usedSpace / $totalSpace) * 100, 2),
-            'free_space_gb' => round($freeSpace / 1024 / 1024 / 1024, 2),
             'php_version' => PHP_VERSION,
             'laravel_version' => app()->version(),
-            'server_environment' => config('app.env'),
             'database_engine' => $isPgSql ? 'PostgreSQL (Supabase)' : 'MySQL',
         ];
     }
 
-    /**
-     * Fetch the 10 most recent activity logs for the dashboard feed.
-     */
     private function getRecentActivities()
     {
         return ActivityLog::with('user:id,firstname,lastname,avatar_url')
@@ -189,9 +154,6 @@ class DashboardController extends Controller
             ->get();
     }
 
-    /**
-     * Calculate API response times and error rates.
-     */
     private function getPerformanceMetrics($startDate)
     {
         $accessLogs = ActivityLog::where('log_type', ActivityLog::TYPE_ACCESS)
@@ -203,36 +165,18 @@ class DashboardController extends Controller
             ->where('created_at', '>=', $startDate)
             ->count();
 
-        $avgResponseTime = 0;
-        if ($totalRequests > 0) {
-            $durations = $accessLogs->map(function($log) {
-                // Ensure accessing duration safely
-                return is_array($log->old_values) ? ($log->old_values['duration_ms'] ?? 0) : 0;
-            });
-            $avgResponseTime = round($durations->avg(), 2);
-        }
-
         return [
-            'avg_response_time_ms' => $avgResponseTime,
             'error_rate_percent' => $totalRequests > 0 ? round(($errorCount / $totalRequests) * 100, 2) : 0,
             'total_errors' => $errorCount,
             'total_requests' => $totalRequests,
         ];
     }
 
-    /**
-     * Fetch badge counts for high-priority items.
-     */
     private function getQuickActions()
     {
         return [
             'pending_loan_requests' => LoanRequest::where('status', 'pending')->count(),
             'active_loans' => Loan::where('status', 'active')->count(),
-            'low_inventory_products' => DB::table('products')
-                ->join('grocery_batches', 'products.id', '=', 'grocery_batches.product_id')
-                ->where('grocery_batches.remaining_quantity', '<', 10)
-                ->distinct('products.id')
-                ->count(),
         ];
     }
 }

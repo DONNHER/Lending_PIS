@@ -38,6 +38,7 @@ import 'views/registration_page.dart';
 import 'views/app_shell.dart';
 import 'views/ShareHolder_screens/layouts/app.dart';
 import 'views/ShareHolder_screens/notification.dart';
+import 'models/user_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -95,7 +96,7 @@ class CanteenApp extends StatelessWidget {
             context.read<AuthRepository>(), 
             context.read<ActivityLogRepository>(),
             context.read<StorageRepository>(),
-          ),
+          )..restoreSession(), // 🚀 Restore session on startup
         ),
         ChangeNotifierProvider(
           create: (context) => ConsigneeViewModel(
@@ -231,20 +232,47 @@ class CanteenApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'Lending',
+      child: const RootApp(),
+    );
+  }
+}
+
+class RootApp extends StatelessWidget {
+  const RootApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthViewModel>();
+
+    // 🚀 Handle loading state during session restoration
+    if (auth.status == AuthStatus.initial || auth.status == AuthStatus.loading) {
+      return MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        initialRoute: '/login',
-        routes: {
-          '/login': (context) => const LoginPage(),
-          '/register': (context) => const RegistrationPage(),
-          '/dashboard': (context) => const AppShell(),
-          '/pos': (context) => const AppShell(),
-          '/shareholder-dashboard': (context) => const AppLayout(),
-          '/notifications': (context) => const NotificationScreen(),
-        },
-      ),
+        home: const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
+          ),
+        ),
+      );
+    }
+
+    return MaterialApp(
+      title: 'Lending',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      // If authenticated, show the dashboard, otherwise show login
+      home: auth.isAuthenticated 
+          ? (auth.currentUser?.role == UserRole.shareholder ? const AppLayout() : const AppShell())
+          : const LoginPage(),
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/register': (context) => const RegistrationPage(),
+        '/dashboard': (context) => const AppShell(),
+        '/pos': (context) => const AppShell(),
+        '/shareholder-dashboard': (context) => const AppLayout(),
+        '/notifications': (context) => const NotificationScreen(),
+      },
     );
   }
 }
