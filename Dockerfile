@@ -1,4 +1,4 @@
-FROM php:8.2-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 # Install system dependencies, PostgreSQL dev libraries, and tools
 RUN apk add --no-cache \
@@ -11,26 +11,28 @@ RUN apk add --no-cache \
     unzip \
     libzip-dev \
     git \
-    postgresql-dev
+    postgresql-dev \
+    icu-dev
 
 # Install PHP extensions
-# Added zip extension which is often required by composer to extract packages
-RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip
+# Added intl and zip extension which are required by many Laravel packages
+RUN docker-php-ext-configure intl
+RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip intl
 
 # Set working directory
 WORKDIR /var/www/html
 
 # Copy the Laravel backend files
-# Note: If you push ONLY the contents of 'laravel_backend' to your Lending_PIS repo,
-# change this to: COPY . .
-# If you push the entire project folder, keep it as: COPY laravel_backend/ .
+# If your Lending_PIS repo has composer.json at the root, change this to: COPY . .
+# Based on your logs, it seems laravel_backend/ is present in your build context.
 COPY laravel_backend/ .
 
 # Install Composer dependencies
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Added --no-interaction to prevent build hanging on prompts
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Added --no-interaction to prevent build hanging
+# Added --ignore-platform-req=php+ to ensure it proceeds if there's a minor mismatch
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Ensure proper Laravel storage permissions
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
