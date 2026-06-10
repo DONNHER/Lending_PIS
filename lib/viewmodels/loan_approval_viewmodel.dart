@@ -87,6 +87,7 @@ class LoanApprovalViewModel extends ChangeNotifier {
         id: 'L-${request.id}',
         loanRequestId: request.id,
         shareholderId: request.shareholderId,
+        shareholderName: request.shareholderName,
         principalAmount: request.requestedAmount,
         interestRate: request.interestRate,
         tenureMonths: request.tenureMonths,

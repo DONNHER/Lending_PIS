@@ -1,13 +1,67 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 
 class AuthRepository {
   final ApiService _api;
+  final _supabase = Supabase.instance.client;
 
   AuthRepository(this._api);
 
-  Future<UserModel> register({
+  /// Syncs the Laravel token with Supabase Auth so Storage policies work
+  Future<void> _syncSupabaseSession(String? token) async {
+    if (token == null || token.isEmpty) return;
+    try {
+      await _supabase.auth.setSession(token);
+      debugPrint('DEBUG: [AuthRepository] Supabase session synced.');
+    } catch (e) {
+      debugPrint('DEBUG: [AuthRepository] Supabase session sync failed: $e');
+    }
+  }
+
+  Future<AuthMFAEnrollResponse> enrollMfa() async {
+    try {
+      final res = await _supabase.auth.mfa.enroll(factorType: FactorType.totp, issuer: 'EngrCanteen');
+      return res;
+    } catch (e) {
+      debugPrint('Mfa Enroll Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<AuthMFAChallengeResponse> challengeMfa(String factorId) async {
+    try {
+      return await _supabase.auth.mfa.challenge(factorId: factorId);
+    } catch (e) {
+      debugPrint('Mfa Challenge Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> verifyMfaChallenge({
+    required String factorId,
+    required String challengeId,
+    required String code,
+  }) async {
+    try {
+      await _supabase.auth.mfa.verify(
+        factorId: factorId,
+        challengeId: challengeId,
+        code: code,
+      );
+    } catch (e) {
+      debugPrint('Mfa Verify Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<dynamic>> listMfaFactors() async {
+    final res = await _supabase.auth.mfa.listFactors();
+    return res.all;
+  }
+
+  Future<Map<String, dynamic>> register({
     required String username,
     required String email,
     required String password,
@@ -31,8 +85,15 @@ class AuthRepository {
         final String? token = response['token'];
         if (token != null) {
           await _api.setToken(token);
+          await _syncSupabaseSession(token);
         }
-        return UserModel.fromJson(response['user']);
+        
+        return {
+          'user': UserModel.fromJson(response['user']),
+          'token': token,
+          'mfa_required': response['mfa_required'] == true,
+          'email': response['email'],
+        };
       } else {
         throw Exception(response?['message'] ?? 'Registration failed');
       }
@@ -50,18 +111,21 @@ class AuthRepository {
       });
 
       if (response != null && response['success'] == true) {
-        if (response['mfa_required'] == true) {
-          return {
-            'mfa_required': true,
-            'email': response['email'],
-          };
+        final userJson = response['user'];
+        final user = userJson != null ? UserModel.fromJson(userJson) : null;
+        final String? token = response['token'];
+
+        if (token != null) {
+          await _api.setToken(token);
+          await _syncSupabaseSession(token);
         }
-        
-        final String token = response['token'];
-        await _api.setToken(token);
+
         return {
-          'user': UserModel.fromJson(response['user']),
+          'user': user,
           'token': token,
+          'mfa_required': response['mfa_required'] == true,
+          'email': response['email'],
+          'supabase_mfa': response['supabase_mfa'] == true,
         };
       }
     } catch (e) {
@@ -69,6 +133,16 @@ class AuthRepository {
       rethrow;
     }
     return null;
+  }
+
+  Future<bool> resendMfaCode(String email) async {
+    try {
+      final response = await _api.post('/resend-mfa', body: {'email': email});
+      return response != null && response['success'] == true;
+    } catch (e) {
+      debugPrint('DEBUG: Failed to resend Mfa code for: $email. Error: $e');
+      return false;
+    }
   }
 
   Future<UserModel?> verifyMfa({
@@ -86,6 +160,7 @@ class AuthRepository {
       if (response != null && response['success'] == true) {
         final String token = response['token'];
         await _api.setToken(token);
+        await _syncSupabaseSession(token);
         return UserModel.fromJson(response['user']);
       }
     } catch (e) {
@@ -99,6 +174,8 @@ class AuthRepository {
     try {
       final token = await _api.getToken();
       if (token == null) return null;
+
+      await _syncSupabaseSession(token);
 
       final response = await _api.get('/user');
       if (response != null) {
@@ -114,21 +191,31 @@ class AuthRepository {
   Future<void> logout() async {
     try {
       await _api.post('/logout');
+      await _supabase.auth.signOut();
     } finally {
       await _api.clearToken();
     }
   }
 
+  Future<void> clearLocalSession() async {
+    await _api.clearToken();
+    await _supabase.auth.signOut();
+  }
+
   Future<UserModel> updateProfile({
     required String firstname,
     required String lastname,
+    String? address,
     String? avatarUrl,
+    String? idImageUrl,
   }) async {
     try {
       final response = await _api.put('/user/profile', body: {
         'firstname': firstname,
         'lastname': lastname,
+        'address': address,
         'avatar_url': avatarUrl,
+        'id_image_url': idImageUrl,
       });
 
       if (response != null && response['success'] == true) {
@@ -152,7 +239,6 @@ class AuthRepository {
         'new_password': newPassword,
         'new_password_confirmation': newPassword,
       });
-
       return response != null && response['success'] == true;
     } catch (e) {
       debugPrint('AuthRepo changePassword Error: $e');
@@ -165,7 +251,6 @@ class AuthRepository {
       final response = await _api.post('/forgot-password', body: {'email': email});
       return response != null && response['success'] == true;
     } catch (e) {
-      debugPrint('AuthRepo requestPasswordReset Error: $e');
       rethrow;
     }
   }
@@ -184,7 +269,6 @@ class AuthRepository {
       });
       return response != null && response['success'] == true;
     } catch (e) {
-      debugPrint('AuthRepo resetPassword Error: $e');
       rethrow;
     }
   }
@@ -194,14 +278,12 @@ class AuthRepository {
       final response = await _api.put('/admin/users/$userId/status', body: {
         'status': status.name,
       });
-
       if (response != null && response['success'] == true) {
         return UserModel.fromJson(response['user']);
       } else {
         throw Exception(response?['message'] ?? 'Status update failed');
       }
     } catch (e) {
-      debugPrint('AuthRepo updateStatus Error: $e');
       rethrow;
     }
   }

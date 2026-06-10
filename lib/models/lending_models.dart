@@ -48,6 +48,63 @@ int parseInt(dynamic value) {
   return 0;
 }
 
+/// 🚀 Robust helper to extract full name from any nested JSON structure (Loan, Request, or Transaction)
+String _extractClientName(Map<String, dynamic> json) {
+  // 1. Try direct keys first (often provided by API accessors or direct fields)
+  final List<String> directKeys = ['shareholder_name', 'full_name', 'client_name', 'name'];
+  for (var key in directKeys) {
+    final val = json[key]?.toString().trim();
+    if (val != null && val.isNotEmpty && val.toLowerCase() != 'null' && val.toLowerCase() != 'unknown') {
+      return val;
+    }
+  }
+
+  // 2. Try nested shareholder data
+  final sh = json['shareholder'] ?? json['shareholders'];
+  if (sh is Map) {
+    // Try full_name in shareholder
+    final shFullName = sh['full_name']?.toString().trim();
+    if (shFullName != null && shFullName.isNotEmpty && shFullName.toLowerCase() != 'null') {
+      return shFullName;
+    }
+    
+    // Try concatenating first and last name from shareholder
+    final fn = (sh['first_name'] ?? sh['firstname'] ?? '').toString().trim();
+    final ln = (sh['last_name'] ?? sh['lastname'] ?? '').toString().trim();
+    if (fn.isNotEmpty || ln.isNotEmpty) {
+      return "$fn $ln".trim();
+    }
+    
+    // 3. Try nested User data inside Shareholder
+    final u = sh['user'];
+    if (u is Map) {
+      final ufn = (u['firstname'] ?? u['first_name'] ?? '').toString().trim();
+      final uln = (u['lastname'] ?? u['last_name'] ?? '').toString().trim();
+      if (ufn.isNotEmpty || uln.isNotEmpty) {
+        return "$ufn $uln".trim();
+      }
+    }
+  }
+
+  // 4. Try root-level nested user
+  final rootUser = json['user'];
+  if (rootUser is Map) {
+    final ufn = (rootUser['firstname'] ?? rootUser['first_name'] ?? '').toString().trim();
+    final uln = (rootUser['lastname'] ?? rootUser['last_name'] ?? '').toString().trim();
+    if (ufn.isNotEmpty || uln.isNotEmpty) {
+      return "$ufn $uln".trim();
+    }
+  }
+
+  // 5. Fallback to Shareholder ID as a recognizable label
+  final id = (json['shareholder_id'] ?? json['shareholderId'] ?? json['id'] ?? '').toString();
+  if (id.isNotEmpty && id != 'null' && id.length > 5) {
+    return "Member ${id.substring(0, 8)}";
+  }
+  
+  return 'Unknown Client';
+}
+
 class ComakerModel {
   final String id;
   final String loanId;
@@ -64,17 +121,11 @@ class ComakerModel {
   });
 
   factory ComakerModel.fromJson(Map<String, dynamic> json) {
-    // Handle both 'shareholder' and 'shareholders' keys
-    final shareholderData = json['shareholder'] ?? json['shareholders'];
-    
     return ComakerModel(
       id: json['id']?.toString() ?? '',
       loanId: json['loan_id']?.toString() ?? json['loan_request_id']?.toString() ?? '',
       shareholderId: json['shareholder_id']?.toString() ?? json['shareholderId']?.toString() ?? '',
-      shareholderName: shareholderData?['full_name']?.toString() ?? 
-                       json['shareholder_name']?.toString() ?? 
-                       json['full_name']?.toString() ?? 
-                       'Unknown',
+      shareholderName: _extractClientName(json),
       status: ComakerStatus.fromString(json['status']?.toString()),
     );
   }
@@ -116,6 +167,7 @@ class LoanRequestModel {
   final List<String> loanComakers;
   final List<ComakerModel> comakers;
   final Map<String, ComakerStatus> comakerDecisions;
+  final String? comakerApprovalBlockReason;
 
   LoanRequestModel({
     required this.id,
@@ -130,6 +182,7 @@ class LoanRequestModel {
     this.loanComakers = const [],
     this.comakers = const [],
     this.comakerDecisions = const {},
+    this.comakerApprovalBlockReason,
   });
 
   List<ComakerModel> get effectiveComakers {
@@ -148,27 +201,6 @@ class LoanRequestModel {
         .toList();
   }
 
-  String? get comakerApprovalBlockReason {
-    if (loanComakers.isEmpty) return null;
-    var anyRejected = false;
-    var anyNotApproved = false;
-    for (final sid in loanComakers) {
-      final s = comakerDecisions[sid] ?? ComakerStatus.pending;
-      if (s == ComakerStatus.rejected) {
-        anyRejected = true;
-      } else if (s != ComakerStatus.approved) {
-        anyNotApproved = true;
-      }
-    }
-    if (anyRejected) {
-      return 'Cannot approve: at least one co-maker has rejected this loan request.';
-    }
-    if (anyNotApproved) {
-      return 'Cannot approve: at least one co-maker has not approved yet. Wait until all co-makers approve.';
-    }
-    return null;
-  }
-
   LoanRequestModel copyWith({
     String? id,
     String? shareholderId,
@@ -182,6 +214,7 @@ class LoanRequestModel {
     List<String>? loanComakers,
     List<ComakerModel>? comakers,
     Map<String, ComakerStatus>? comakerDecisions,
+    String? comakerApprovalBlockReason,
   }) {
     return LoanRequestModel(
       id: id ?? this.id,
@@ -196,11 +229,11 @@ class LoanRequestModel {
       loanComakers: loanComakers ?? this.loanComakers,
       comakers: comakers ?? this.comakers,
       comakerDecisions: comakerDecisions ?? this.comakerDecisions,
+      comakerApprovalBlockReason: comakerApprovalBlockReason ?? this.comakerApprovalBlockReason,
     );
   }
 
   factory LoanRequestModel.fromJson(Map<String, dynamic> json) {
-    // 1. Parse Comakers
     var comakersList = <ComakerModel>[];
     final rawLoanComakers = json['loan_comakers'] ?? json['comakers'];
     if (rawLoanComakers is List && rawLoanComakers.isNotEmpty) {
@@ -209,25 +242,11 @@ class LoanRequestModel {
       }
     }
 
-    // 2. Parse Comaker IDs
     var comakerIds = <String>[];
     if (rawLoanComakers is List && rawLoanComakers.isNotEmpty && rawLoanComakers[0] is! Map) {
       comakerIds = rawLoanComakers.map((id) => id.toString()).toList();
     }
-    
-    final coMakerIdsAlt = json['co_maker_ids'] ?? json['loan_comakers_ids'];
-    if (coMakerIdsAlt is List) {
-       final altIds = coMakerIdsAlt.map((id) => id.toString()).toList();
-       for (var id in altIds) {
-         if (!comakerIds.contains(id)) comakerIds.add(id);
-       }
-    }
 
-    if (comakerIds.isEmpty && comakersList.isNotEmpty) {
-      comakerIds = comakersList.map((c) => c.shareholderId).where((id) => id.isNotEmpty).toList();
-    }
-
-    // 3. Parse Comaker Decisions
     final decisions = <String, ComakerStatus>{};
     final rawDecisions = json['comaker_decisions'];
     if (rawDecisions is Map) {
@@ -236,17 +255,11 @@ class LoanRequestModel {
       });
     }
 
-    // 4. Handle Shareholder data relationship
-    final shareholderData = json['shareholder'] ?? json['shareholders'];
-
     return LoanRequestModel(
       id: json['id']?.toString() ?? '',
       shareholderId: json['shareholder_id']?.toString() ?? json['shareholderId']?.toString() ?? '',
-      shareholderName: json['shareholder_name']?.toString() ?? 
-                       json['full_name']?.toString() ?? 
-                       shareholderData?['full_name']?.toString() ?? 
-                       'Unknown Client',
-      requestedAmount: parseDouble(json['requested_amount']),
+      shareholderName: _extractClientName(json),
+      requestedAmount: parseDouble(json['requested_amount'] ?? json['amount']),
       interestRate: parseDouble(json['interest_rate'] ?? 0.032),
       tenureMonths: parseInt(json['months'] ?? json['tenure_months'] ?? 1),
       purpose: json['purpose']?.toString() ?? '',
@@ -257,10 +270,12 @@ class LoanRequestModel {
       loanComakers: comakerIds,
       comakers: comakersList,
       comakerDecisions: decisions,
+      comakerApprovalBlockReason: json['comaker_approval_block_reason']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'shareholder_id': shareholderId,
         'requested_amount': requestedAmount,
         'interest_rate': interestRate,
@@ -268,10 +283,6 @@ class LoanRequestModel {
         'purpose': purpose,
         'status': status.name,
         'loan_comakers': loanComakers,
-        if (comakerDecisions.isNotEmpty)
-          'comaker_decisions': {
-            for (final e in comakerDecisions.entries) e.key: e.value.name,
-          },
       };
 }
 
@@ -299,19 +310,13 @@ class TransactionModel {
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
-    // Handle both 'shareholder' and 'shareholders' keys
-    final shareholderData = json['shareholder'] ?? json['shareholders'];
-
     return TransactionModel(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['idx']?.toString() ?? '',
       referenceId: json['reference_id']?.toString() ?? '',
       type: json['type']?.toString() ?? 'Loan',
       method: json['method']?.toString() ?? 'Cash',
       shareholderId: json['shareholder_id']?.toString() ?? json['shareholderId']?.toString(),
-      clientName: json['client_name']?.toString() ?? 
-                  json['shareholder_name']?.toString() ??
-                  shareholderData?['full_name']?.toString() ?? 
-                  'Unknown',
+      clientName: _extractClientName(json),
       amount: parseDouble(json['amount']),
       status: json['status']?.toString() ?? 'Successful',
       date: json['date'] != null 
@@ -321,6 +326,7 @@ class TransactionModel {
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'reference_id': referenceId,
         'type': type,
         'method': method,
@@ -331,22 +337,11 @@ class TransactionModel {
       };
 }
 
-class LendingChartData {
-  final String period;
-  final double shareCapital;
-  final double totalDisbursed;
-
-  LendingChartData({
-    required this.period,
-    required this.shareCapital,
-    required this.totalDisbursed,
-  });
-}
-
 class LoanModel {
   final String id;
   final String loanRequestId;
   final String shareholderId;
+  final String shareholderName;
   final double principalAmount;
   final double interestRate;
   final int tenureMonths;
@@ -363,6 +358,7 @@ class LoanModel {
     required this.id,
     required this.loanRequestId,
     required this.shareholderId,
+    required this.shareholderName,
     required this.principalAmount,
     required this.interestRate,
     required this.tenureMonths,
@@ -381,6 +377,7 @@ class LoanModel {
       id: json['id']?.toString() ?? '',
       loanRequestId: json['loan_request_id']?.toString() ?? '',
       shareholderId: json['shareholder_id']?.toString() ?? json['shareholderId']?.toString() ?? '',
+      shareholderName: _extractClientName(json),
       principalAmount: parseDouble(json['principal_amount']),
       interestRate: parseDouble(json['interest_rate']),
       tenureMonths: parseInt(json['tenure_months']),
@@ -408,51 +405,28 @@ class LoanModel {
     'principal_amount': principalAmount,
     'interest_rate': interestRate,
     'tenure_months': tenureMonths,
-    'processing_fee': processingFee.toInt(), 
-    'remaining_balance': remainingBalance,
-    'monthly_amortization': monthlyAmortization.toInt(), 
-    'total_amount_to_pay': totalRepayable,
-    'total_repayable': totalRepayable,
     'release_date': disbursedAt.toIso8601String(),
-    if (dispatchedAt != null) 'dispatched_at': dispatchedAt!.toIso8601String(),
-    if (nextRepaymentDate != null) 'next_repayment_date': nextRepaymentDate!.toIso8601String(),
     'status': status,
   };
+}
 
-  LoanModel copyWith({
-    String? id,
-    String? loanRequestId,
-    String? shareholderId,
-    double? principalAmount,
-    double? interestRate,
-    int? tenureMonths,
-    double? processingFee,
-    double? remainingBalance,
-    double? monthlyAmortization,
-    double? totalRepayable,
-    DateTime? disbursedAt,
-    DateTime? dispatchedAt,
-    DateTime? nextRepaymentDate,
-    String? status,
-  }) {
-    return LoanModel(
-      id: id ?? this.id,
-      loanRequestId: loanRequestId ?? this.loanRequestId,
-      shareholderId: shareholderId ?? this.shareholderId,
-      principalAmount: principalAmount ?? this.principalAmount,
-      interestRate: interestRate ?? this.interestRate,
-      tenureMonths: tenureMonths ?? this.tenureMonths,
-      processingFee: processingFee ?? this.processingFee,
-      remainingBalance: remainingBalance ?? this.remainingBalance,
-      monthlyAmortization: monthlyAmortization ?? this.monthlyAmortization,
-      totalRepayable: totalRepayable ?? this.totalRepayable,
-      disbursedAt: disbursedAt ?? this.disbursedAt,
-      dispatchedAt: dispatchedAt ?? this.dispatchedAt,
-      nextRepaymentDate: nextRepaymentDate ?? this.nextRepaymentDate,
-      status: status ?? this.status,
-    );
-  }
+class LendingChartData {
+  final String period;
+  final double shareCapital;
+  final double totalDisbursed;
 
+  LendingChartData({
+    required this.period,
+    required this.shareCapital,
+    required this.totalDisbursed,
+  });
+}
+
+class UserTrendData {
+  final String label;
+  final int count;
+
+  UserTrendData({required this.label, required this.count});
 }
 
 class KpiCardData {

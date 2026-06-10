@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../app_theme.dart';
-import '../models/user_model.dart';
-import '../viewmodels/auth_viewmodel.dart';
-import '../widgets/auth_text_field.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/models/user_model.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/widgets/auth_text_field.dart';
+import 'package:capstone_application/views/mfa_page.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -49,10 +50,7 @@ class _RegistrationPageState extends State<RegistrationPage>
     super.dispose();
   }
 
-  // ─── Handlers ──────────────────────────────────────────────────────────
   Future<void> _handleRegister() async {
-    if (!_formKey.currentState!.validate()) return;
-
     final viewModel = context.read<AuthViewModel>();
 
     if (!viewModel.agreeToTerms) {
@@ -61,23 +59,25 @@ class _RegistrationPageState extends State<RegistrationPage>
       return;
     }
 
+    final email = _emailController.text.trim();
     final success = await viewModel.register(
-      username: _usernameController.text,
-      email: _emailController.text,
+      username: _usernameController.text.trim(),
+      email: email,
       password: _passwordController.text,
-      firstName: _firstNameController.text,
-      lastName: _lastNameController.text,
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
       role: _selectedRole,
     );
 
     if (success && mounted) {
-      _showSnackbar('Welcome, ${viewModel.currentUser!.fullName}!',
+      _showSnackbar('Account created! Please verify your email.',
           isError: false);
-      final dashboardRoute = viewModel.dashboardRoute;
-      if (dashboardRoute != null) {
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil(dashboardRoute, (route) => false);
-      }
+      
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => MfaPage(email: email),
+        ),
+      );
     } else if (mounted && viewModel.errorMessage != null) {
       _showSnackbar(viewModel.errorMessage!, isError: true);
     }
@@ -109,12 +109,70 @@ class _RegistrationPageState extends State<RegistrationPage>
   }
 
   void _nextStep() {
-    // Manually trigger validation for the current visible fields
-    if (!_formKey.currentState!.validate()) {
-      _showSnackbar('Please fix the errors before continuing', isError: true);
-      return;
+    if (_currentStep == 0) {
+      if (_firstNameController.text.trim().isEmpty || 
+          _lastNameController.text.trim().isEmpty) {
+        _showSnackbar('First name and Last name are required', isError: true);
+        return;
+      }
+    } 
+    else if (_currentStep == 1) {
+      final username = _usernameController.text.trim();
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      final confirm = _confirmPasswordController.text;
+
+      if (username.isEmpty) {
+        _showSnackbar('Username is required', isError: true);
+        return;
+      }
+      if (username.length < 3) {
+        _showSnackbar('Username must be at least 3 characters', isError: true);
+        return;
+      }
+
+      if (email.isEmpty) {
+        _showSnackbar('Email address is required', isError: true);
+        return;
+      }
+      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+      if (!emailRegex.hasMatch(email)) {
+        _showSnackbar('Please enter a valid email address', isError: true);
+        return;
+      }
+
+      if (password.isEmpty) {
+        _showSnackbar('Password is required', isError: true);
+        return;
+      }
+      if (password.length < 8) {
+        _showSnackbar('Password must be at least 8 characters', isError: true);
+        return;
+      }
+      
+      final hasUpper = password.contains(RegExp(r'[A-Z]'));
+      final hasLower = password.contains(RegExp(r'[a-z]'));
+      final hasDigit = password.contains(RegExp(r'[0-9]'));
+      final hasSpecial = password.contains(RegExp(r'[@$!%*?&]'));
+
+      if (!hasUpper || !hasLower || !hasDigit || !hasSpecial) {
+        _showSnackbar(
+          'Password must have uppercase, lowercase, number, and special character', 
+          isError: true
+        );
+        return;
+      }
+
+      if (confirm.isEmpty) {
+        _showSnackbar('Please confirm your password', isError: true);
+        return;
+      }
+      if (password != confirm) {
+        _showSnackbar('Passwords do not match', isError: true);
+        return;
+      }
     }
-    
+
     _animCtrl.forward(from: 0);
     setState(() => _currentStep++);
   }
@@ -124,7 +182,6 @@ class _RegistrationPageState extends State<RegistrationPage>
     setState(() => _currentStep--);
   }
 
-  // ─── Build ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,7 +245,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                 builder: (context, viewModel, _) {
                   return Form(
                     key: _formKey,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    autovalidateMode: AutovalidateMode.disabled, 
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -219,7 +276,6 @@ class _RegistrationPageState extends State<RegistrationPage>
     return _buildReviewStep(viewModel);
   }
 
-  // ─── Progress indicator ────────────────────────────────────────────────
   Widget _buildProgressIndicator() {
     const steps = ['Personal', 'Account', 'Review'];
     return Container(
@@ -232,7 +288,6 @@ class _RegistrationPageState extends State<RegistrationPage>
       child: Row(
         children: List.generate(steps.length * 2 - 1, (i) {
           if (i.isOdd) {
-            // connector line
             final step = i ~/ 2;
             return Expanded(
               child: AnimatedContainer(
@@ -297,7 +352,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                   fontWeight: isCurrent
                       ? FontWeight.w700
                       : FontWeight.w500,
-                  color: isCurrent
+                  color: step == _currentStep
                       ? AppTheme.primary
                       : AppTheme.textMuted,
                 ),
@@ -309,7 +364,6 @@ class _RegistrationPageState extends State<RegistrationPage>
     );
   }
 
-  // ─── Step 1: Personal info ─────────────────────────────────────────────
   Widget _buildPersonalInfoStep() {
     return _StepCard(
       icon: Icons.person_outline_rounded,
@@ -323,8 +377,6 @@ class _RegistrationPageState extends State<RegistrationPage>
           textInputAction: TextInputAction.next,
           prefixIcon: const Icon(Icons.badge_outlined,
               color: AppTheme.textMuted, size: 20),
-          validator: (v) =>
-              v == null || v.trim().isEmpty ? 'First name is required' : null,
         ),
         const SizedBox(height: 18),
         AuthTextField(
@@ -334,14 +386,11 @@ class _RegistrationPageState extends State<RegistrationPage>
           textInputAction: TextInputAction.done,
           prefixIcon: const Icon(Icons.badge_outlined,
               color: AppTheme.textMuted, size: 20),
-          validator: (v) =>
-              v == null || v.trim().isEmpty ? 'Last name is required' : null,
         ),
       ],
     );
   }
 
-  // ─── Step 2: Account info ──────────────────────────────────────────────
   Widget _buildAccountInfoStep(AuthViewModel viewModel) {
     return _StepCard(
       icon: Icons.manage_accounts_outlined,
@@ -355,11 +404,6 @@ class _RegistrationPageState extends State<RegistrationPage>
           textInputAction: TextInputAction.next,
           prefixIcon: const Icon(Icons.alternate_email,
               color: AppTheme.textMuted, size: 20),
-          validator: (v) {
-            if (v == null || v.trim().isEmpty) return 'Username is required';
-            if (v.trim().length < 3) return 'At least 3 characters';
-            return null;
-          },
         ),
         const SizedBox(height: 18),
         AuthTextField(
@@ -370,18 +414,11 @@ class _RegistrationPageState extends State<RegistrationPage>
           textInputAction: TextInputAction.next,
           prefixIcon: const Icon(Icons.email_outlined,
               color: AppTheme.textMuted, size: 20),
-          validator: (v) {
-            if (v == null || v.trim().isEmpty) return 'Email is required';
-            if (!v.contains('@') || !v.contains('.')) {
-              return 'Enter a valid email';
-            }
-            return null;
-          },
         ),
         const SizedBox(height: 18),
         AuthTextField(
           label: 'Password *',
-          hint: 'Create a strong password',
+          hint: 'Min 8 chars, Upper, Lower, Num, Special',
           controller: _passwordController,
           obscureText: viewModel.obscurePassword,
           textInputAction: TextInputAction.next,
@@ -397,11 +434,6 @@ class _RegistrationPageState extends State<RegistrationPage>
             ),
             onPressed: viewModel.togglePasswordVisibility,
           ),
-          validator: (v) {
-            if (v == null || v.isEmpty) return 'Password is required';
-            if (v.length < 6) return 'At least 6 characters';
-            return null;
-          },
         ),
         const SizedBox(height: 18),
         AuthTextField(
@@ -412,14 +444,8 @@ class _RegistrationPageState extends State<RegistrationPage>
           textInputAction: TextInputAction.done,
           prefixIcon: const Icon(Icons.lock_outline,
               color: AppTheme.textMuted, size: 20),
-          validator: (v) {
-            if (v == null || v.isEmpty) return 'Please confirm your password';
-            if (v != _passwordController.text) return 'Passwords do not match';
-            return null;
-          },
         ),
         const SizedBox(height: 22),
-        // Role selector
         const Text(
           'Select Role',
           style: TextStyle(
@@ -504,7 +530,6 @@ class _RegistrationPageState extends State<RegistrationPage>
     }
   }
 
-  // ─── Step 3: Review ────────────────────────────────────────────────────
   Widget _buildReviewStep(AuthViewModel viewModel) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,7 +564,6 @@ class _RegistrationPageState extends State<RegistrationPage>
           ],
         ),
         const SizedBox(height: 18),
-        // Terms
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -599,7 +623,6 @@ class _RegistrationPageState extends State<RegistrationPage>
     );
   }
 
-  // ─── Nav buttons ───────────────────────────────────────────────────────
   Widget _buildNavigationButtons(AuthViewModel viewModel) {
     return Row(
       children: [

@@ -11,11 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-/**
- * Class DashboardController
- * 
- * Aggregates system-wide data for the Administrator and Staff dashboards.
- */
 class DashboardController extends Controller
 {
     public function getStats(Request $request)
@@ -25,12 +20,9 @@ class DashboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'user_stats' => $this->getUserStats($startDate),
+            'user_stats' => $this->getUserStats($startDate, $range),
             'transaction_stats' => $this->getTransactionStats($startDate, $range),
-            'system_health' => $this->getSystemHealth(),
-            'recent_activities' => $this->getRecentActivities(),
-            'performance_metrics' => $this->getPerformanceMetrics($startDate),
-            'quick_actions' => $this->getQuickActions(),
+            'recent_activities' => ActivityLog::with('user:id,firstname,lastname')->latest()->limit(5)->get(),
         ]);
     }
 
@@ -45,138 +37,58 @@ class DashboardController extends Controller
         };
     }
 
-    private function getUserStats($startDate)
+    private function getUserStats($startDate, $range)
     {
-        $totalUsers = User::count();
-        
-        $activeNow = DB::table('personal_access_tokens')
-            ->where('last_used_at', '>', now()->subMinutes(15))
-            ->distinct('tokenable_id')
-            ->count();
+        $isPgSql = DB::getDriverName() === 'pgsql';
+        $format = $isPgSql 
+            ? match ($range) { 'day' => 'HH24:00', 'year' => 'YYYY-MM', default => 'YYYY-MM-DD' }
+            : match ($range) { 'day' => '%H:00', 'year' => '%Y-%m', default => '%Y-%m-%d' };
+            
+        $labelExpr = $isPgSql ? "TO_CHAR(created_at, '$format')" : "DATE_FORMAT(created_at, '$format')";
 
-        $newRegistrations = User::where('created_at', '>=', $startDate)
-            ->select(DB::raw('CAST(created_at AS DATE) as date'), DB::raw('count(*) as count'))
-            ->groupBy('date')
-            ->orderBy('date')
+        $registrationTrend = User::where('created_at', '>=', $startDate)
+            ->select(DB::raw("$labelExpr as label"), DB::raw('count(*) as count'))
+            ->groupBy(DB::raw($labelExpr))
+            ->orderBy(DB::raw($labelExpr), 'asc')
             ->get();
 
         return [
-            'total_users' => $totalUsers,
-            'active_now' => $activeNow,
-            'new_registrations_chart' => [
-                'labels' => $newRegistrations->pluck('date'),
-                'datasets' => [
-                    [
-                        'label' => 'New Registrations',
-                        'data' => $newRegistrations->pluck('count'),
-                    ]
-                ]
-            ],
+            'total_users' => User::count(),
+            'active_now' => DB::table('personal_access_tokens')
+                ->where('last_used_at', '>', now()->subMinutes(15))
+                ->distinct('tokenable_id')
+                ->count(),
+            'new_registrations' => User::where('created_at', '>=', $startDate)->count(),
+            'trend' => [
+                'labels' => $registrationTrend->pluck('label'),
+                'data' => $registrationTrend->pluck('count'),
+            ]
         ];
     }
 
     private function getTransactionStats($startDate, $range)
     {
         $isPgSql = DB::getDriverName() === 'pgsql';
+        
+        $format = $isPgSql 
+            ? match ($range) { 'day' => 'HH24:00', 'year' => 'YYYY-MM', default => 'YYYY-MM-DD' }
+            : match ($range) { 'day' => '%H:00', 'year' => '%Y-%m', default => '%Y-%m-%d' };
+            
+        $labelExpr = $isPgSql ? "TO_CHAR(created_at, '$format')" : "DATE_FORMAT(created_at, '$format')";
 
-        $query = ActivityLog::where('log_type', ActivityLog::TYPE_TRANSACTION)
-            ->where('created_at', '>=', $startDate);
-
-        if ($isPgSql) {
-            $format = match ($range) {
-                'day' => 'HH24:00',
-                'week', 'month' => 'YYYY-MM-DD',
-                'year' => 'YYYY-MM',
-            };
-            $labelExpr = "TO_CHAR(created_at, '$format')";
-        } else {
-            $format = match ($range) {
-                'day' => '%H:00',
-                'week', 'month' => '%Y-%m-%d',
-                'year' => '%Y-%m',
-            };
-            $labelExpr = "DATE_FORMAT(created_at, '$format')";
-        }
-
-        // ✅ FIXED: PostgreSQL requires grouping by the expression, not the alias
-        $chartData = $query->select(
-                DB::raw("$labelExpr as label"), 
-                DB::raw('count(*) as count')
-            )
+        $chartData = ActivityLog::where('log_type', 'transaction')
+            ->where('created_at', '>=', $startDate)
+            ->select(DB::raw("$labelExpr as label"), DB::raw('count(*) as count'))
             ->groupBy(DB::raw($labelExpr))
-            ->orderBy(DB::raw($labelExpr))
+            ->orderBy(DB::raw($labelExpr), 'asc')
             ->get();
 
         return [
             'activity_chart' => [
                 'labels' => $chartData->pluck('label'),
-                'datasets' => [
-                    [
-                        'label' => 'System Transactions',
-                        'data' => $chartData->pluck('count'),
-                    ]
-                ]
+                'datasets' => [['label' => 'Transactions', 'data' => $chartData->pluck('count')]]
             ],
-            'total_count' => $query->count(),
-        ];
-    }
-
-    private function getSystemHealth()
-    {
-        $isPgSql = DB::getDriverName() === 'pgsql';
-        $dbSize = 0;
-
-        try {
-            if ($isPgSql) {
-                $dbName = config('database.connections.pgsql.database');
-                $size = DB::select("SELECT pg_database_size(?) / 1024 / 1024 AS size", [$dbName]);
-                $dbSize = round($size[0]->size, 2);
-            } else {
-                $dbName = config('database.connections.mysql.database');
-                $size = DB::select("SELECT SUM(data_length + index_length) / 1024 / 1024 AS size FROM information_schema.TABLES WHERE table_schema = ?", [$dbName]);
-                $dbSize = round($size[0]->size, 2);
-            }
-        } catch (\Exception $e) {}
-
-        return [
-            'database_size_mb' => $dbSize,
-            'php_version' => PHP_VERSION,
-            'laravel_version' => app()->version(),
-            'database_engine' => $isPgSql ? 'PostgreSQL (Supabase)' : 'MySQL',
-        ];
-    }
-
-    private function getRecentActivities()
-    {
-        return ActivityLog::with('user:id,firstname,lastname,avatar_url')
-            ->latest('created_at')
-            ->limit(10)
-            ->get();
-    }
-
-    private function getPerformanceMetrics($startDate)
-    {
-        $accessLogs = ActivityLog::where('log_type', ActivityLog::TYPE_ACCESS)
-            ->where('created_at', '>=', $startDate)
-            ->get();
-
-        $totalRequests = $accessLogs->count();
-        $errorCount = ActivityLog::where('log_type', ActivityLog::TYPE_ERROR)
-            ->where('created_at', '>=', $startDate)
-            ->count();
-
-        return [
-            'error_rate_percent' => $totalRequests > 0 ? round(($errorCount / $totalRequests) * 100, 2) : 0,
-            'total_errors' => $errorCount,
-            'total_requests' => $totalRequests,
-        ];
-    }
-
-    private function getQuickActions()
-    {
-        return [
-            'pending_loan_requests' => LoanRequest::where('status', 'pending')->count(),
-            'active_loans' => Loan::where('status', 'active')->count(),
+            'total_count' => $chartData->sum('count'),
         ];
     }
 }

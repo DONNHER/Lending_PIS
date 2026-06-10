@@ -10,14 +10,6 @@ use App\Traits\Loggable;
 use App\Traits\AdvancedDataControls;
 use App\Traits\Versionable;
 
-/**
- * Class Loan
- * 
- * Represents an approved loan disbursed to a shareholder.
- * Tracks the principal, interest, repayment terms, and current balance.
- * 
- * @package App\Models
- */
 class Loan extends Model
 {
     use HasFactory, HasUuids, Loggable, AdvancedDataControls, SoftDeletes, Versionable;
@@ -27,30 +19,29 @@ class Loan extends Model
         'loan_request_id',
         'principal_amount',
         'interest_rate',
-        'term_months',
-        'monthly_installment',
-        'total_payable',
+        'tenure_months',         // Changed from term_months
+        'monthly_amortization',  // Changed from monthly_installment
+        'total_repayable',       // Changed from total_payable
         'remaining_balance',
         'status',
-        'due_date',
-        'disbursed_at',
+        'next_repayment_date',   // Changed from due_date
+        'release_date',          // Changed from disbursed_at
+        'processing_fee',
+        'total_amount_to_pay',
         'version',
     ];
 
     protected $casts = [
         'principal_amount' => 'decimal:2',
         'interest_rate' => 'decimal:2',
-        'monthly_installment' => 'decimal:2',
-        'total_payable' => 'decimal:2',
+        'monthly_amortization' => 'decimal:2',
+        'total_repayable' => 'decimal:2',
         'remaining_balance' => 'decimal:2',
-        'due_date' => 'date',
-        'disbursed_at' => 'datetime',
+        'next_repayment_date' => 'date',
+        'release_date' => 'datetime',
         'version' => 'integer',
     ];
 
-    /**
-     * Relationship: The shareholder who owns this loan.
-     */
     public function shareholder()
     {
         return $this->belongsTo(Shareholder::class);

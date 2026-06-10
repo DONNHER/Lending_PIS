@@ -14,9 +14,6 @@ use App\Traits\Versionable;
  * Class LoanRequest
  * 
  * Represents an initial application for a loan by a shareholder.
- * It undergoes a review process where it can be approved, rejected, or pending.
- * 
- * @package App\Models
  */
 class LoanRequest extends Model
 {
@@ -24,9 +21,13 @@ class LoanRequest extends Model
 
     protected $fillable = [
         'shareholder_id',
-        'amount',
+        'requested_amount',
+        'interest_rate',
+        'months',
         'purpose',
         'status',
+        'loan_comakers',
+        'comaker_decisions',
         'reviewed_by',
         'reviewed_at',
         'rejection_reason',
@@ -34,7 +35,11 @@ class LoanRequest extends Model
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
+        'requested_amount' => 'decimal:2',
+        'interest_rate' => 'double',
+        'months' => 'integer',
+        'loan_comakers' => 'array',
+        'comaker_decisions' => 'array',
         'reviewed_at' => 'datetime',
         'version' => 'integer',
     ];
@@ -44,6 +49,6 @@ class LoanRequest extends Model
      */
     public function shareholder()
     {
-        return $this->belongsTo(Shareholder::class);
+        return $this->belongsTo(Shareholder::class)->withTrashed();
     }
 }

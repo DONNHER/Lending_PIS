@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../app_theme.dart';
 import '../../../models/nav_item_model.dart';
 import '../../../models/user_model.dart';
@@ -13,12 +12,23 @@ import '../settings.dart';
 class AppLayout extends StatefulWidget {
   const AppLayout({super.key});
 
+  static AppLayoutState? of(BuildContext context) =>
+      context.findAncestorStateOfType<AppLayoutState>();
+
   @override
-  State<AppLayout> createState() => _AppLayoutState();
+  State<AppLayout> createState() => AppLayoutState();
 }
 
-class _AppLayoutState extends State<AppLayout> {
+class AppLayoutState extends State<AppLayout> {
   int _selectedIndex = 0;
+
+  int get selectedIndex => _selectedIndex;
+  
+  set selectedIndex(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   final List<NavItemModel> _navItems = [
     const NavItemModel(
@@ -53,10 +63,9 @@ class _AppLayoutState extends State<AppLayout> {
   @override
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
-    final supabase = Supabase.instance.client;
 
-    // Redirect to login if user is not authenticated or session is invalid
-    if (authViewModel.status == AuthStatus.unauthenticated || supabase.auth.currentUser == null) {
+    // Redirect to login ONLY if Laravel authentication is missing
+    if (authViewModel.status == AuthStatus.unauthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
@@ -64,7 +73,7 @@ class _AppLayoutState extends State<AppLayout> {
       });
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: CircularProgressIndicator(color: AppTheme.primary),
         ),
       );
     }

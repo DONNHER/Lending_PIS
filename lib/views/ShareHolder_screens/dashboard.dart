@@ -7,6 +7,7 @@ import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/share_capital_viewmodel.dart';
 import 'managements/loan_application.dart';
 import 'details_page/loan_details.dart';
+import 'layouts/app.dart';
 
 class ShareCapitalScreen extends StatelessWidget {
   const ShareCapitalScreen({super.key});
@@ -60,7 +61,7 @@ class ShareCapitalScreen extends StatelessWidget {
                 const SizedBox(height: 32),
                 // ----------------------------
 
-                _buildHistorySection(viewModel),
+                _buildHistorySection(context, viewModel),
               ],
             ),
           ),
@@ -88,7 +89,6 @@ class ShareCapitalScreen extends StatelessWidget {
   }
 
   Widget _buildMainCapitalCard(BuildContext context, ShareCapitalViewModel viewModel) {
-    final authViewModel = context.read<AuthViewModel>();
     final currencyFormat = NumberFormat('#,##0.00');
     final dateFormat = DateFormat('MMM dd, yyyy');
 
@@ -120,14 +120,24 @@ class ShareCapitalScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('ACTIVE LOAN DUE DATE', style: TextStyle(fontSize: 10, color: textGrey)),
+                  Text(
+                    activeLoan != null ? 'OUTSTANDING BALANCE' : 'ACTIVE LOAN DUE DATE', 
+                    style: const TextStyle(fontSize: 10, color: textGrey)
+                  ),
                   const SizedBox(height: 6),
                   Text(
-                    activeLoan != null && activeLoan.nextRepaymentDate != null
-                        ? dateFormat.format(activeLoan.nextRepaymentDate!)
+                    activeLoan != null 
+                        ? '${currencyFormat.format(activeLoan.remainingBalance)} PHP'
                         : 'No Active Loan',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                   ),
+                  if (activeLoan != null && activeLoan.nextRepaymentDate != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Next Due: ${dateFormat.format(activeLoan.nextRepaymentDate!)}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFC06C4D), fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ],
               ),
               Column(
@@ -140,7 +150,6 @@ class ShareCapitalScreen extends StatelessWidget {
                     bgColor: const Color(0xFFC06C4D),
                     textColor: Colors.white,
                     onTap: () {
-                      authViewModel.logActivity('LOAN_INITIATED', 'User viewed loan application');
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const AddLoanPage()));
                     },
                   ),
@@ -170,15 +179,36 @@ class ShareCapitalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHistorySection(ShareCapitalViewModel viewModel) {
+  Widget _buildHistorySection(BuildContext context, ShareCapitalViewModel viewModel) {
     final currencyFormat = NumberFormat('#,##0.00');
     final dateFormat = DateFormat('MM/dd/yyyy');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('History',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('History',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+            TextButton(
+              onPressed: () {
+                final appLayout = AppLayout.of(context);
+                if (appLayout != null) {
+                  appLayout.selectedIndex = 1; // 1 is the index for Transactions
+                }
+              },
+              child: const Text(
+                'See all',
+                style: TextStyle(
+                  color: Color(0xFFC06C4D),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         Container(
           decoration: BoxDecoration(

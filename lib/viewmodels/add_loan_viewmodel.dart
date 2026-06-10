@@ -9,6 +9,7 @@ class AddLoanViewModel extends ChangeNotifier {
   final LendingRepository _lendingRepo;
   final ShareholderRepository _shareholderRepo;
   final SupabaseClient _supabase = Supabase.instance.client;
+  final String? _currentUserId;
 
   double _amount = 2000.0;
   int _months = 6;
@@ -27,11 +28,12 @@ class AddLoanViewModel extends ChangeNotifier {
 
   final List<int> durationOptions = [1, 3, 6, 12];
 
-  AddLoanViewModel(this._lendingRepo, this._shareholderRepo) {
-    _init();
+  AddLoanViewModel(this._lendingRepo, this._shareholderRepo, {String? currentUserId}) 
+      : _currentUserId = currentUserId {
+    _init(currentUserId: currentUserId);
   }
 
-  Future<void> _init() async {
+  Future<void> _init({String? currentUserId}) async {
     _isLoading = true;
     notifyListeners();
 
@@ -39,6 +41,7 @@ class AddLoanViewModel extends ChangeNotifier {
       await Future.wait([
         _loadShareholders(),
         _fetchLiveInterestRate(),
+        if (currentUserId != null) _loadDefaultBorrower(currentUserId),
       ]);
     } catch (e) {
       debugPrint('Initialization error: $e');
@@ -46,6 +49,17 @@ class AddLoanViewModel extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> _loadDefaultBorrower(String userId) async {
+    try {
+      final borrower = await _shareholderRepo.getShareholderByUserId(userId);
+      if (borrower != null) {
+        _selectedBorrower = borrower;
+      }
+    } catch (e) {
+      debugPrint('Error loading default borrower: $e');
+    }
   }
 
   Future<void> _fetchLiveInterestRate() async {
@@ -83,29 +97,25 @@ class AddLoanViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   
-  // Eligibility getters - defaulted to true/null as requested to remove the eligibility error
   bool get isEligible => true;
   String? get eligibilityMessage => null;
 
-  /// Borrower Search: Exclude anyone already selected as a co-maker
   List<ShareholderModel> get borrowerSearchResults {
     if (_borrowerSearchQuery.isEmpty) return [];
     final query = _borrowerSearchQuery.toLowerCase();
     return _availableShareholders.where((s) {
-      // Logic: If already in co-makers, don't show in borrower search
+      // Filter by current user ID if present
+      if (_currentUserId != null && s.userId != _currentUserId) return false;
       if (_selectedCoMakers.any((cm) => cm.id == s.id)) return false;
       return s.fullName.toLowerCase().contains(query);
     }).toList();
   }
 
-  /// Co-makers Search: Exclude current borrower and already selected co-makers
   List<ShareholderModel> get coMakerSearchResults {
     if (_coMakerSearchQuery.isEmpty) return [];
     final query = _coMakerSearchQuery.toLowerCase();
     return _availableShareholders.where((s) {
-      // Logic: If is the borrower, don't show in co-maker search
       if (_selectedBorrower?.id == s.id) return false;
-      // Exclude already selected co-makers
       if (_selectedCoMakers.any((cm) => cm.id == s.id)) return false;
       return s.fullName.toLowerCase().contains(query);
     }).toList();
@@ -126,7 +136,6 @@ class AddLoanViewModel extends ChangeNotifier {
     _borrowerSearchQuery = '';
     
     if (borrower != null) {
-      // Force mutual exclusion: If they were a co-maker, they can't be anymore
       _selectedCoMakers.removeWhere((cm) => cm.id == borrower.id);
     }
     notifyListeners();
@@ -140,7 +149,6 @@ class AddLoanViewModel extends ChangeNotifier {
     if (_selectedCoMakers.any((s) => s.id == shareholder.id)) {
       _selectedCoMakers.removeWhere((s) => s.id == shareholder.id);
     } else if (_selectedCoMakers.length < 2) {
-      // Force mutual exclusion: If they were the borrower, they can't be anymore
       if (_selectedBorrower?.id == shareholder.id) {
         _selectedBorrower = null;
       }

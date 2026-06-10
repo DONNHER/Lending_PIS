@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../app_theme.dart';
-import '../models/lending_models.dart';
 import '../models/shareholder_model.dart';
+
 class ShareholderTable extends StatelessWidget {
   final List<ShareholderModel> shareholders;
   final Function(ShareholderModel) onView;
@@ -26,12 +26,12 @@ class ShareholderTable extends StatelessWidget {
           ),
           child: const Row(
             children: [
-              Expanded(flex: 2, child: Text('ID', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-              Expanded(flex: 4, child: Text('Full Name', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-              Expanded(flex: 3, child: Text('Contact Number', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-              Expanded(flex: 3, child: Text('Share Capital', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-              Expanded(flex: 2, child: Text('Score', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-              Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)))),
+              Expanded(flex: 2, child: Text('ID', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+              Expanded(flex: 4, child: Text('Full Name', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+              Expanded(flex: 3, child: Text('Contact', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+              Expanded(flex: 3, child: Text('Share Capital', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+              Expanded(flex: 2, child: Text('Account Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+              Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('View', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)))),
             ],
           ),
         ),
@@ -39,19 +39,19 @@ class ShareholderTable extends StatelessWidget {
         Expanded(
           child: shareholders.isEmpty
               ? const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32.0),
-              child: Text('No records found', style: TextStyle(color: AppTheme.textMuted)),
-            ),
-          )
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Text('No records found', style: TextStyle(color: AppTheme.textMuted)),
+                  ),
+                )
               : ListView.separated(
-            itemCount: shareholders.length,
-            padding: EdgeInsets.zero,
-            separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-            itemBuilder: (context, index) {
-              return _buildRow(shareholders[index]);
-            },
-          ),
+                  itemCount: shareholders.length,
+                  padding: EdgeInsets.zero,
+                  separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                  itemBuilder: (context, index) {
+                    return _buildRow(shareholders[index]);
+                  },
+                ),
         ),
       ],
     );
@@ -59,11 +59,12 @@ class ShareholderTable extends StatelessWidget {
 
   Widget _buildRow(ShareholderModel shareholder) {
     final currencyFormat = NumberFormat('#,##0.00');
-    final displayId = shareholder.id.length > 7
-        ? '${shareholder.id.substring(0, 7)}...'
-        : shareholder.id;
+    
+    // Display Shareholder ID if it exists, otherwise fallback to User ID
+    final displayId = shareholder.id.isNotEmpty 
+        ? (shareholder.id.length > 7 ? '${shareholder.id.substring(0, 7)}...' : shareholder.id)
+        : (shareholder.userId.length > 7 ? '${shareholder.userId.substring(0, 7)}...' : shareholder.userId);
 
-    // ✨ CHANGED: Wrapped the entire row container inside an InkWell hit target
     return InkWell(
       onTap: () => onView(shareholder),
       hoverColor: const Color(0xFF32211A).withOpacity(0.01),
@@ -74,11 +75,11 @@ class ShareholderTable extends StatelessWidget {
           children: [
             // ID
             Expanded(
-                flex: 2,
-                child: Text(
-                    displayId,
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textDark)
-                )
+              flex: 2,
+              child: Text(
+                displayId,
+                style: const TextStyle(fontSize: 11, color: AppTheme.textDark),
+              ),
             ),
 
             // Full Name
@@ -108,50 +109,39 @@ class ShareholderTable extends StatelessWidget {
               ),
             ),
 
-            // Credit Score
+            // 🚀 Account Status Column (Pulled from User Status via Model)
             Expanded(
               flex: 2,
-              child: Text(
-                '${shareholder.creditScore}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textDark),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: shareholder.status.toLowerCase() == 'active'
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  shareholder.status,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: shareholder.status.toLowerCase() == 'active' ? Colors.green : Colors.orange,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
 
-            // Actions (Chevron Target icon remains intact for user UI guidance)
-            Expanded(
-              flex: 2,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  _ActionButton(
-                    icon: Icons.chevron_right,
-                    color: AppTheme.textMuted,
-                    onTap: () => onView(shareholder),
-                  ),
-                ],
+            // Actions
+            const Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActionButton({required this.icon, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Icon(icon, size: 18, color: color),
       ),
     );
   }

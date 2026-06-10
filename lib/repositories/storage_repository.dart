@@ -1,12 +1,10 @@
 import 'package:flutter/foundation.dart';
-import '../services/api_service.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class StorageRepository {
-  final ApiService _api;
+  SupabaseClient get _supabase => Supabase.instance.client;
 
-  const StorageRepository(this._api);
+  StorageRepository();
 
   Future<String> uploadFile({
     required List<int> fileBytes,
@@ -14,39 +12,56 @@ class StorageRepository {
     required String folder,
   }) async {
     try {
-      final token = await _api.getToken();
-      final uri = Uri.parse('${_api.baseUrl}/upload');
+      debugPrint('DEBUG: [StorageRepository] --- UPLOAD START ---');
+      debugPrint('DEBUG: [StorageRepository] Target Bucket: "$folder"');
       
-      final request = http.MultipartRequest('POST', uri);
-      request.files.add(http.MultipartFile.fromBytes(
-        'file',
-        fileBytes,
-        filename: fileName,
-      ));
-      request.fields['folder'] = folder;
-      
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
-      }
-      request.headers['Accept'] = 'application/json';
+      // Check Auth Status
+      final user = _supabase.auth.currentUser;
+      final session = _supabase.auth.currentSession;
+      debugPrint('DEBUG: [StorageRepository] Supabase Auth User: ${user?.id ?? "NONE (Anonymous)"}');
+      debugPrint('DEBUG: [StorageRepository] Supabase Session Active: ${session != null}');
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['url'];
-      } else {
-        final errorData = jsonDecode(response.body);
-        throw Exception(errorData['message'] ?? 'Upload failed with status: ${response.statusCode}');
+      // Attempt to list buckets to verify connectivity
+      try {
+        final buckets = await _supabase.storage.listBuckets();
+        debugPrint('DEBUG: [StorageRepository] Visible Buckets: ${buckets.map((e) => e.id).toList()}');
+      } catch (e) {
+        debugPrint('DEBUG: [StorageRepository] Could not list buckets (likely permission issue): $e');
       }
+
+      await _supabase.storage.from(folder).uploadBinary(
+            fileName,
+            Uint8List.fromList(fileBytes),
+            fileOptions: const FileOptions(
+              cacheControl: '3600',
+              upsert: true,
+            ),
+          );
+
+      final String publicUrl = _supabase.storage.from(folder).getPublicUrl(fileName);
+      debugPrint('DEBUG: [StorageRepository] UPLOAD SUCCESS! URL: $publicUrl');
+      return publicUrl;
     } catch (e) {
-      debugPrint('StorageRepo Error: $e');
-      rethrow;
+      debugPrint('DEBUG: [StorageRepository] UPLOAD FAILED: $e');
+      if (e is StorageException && e.message.contains('Bucket not found')) {
+        throw Exception('Bucket "$folder" not found or not accessible. If you use Laravel Auth, update Supabase Policy to allow "anon" role.');
+      }
+      throw Exception('Upload Error: $e');
     }
   }
 
   Future<void> deleteFile(String fileUrl) async {
-    // Implement if needed
+    try {
+      final uri = Uri.parse(fileUrl);
+      final segments = uri.pathSegments;
+      final publicIndex = segments.indexOf('public');
+      if (publicIndex != -1 && segments.length > publicIndex + 2) {
+        final bucket = segments[publicIndex + 1];
+        final path = segments.sublist(publicIndex + 2).join('/');
+        await _supabase.storage.from(bucket).remove([path]);
+      }
+    } catch (e) {
+      debugPrint('DEBUG: [StorageRepository] Delete Error: $e');
+    }
   }
 }

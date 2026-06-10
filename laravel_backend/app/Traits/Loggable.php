@@ -69,10 +69,23 @@ trait Loggable
      */
     protected static function logActivity($model, $action, $old = null, $new = null)
     {
+        $modelName = class_basename($model);
+
+        // 🚀 OPTIMIZATION: Skip logging for specific actions/models as requested
+        // 1. Remove "Updated User" logs
+        if ($action === 'Updated' && $modelName === 'User') {
+            return;
+        }
+
+        // 2. Remove automatic logging for Transaction model entirely to reduce DB bloat
+        if ($modelName === 'Transaction') {
+            return;
+        }
+
         ActivityLog::create([
             'user_id' => Auth::id(),
-            'action' => $action . ' ' . class_basename($model),
-            'log_type' => ActivityLog::TYPE_TRANSACTION,
+            'action' => $action . ' ' . $modelName,
+            'log_type' => ActivityLog::TYPE_GENERAL, // Changed from TYPE_TRANSACTION as requested
             'description' => $action . " record in " . $model->getTable() . " (ID: {$model->id})",
             'old_values' => $old,
             'new_values' => $new,

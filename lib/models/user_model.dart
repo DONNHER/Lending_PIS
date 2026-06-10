@@ -14,7 +14,9 @@ enum UserRole {
 enum UserStatus {
   active,
   inactive,
-  suspended;
+  suspended,
+  rejected,
+  blocked;
 
   static UserStatus fromString(String? status) {
     if (status == null) return UserStatus.active;
@@ -34,6 +36,8 @@ class UserModel {
   final UserRole role;
   final UserStatus status;
   final String? avatarUrl;
+  final String? idImageUrl;
+  final String? address;
   final DateTime? createdAt;
 
   const UserModel({
@@ -45,12 +49,17 @@ class UserModel {
     required this.role,
     this.status = UserStatus.active,
     this.avatarUrl,
+    this.idImageUrl,
+    this.address,
     this.createdAt,
   });
 
   String get fullName => '$firstName $lastName';
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // 🚀 Access nested shareholder data if available
+    final shareholderData = json['shareholder'] as Map<String, dynamic>?;
+
     return UserModel(
       id: json['id'] as String,
       username: json['username'] as String? ?? '',
@@ -60,6 +69,9 @@ class UserModel {
       role: UserRole.fromString(json['role'] as String? ?? 'shareholder'),
       status: UserStatus.fromString(json['status'] as String?),
       avatarUrl: json['avatar_url'] as String?,
+      idImageUrl: json['id_image_url'] as String?,
+      // 🚀 Prioritize address from shareholders table, fallback to users table
+      address: (shareholderData?['address'] as String?) ?? (json['address'] as String?),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -76,6 +88,8 @@ class UserModel {
       'role': role.name,
       'status': status.name,
       'avatar_url': avatarUrl,
+      'id_image_url': idImageUrl,
+      'address': address,
     };
   }
 
@@ -84,6 +98,8 @@ class UserModel {
     String? lastName,
     UserStatus? status,
     String? avatarUrl,
+    String? idImageUrl,
+    String? address,
   }) {
     return UserModel(
       id: id,
@@ -94,6 +110,8 @@ class UserModel {
       role: role,
       status: status ?? this.status,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      idImageUrl: idImageUrl ?? this.idImageUrl,
+      address: address ?? this.address,
       createdAt: createdAt,
     );
   }

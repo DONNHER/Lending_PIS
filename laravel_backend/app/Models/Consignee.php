@@ -13,10 +13,7 @@ use App\Traits\Versionable;
  * Class Consignee
  * 
  * Represents an external partner or agent who receives goods for sale 
- * on behalf of the cooperative. Tracks contact information and supports
- * archiving and concurrent edit protection.
- * 
- * @package App\Models
+ * on behalf of the cooperative.
  */
 class Consignee extends Model
 {

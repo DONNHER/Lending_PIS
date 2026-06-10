@@ -7,9 +7,11 @@ class LoanPaymentViewModel extends ChangeNotifier {
 
   LoanModel? _loan;
   LoanRequestModel? _request;
+  List<TransactionModel> _paymentHistory = [];
   bool _isLoading = true;
   bool _isSubmitting = false;
   String? _errorMessage;
+  TransactionModel? _lastTransaction;
 
   // Safely cache the initial incoming entity payload container
   LoanRequestModel? _originalIncomingRequest;
@@ -20,9 +22,11 @@ class LoanPaymentViewModel extends ChangeNotifier {
 
   LoanModel? get loan => _loan;
   LoanRequestModel? get request => _request;
+  List<TransactionModel> get paymentHistory => _paymentHistory;
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  TransactionModel? get lastTransaction => _lastTransaction;
 
   double get suggestedAmount {
     final l = _loan;
@@ -58,6 +62,9 @@ class LoanPaymentViewModel extends ChangeNotifier {
       if (_loan != null) {
         debugPrint('DEBUG [LoanPaymentViewModel]: Loan entry fetched. UUID target: ${_loan!.id}, cross-reference requestId: ${_loan!.loanRequestId}');
 
+        // Fetch payment history for this loan
+        _paymentHistory = await _lending.getRecentLoanTransactions(limit: 50, loanId: _loan!.id);
+
         // Wrap this secondary fetch so raw key mismatches don't poison state on startup
         try {
           _request = await _lending.getLoanRequestById(_loan!.loanRequestId);
@@ -90,45 +97,23 @@ class LoanPaymentViewModel extends ChangeNotifier {
 
     _isSubmitting = true;
     _errorMessage = null;
+    _lastTransaction = null;
     notifyListeners();
 
-    bool recordSuccess = false;
-
-    // 🚀 Attempt 1: Submit using the explicit database Table Row UUID
     try {
-      debugPrint('DEBUG [LoanPaymentViewModel]: [Attempt 1] Submitting via structural Table Row UUID: ${_loan!.id}');
-      await _lending.recordLoanPayment(
+      debugPrint('DEBUG [LoanPaymentViewModel]: Submitting payment via Loan UUID: ${_loan!.id}');
+      _lastTransaction = await _lending.recordLoanPayment(
         loanId: _loan!.id,
         amount: amount,
         method: method,
       );
-      recordSuccess = true;
-      debugPrint('DEBUG [LoanPaymentViewModel]: [Attempt 1] Success via Loan table UUID.');
-    } catch (firstError) {
-      debugPrint('DEBUG [LoanPaymentViewModel]: [Attempt 1 Failed]: $firstError');
-
-      // 🔄 Attempt 2 Fallback: Submit using the functional Request ID string identifier (e.g. "7")
-      try {
-        final fallbackId = (_originalIncomingRequest != null && _originalIncomingRequest!.id.isNotEmpty)
-            ? _originalIncomingRequest!.id
-            : _loan!.loanRequestId;
-
-        debugPrint('DEBUG [LoanPaymentViewModel]: [Attempt 2 Fallback] Retrying via Request String Identifier: $fallbackId');
-        await _lending.recordLoanPayment(
-          loanId: fallbackId,
-          amount: amount,
-          method: method,
-        );
-        recordSuccess = true;
-        debugPrint('DEBUG [LoanPaymentViewModel]: [Attempt 2] Success via operational identifier.');
-      } catch (secondError) {
-        debugPrint('DEBUG [LoanPaymentViewModel]: [Attempt 2 Failed]: $secondError');
-        _errorMessage = secondError.toString();
+      
+      if (_lastTransaction == null) {
+         throw Exception('Payment was recorded but no transaction data was returned.');
       }
-    }
-
-    // Break execution sequence if both persistence approaches fail
-    if (!recordSuccess) {
+    } catch (e) {
+      debugPrint('DEBUG [LoanPaymentViewModel]: Payment submission failed: $e');
+      _errorMessage = e.toString();
       _isSubmitting = false;
       notifyListeners();
       return false;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../app_theme.dart';
-import '../viewmodels/auth_viewmodel.dart';
-import '../widgets/auth_text_field.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/widgets/auth_text_field.dart';
 
 class MfaPage extends StatefulWidget {
   final String email;
@@ -47,7 +47,8 @@ class _MfaPageState extends State<MfaPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = context.watch<AuthViewModel>().isLoading;
+    final viewModel = context.watch<AuthViewModel>();
+    final isLoading = viewModel.isLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F3),
@@ -60,75 +61,91 @@ class _MfaPageState extends State<MfaPage> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.security_rounded, size: 64, color: AppTheme.primary),
-                const SizedBox(height: 24),
-                const Text(
-                  'Two-Step Verification',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textDark,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Enter the 6-digit code sent to ${widget.email} to verify your identity.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textMuted,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 40),
-                AuthTextField(
-                  label: 'Verification Code',
-                  hint: 'Enter 6-digit code',
-                  controller: _codeController,
-                  keyboardType: TextInputType.number,
-                  prefixIcon: const Icon(Icons.numbers_rounded, color: AppTheme.textMuted, size: 20),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Code is required';
-                    if (value.length != 6) return 'Code must be 6 digits';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: isLoading ? null : _handleVerify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(52),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                  ),
-                  child: isLoading
-                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text(
-                          'Verify Identity',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(Icons.security_rounded, size: 64, color: AppTheme.primary),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Security Verification',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      viewModel.mfaFactors.isNotEmpty 
+                        ? 'Enter the 6-digit code from your authenticator app.'
+                        : 'Enter the 6-digit code sent to ${widget.email} to verify your identity.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textMuted,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    AuthTextField(
+                      label: 'Verification Code',
+                      hint: '000000',
+                      controller: _codeController,
+                      keyboardType: TextInputType.number,
+                      prefixIcon: const Icon(Icons.numbers_rounded, color: AppTheme.textMuted, size: 20),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Code is required';
+                        if (value.length != 6) return 'Code must be 6 digits';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton(
+                      onPressed: isLoading ? null : _handleVerify,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                      child: isLoading
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text(
+                              'Verify Identity',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                            ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (viewModel.mfaFactors.isEmpty)
+                      TextButton(
+                        onPressed: isLoading ? null : () async {
+                          final success = await viewModel.resendMfaCode(widget.email);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(success ? 'Verification code resent!' : 'Failed to resend code.'),
+                                backgroundColor: success ? Colors.green : AppTheme.error,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text(
+                          'Didn\'t receive a code? Resend',
+                          style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600),
                         ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                TextButton(
-                  onPressed: () {
-                    // Logic to resend MFA code
-                  },
-                  child: const Text(
-                    'Didn\'t receive a code? Resend',
-                    style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

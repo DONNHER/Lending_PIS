@@ -8,10 +8,12 @@ import '../widgets/activity_log_table.dart';
 
 class ActivityLogsPage extends StatefulWidget {
   final String? shareholderId;
+  final String? userId;
 
   const ActivityLogsPage({
     super.key,
     this.shareholderId,
+    this.userId,
   });
 
   @override
@@ -24,7 +26,10 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
   @override
   void initState() {
     super.initState();
-    _viewModel = ActivityLogViewModel(context.read<ActivityLogRepository>());
+    _viewModel = ActivityLogViewModel(
+      context.read<ActivityLogRepository>(),
+      initialUserId: widget.userId,
+    );
     
     // Trigger data load after the first frame to avoid "rebuild during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -32,11 +37,11 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
     });
   }
 
-  void _loadData() {
+  Future<void> _loadData() async {
     if (widget.shareholderId != null && widget.shareholderId!.isNotEmpty) {
-      _viewModel.fetchRequestsByShareholder(widget.shareholderId!);
+      await _viewModel.fetchRequestsByShareholder(widget.shareholderId!);
     } else {
-      _viewModel.fetchLogs();
+      await _viewModel.fetchLogs();
     }
   }
 
@@ -49,10 +54,7 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF32211A)),
-            onPressed: () => Navigator.maybePop(context),
-          ),
+          automaticallyImplyLeading: false,
           title: const Text(
             'Activity Logs', 
             style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
@@ -66,88 +68,93 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
             const SizedBox(width: 8),
           ],
         ),
-        body: const _ActivityLogsBody(),
+        body: _ActivityLogsBody(onRefresh: _loadData),
       ),
     );
   }
 }
 
 class _ActivityLogsBody extends StatelessWidget {
-  const _ActivityLogsBody();
+  final Future<void> Function() onRefresh;
+  const _ActivityLogsBody({required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<ActivityLogViewModel>(
       builder: (context, viewModel, _) {
         return SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(context, viewModel),
-              if (viewModel.errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  child: Text(
-                    viewModel.errorMessage!,
-                    style: const TextStyle(color: AppTheme.error, fontSize: 13),
-                  ),
-                ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            color: const Color(0xFFC06C4D),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeader(context, viewModel),
+                if (viewModel.errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    child: Text(
+                      viewModel.errorMessage!,
+                      style: const TextStyle(color: AppTheme.error, fontSize: 13),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ActivityLogTable(
-                          logs: viewModel.logs,
-                          onDelete: (id) => viewModel.deleteLog(id),
-                          onEdit: (req) {},
-                          onView: (req) {},
-                        ),
-                        if (viewModel.isLoading)
-                          Positioned.fill(
-                            child: Container(
-                              color: Colors.white.withValues(alpha: 0.6),
-                              child: const Center(
-                                child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
+                  ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ActivityLogTable(
+                            logs: viewModel.logs,
+                            onDelete: (id) => viewModel.deleteLog(id),
+                            onEdit: (req) {},
+                            onView: (req) {},
+                          ),
+                          if (viewModel.isLoading)
+                            Positioned.fill(
+                              child: Container(
+                                color: Colors.white.withOpacity(0.6),
+                                child: const Center(
+                                  child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
+                                ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: PageTurner(
-                  currentPage: viewModel.currentPage,
-                  totalPages: viewModel.totalPages,
-                  totalRows: viewModel.totalRows,
-                  rowsPerPage: viewModel.rowsPerPage,
-                  onPageChanged: viewModel.setPage,
-                  onRowsPerPageChanged: (val) {
-                    if (val != null) viewModel.setRowsPerPage(val);
-                  },
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: PageTurner(
+                    currentPage: viewModel.currentPage,
+                    totalPages: viewModel.totalPages,
+                    totalRows: viewModel.totalRows,
+                    rowsPerPage: viewModel.rowsPerPage,
+                    onPageChanged: viewModel.setPage,
+                    onRowsPerPageChanged: (val) {
+                      if (val != null) viewModel.setRowsPerPage(val);
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         );
       },

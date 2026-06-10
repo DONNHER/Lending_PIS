@@ -6,6 +6,7 @@ import '../app_theme.dart';
 import '../models/lending_models.dart';
 import '../repositories/lending_repository.dart';
 import '../viewmodels/loan_payment_viewmodel.dart';
+import 'ShareHolder_screens/details_page/repayment_details.dart';
 
 class LoanPaymentPage extends StatefulWidget {
   final LoanRequestModel? initialRequest;
@@ -155,7 +156,13 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
                       // Left Column: Entry Form & Balance Details Card
                       Expanded(
                         flex: 2,
-                        child: _buildPaymentFormCard(viewModel, currencyFormat, loan, borrowerName),
+                        child: Column(
+                          children: [
+                            _buildPaymentFormCard(viewModel, currencyFormat, loan, borrowerName),
+                            const SizedBox(height: 24),
+                            _buildPaymentHistoryCard(viewModel, currencyFormat),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 24),
                       // Right Column: Summary Breakdowns & Metrics
@@ -200,25 +207,21 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Payment Processing Profile: $borrowerName',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF32211A)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFC06C4D).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'ID: ${loan.id}',
-                  style: const TextStyle(color: Color(0xFFC06C4D), fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
+          Text(
+            'Payment Processing Profile: $borrowerName',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF32211A)),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFC06C4D).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'ID: ${loan.id}',
+              style: const TextStyle(color: Color(0xFFC06C4D), fontSize: 11, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(height: 24),
           _buildLabel('Payment amount'),
@@ -277,6 +280,86 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
           const Divider(),
           const SizedBox(height: 16),
           _buildFundInfo(currencyFormat, loan),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentHistoryCard(LoanPaymentViewModel viewModel, NumberFormat currencyFormat) {
+    final history = viewModel.paymentHistory;
+    final dateFormat = DateFormat('MMM dd, yyyy');
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Payment History',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF32211A)),
+          ),
+          const SizedBox(height: 16),
+          if (history.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text('No payments recorded yet.', style: TextStyle(color: AppTheme.textMuted)),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: history.length,
+              separatorBuilder: (context, index) => const Divider(height: 24, color: Color(0xFFF3F4F6)),
+              itemBuilder: (context, index) {
+                final tx = history[index];
+                return InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RepaymentDetailsScreen(transaction: tx),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF80FF80).withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.payments_rounded, color: Colors.green, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(tx.type, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            Text(dateFormat.format(tx.date), style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(currencyFormat.format(tx.amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green)),
+                          Text(tx.status, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -390,7 +473,18 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Payment recorded successfully')),
                 );
-                Navigator.pop(context, true);
+                
+                // Redirect to repayment details on success
+                if (viewModel.lastTransaction != null) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RepaymentDetailsScreen(transaction: viewModel.lastTransaction!),
+                    ),
+                  );
+                } else {
+                  Navigator.pop(context, true);
+                }
               } else {
                 debugPrint('DEBUG [LoanPaymentPage]: Error detected inside repository sequence: ${viewModel.errorMessage}');
                 ScaffoldMessenger.of(context).showSnackBar(

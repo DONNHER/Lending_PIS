@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
 import '../models/shareholder_model.dart';
+import '../models/lending_models.dart';
 import '../repositories/shareholder_repository.dart';
 import '../repositories/transaction_repository.dart';
 
@@ -30,12 +31,12 @@ class AddShareCapitalViewModel extends ChangeNotifier {
 
   void updateUI() => notifyListeners();
 
-  Future<bool> executeInvestment() async {
+  Future<TransactionModel?> executeInvestment() async {
     final amount = typedAmount;
     if (amount <= 0) {
       _errorMessage = 'Please enter a valid amount';
       notifyListeners();
-      return false;
+      return null;
     }
 
     _isLoading = true;
@@ -47,7 +48,7 @@ class AddShareCapitalViewModel extends ChangeNotifier {
       await _shareholderRepo.updateShareCapital(shareholder.id, newTotalCapital);
 
       final String generatedReferenceId = 'CAP-${DateTime.now().millisecondsSinceEpoch}';
-      await _transactionRepo.insertTransaction({
+      final transactionData = {
         'shareholder_id': shareholder.id,
         'amount': amount,
         'type': 'Capital Contribution',
@@ -55,15 +56,21 @@ class AddShareCapitalViewModel extends ChangeNotifier {
         'status': 'Successful',
         'date': DateTime.now().toIso8601String(),
         'reference_id': generatedReferenceId,
-      });
+        'shareholder_name': shareholder.fullName, // Added for model construction
+      };
 
-      // Attempt to get IP, but handle failures gracefully (e.g. on Web)
+      await _transactionRepo.insertTransaction(transactionData);
+
+      // Construct the model to return for the receipt view
+      final transaction = TransactionModel.fromJson(transactionData);
+
+      // Attempt to get IP, but handle failures gracefully
       String? deviceIp;
       try {
         final info = NetworkInfo();
         deviceIp = await info.getWifiIP();
       } catch (e) {
-        debugPrint('NetworkInfo Notice: Could not retrieve IP address. This is expected on some platforms (like Web).');
+        debugPrint('NetworkInfo Notice: Could not retrieve IP address.');
       }
 
       await _transactionRepo.logActivity(
@@ -73,11 +80,11 @@ class AddShareCapitalViewModel extends ChangeNotifier {
         ipAddress: deviceIp,
       );
 
-      return true;
+      return transaction;
     } catch (e) {
       debugPrint('AddShareCapitalViewModel ERROR: $e');
       _errorMessage = e.toString();
-      return false;
+      return null;
     } finally {
       _isLoading = false;
       notifyListeners();

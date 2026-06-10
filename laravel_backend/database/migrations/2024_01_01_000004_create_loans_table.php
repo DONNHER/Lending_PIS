@@ -12,7 +12,7 @@ return new class extends Migration
             Schema::create('loans', function (Blueprint $table) {
                 $table->uuid('id')->primary();
                 $table->uuid('shareholder_id');
-                $table->unsignedBigInteger('loan_request_id');
+                $table->uuid('loan_request_id'); // 🚀 Fixed: Changed from unsignedBigInteger to uuid
                 $table->decimal('principal_amount', 15, 2);
                 $table->decimal('remaining_balance', 15, 2);
                 $table->date('release_date')->nullable();

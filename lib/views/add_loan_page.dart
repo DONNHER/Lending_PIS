@@ -51,7 +51,6 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
                 fontWeight: FontWeight.bold,
                 fontSize: 16)),
         centerTitle: true,
-        // Using minHeight instead of height for the LinearProgressIndicator
         bottom: viewModel.isLoading 
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(2),
@@ -88,12 +87,17 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
                       results: viewModel.borrowerSearchResults,
                       onSearch: viewModel.setBorrowerSearchQuery,
                       navigateToDetail: false,
-                      onSelected: (s) => viewModel.setBorrower(s),
+                      onSelected: (s) {
+                        if (s != null) {
+                          viewModel.setBorrower(s);
+                        }
+                      },
                       selectedItem: viewModel.selectedBorrower != null
                           ? Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: Chip(
-                          label: Text(viewModel.selectedBorrower!.fullName),
+                          label: Text(viewModel.selectedBorrower!.fullName, 
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textDark)),
                           onDeleted: () => viewModel.setBorrower(null),
                           backgroundColor: const Color(0xFFF2E4D8),
                           deleteIconColor: const Color(0xFFC06C4D),
@@ -165,7 +169,9 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
                       onSearch: viewModel.setCoMakerSearchQuery,
                       navigateToDetail: false,
                       onSelected: (s) {
-                        if (s != null) viewModel.toggleCoMaker(s);
+                        if (s != null) {
+                          viewModel.toggleCoMaker(s);
+                        }
                       },
                       selectedItem: viewModel.selectedCoMakers.isNotEmpty
                           ? Padding(
@@ -175,7 +181,7 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
                           children: viewModel.selectedCoMakers
                               .map((cm) => Chip(
                             label: Text(cm.fullName,
-                                style: const TextStyle(fontSize: 11)),
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textDark)),
                             onDeleted: () => viewModel.toggleCoMaker(cm),
                             backgroundColor: const Color(0xFFF2E4D8),
                             deleteIconColor: const Color(0xFFC06C4D),

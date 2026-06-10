@@ -7,6 +7,7 @@ import '../viewmodels/dashboard_viewmodel.dart';
 import '../viewmodels/navigation_viewmodel.dart';
 import '../widgets/kpi_card.dart';
 import '../widgets/lending_bar_chart.dart';
+import '../widgets/user_growth_chart.dart';
 import '../widgets/recent_loans_table.dart';
 import '../widgets/dashboard_header.dart';
 import 'loan_evaluation_page.dart';
@@ -32,6 +33,33 @@ class _DashboardBody extends StatelessWidget {
       builder: (context, viewModel, _) {
         return Scaffold(
           backgroundColor: const Color(0xFFFDF8F5),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Dashboard', 
+              style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+                onPressed: () => viewModel.refreshData(),
+                tooltip: 'Refresh Dashboard',
+              ),
+              const SizedBox(width: 8),
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(2),
+              child: viewModel.isLoading
+                  ? const LinearProgressIndicator(
+                      minHeight: 2,
+                      backgroundColor: Colors.transparent,
+                      color: Color(0xFFC06C4D),
+                    )
+                  : const SizedBox(height: 2),
+            ),
+          ),
           body: SafeArea(
             child: RefreshIndicator(
               onRefresh: () async => viewModel.refreshData(),
@@ -58,22 +86,15 @@ class _DashboardBody extends StatelessWidget {
                       },
                     ),
                   ),
-                  
-                  // localized loading bar under header
-                  if (viewModel.isLoading)
-                    const SliverToBoxAdapter(
-                      child: LinearProgressIndicator(
-                        minHeight: 2,
-                        backgroundColor: Colors.transparent,
-                        color: Color(0xFFC06C4D),
-                      ),
-                    ),
 
                   SliverToBoxAdapter(child: _buildSectionTitle('Reports Overview')),
-                  SliverToBoxAdapter(child: _buildKpiRow(viewModel)),
+                  SliverToBoxAdapter(child: _buildKpiRow(context, viewModel)),
                   
                   SliverToBoxAdapter(child: _buildSectionTitle('Revenue & Collection Trend')),
                   SliverToBoxAdapter(child: _buildChartSection(viewModel)),
+
+                  SliverToBoxAdapter(child: _buildSectionTitle('System Activity & User Growth')),
+                  SliverToBoxAdapter(child: _buildUserGrowthSection(viewModel)),
                   
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -101,7 +122,7 @@ class _DashboardBody extends StatelessWidget {
     );
   }
 
-  Widget _buildKpiRow(DashboardViewModel viewModel) {
+  Widget _buildKpiRow(BuildContext context, DashboardViewModel viewModel) {
     if (viewModel.isLoading && viewModel.kpiCards.isEmpty) {
       return const SizedBox(
         height: 100,
@@ -118,7 +139,19 @@ class _DashboardBody extends StatelessWidget {
               return Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: KpiCard(data: kpi),
+                  child: KpiCard(
+                    data: kpi,
+                    onTap: kpi.label == 'Total Users' 
+                      ? () {
+                          final nav = context.read<NavigationViewModel>();
+                          final items = nav.getFilteredNavItems();
+                          final index = items.indexWhere((item) => item.route == '/users');
+                          if (index != -1) {
+                            nav.navigateTo(index);
+                          }
+                        }
+                      : null,
+                  ),
                 ),
               );
             }),
@@ -171,6 +204,37 @@ class _DashboardBody extends StatelessWidget {
               child: viewModel.isLoading && viewModel.chartData.isEmpty
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D), strokeWidth: 3))
                   : LendingBarChart(data: viewModel.chartData),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserGrowthSection(DashboardViewModel viewModel) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'User Registration Trends',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textDark),
+            ),
+            const SizedBox(height: 20),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: viewModel.isLoading && viewModel.userTrend.isEmpty
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1), strokeWidth: 3))
+                  : UserGrowthChart(data: viewModel.userTrend),
             ),
           ],
         ),
@@ -233,7 +297,7 @@ class _DashboardBody extends StatelessWidget {
       onSeeAll: () {
         final nav = context.read<NavigationViewModel>();
         final items = nav.getFilteredNavItems();
-        final index = items.indexWhere((item) => item.route == '/loans');
+        final index = items.indexWhere((item) => item.route == '/transactions');
         if (index != -1) {
           nav.navigateTo(index);
         }

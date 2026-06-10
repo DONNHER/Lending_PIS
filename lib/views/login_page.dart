@@ -1,20 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../app_theme.dart';
-import '../viewmodels/auth_viewmodel.dart';
-import '../widgets/auth_text_field.dart';
-import 'registration_page.dart';
-import 'forgot_password_page.dart';
-import 'mfa_page.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/widgets/auth_text_field.dart';
+import 'package:capstone_application/views/registration_page.dart';
+import 'package:capstone_application/views/forgot_password_page.dart';
+import 'package:capstone_application/views/mfa_page.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  Widget build(BuildContext context) {
+    return const _LoginContent();
+  }
 }
 
-class _LoginPageState extends State<LoginPage>
+class _LoginContent extends StatefulWidget {
+  const _LoginContent();
+
+  @override
+  State<_LoginContent> createState() => _LoginContentState();
+}
+
+class _LoginContentState extends State<_LoginContent>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -48,26 +57,40 @@ class _LoginPageState extends State<LoginPage>
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
+    debugPrint('DEBUG: [LoginPage] Login button clicked for: ${_emailController.text}');
+
     final viewModel = context.read<AuthViewModel>();
     final success = await viewModel.login(
       _emailController.text,
       _passwordController.text,
     );
 
+    debugPrint('DEBUG: [LoginPage] Login success status: $success');
+
     if (success && mounted) {
+      final user = viewModel.currentUser;
+      debugPrint('DEBUG: [LoginPage] Authenticated user: ${user?.email}, Status: ${user?.status}, Role: ${user?.role}');
+      
       final dashboardRoute = viewModel.dashboardRoute;
+      debugPrint('DEBUG: [LoginPage] Navigating to: $dashboardRoute');
+
       if (dashboardRoute != null) {
         Navigator.of(context)
             .pushNamedAndRemoveUntil(dashboardRoute, (route) => false);
       }
     } else if (mounted) {
       if (viewModel.isMfaRequired) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => MfaPage(email: viewModel.pendingMfaEmail!),
-          ),
-        );
+        debugPrint('DEBUG: [LoginPage] MFA Required detected. Pending email: ${viewModel.pendingMfaEmail}');
+        final mfaEmail = viewModel.pendingMfaEmail;
+        if (mfaEmail != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => MfaPage(email: mfaEmail),
+            ),
+          );
+        }
       } else if (viewModel.errorMessage != null) {
+        debugPrint('DEBUG: [LoginPage] Login failed with error: ${viewModel.errorMessage}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(

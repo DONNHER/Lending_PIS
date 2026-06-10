@@ -34,8 +34,10 @@ class LoanEvaluationViewModel extends ChangeNotifier {
         email: '',
         contactNumber: '',
         address: '',
+        status: 'Active',
         totalShareCapital: 10000.0,
         creditScore: 750,
+        role: 'shareholder',
       );
 
       for (final sid in request.loanComakers) {

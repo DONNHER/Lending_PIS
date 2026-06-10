@@ -10,7 +10,7 @@ return new class extends Migration
     {
         if (!Schema::hasTable('loan_requests')) {
             Schema::create('loan_requests', function (Blueprint $table) {
-                $table->id();
+                $table->uuid('id')->primary();
                 $table->uuid('shareholder_id');
                 $table->decimal('requested_amount', 15, 2);
                 $table->string('status')->default('pending');

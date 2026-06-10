@@ -15,13 +15,13 @@ enum NotificationCategory {
 class NotificationModel {
   final String id;
   final String shareholderId;
-  final String? comakerId; // Added for co-maker relevant notifications
+  final String? comakerId;
   final String title;
   final String content;
   final DateTime createdAt;
   final bool isUnread;
   final NotificationCategory category;
-  final String? type; // loan_request, payment_receipt, etc.
+  final String? type;
   final Map<String, dynamic>? metadata;
 
   NotificationModel({
@@ -37,6 +37,32 @@ class NotificationModel {
     this.metadata,
   });
 
+  NotificationModel copyWith({
+    String? id,
+    String? shareholderId,
+    String? comakerId,
+    String? title,
+    String? content,
+    DateTime? createdAt,
+    bool? isUnread,
+    NotificationCategory? category,
+    String? type,
+    Map<String, dynamic>? metadata,
+  }) {
+    return NotificationModel(
+      id: id ?? this.id,
+      shareholderId: shareholderId ?? this.shareholderId,
+      comakerId: comakerId ?? this.comakerId,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      isUnread: isUnread ?? this.isUnread,
+      category: category ?? this.category,
+      type: type ?? this.type,
+      metadata: metadata ?? this.metadata,
+    );
+  }
+
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
       id: json['id']?.toString() ?? '',
@@ -50,15 +76,17 @@ class NotificationModel {
       isUnread: json['is_unread'] as bool? ?? true,
       category: NotificationCategory.fromString(json['category']?.toString()),
       type: json['type']?.toString(),
-      metadata: json['metadata'] as Map<String, dynamic>?,
+      metadata: json['metadata'] is Map ? Map<String, dynamic>.from(json['metadata']) : null,
     );
   }
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'shareholder_id': shareholderId,
     'comaker_id': comakerId,
     'title': title,
     'content': content,
+    'created_at': createdAt.toIso8601String(),
     'is_unread': isUnread,
     'category': category.name,
     'type': type,

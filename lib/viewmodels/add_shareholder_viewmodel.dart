@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
+import '../models/shareholder_model.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/shareholder_repository.dart';
 import '../repositories/storage_repository.dart';
@@ -13,6 +14,7 @@ class AddShareholderViewModel extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _errorMessage;
+  ShareholderModel? _createdShareholder;
 
   AddShareholderViewModel({
     required ShareholderRepository shareholderRepository,
@@ -24,6 +26,7 @@ class AddShareholderViewModel extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  ShareholderModel? get createdShareholder => _createdShareholder;
 
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
@@ -64,6 +67,7 @@ class AddShareholderViewModel extends ChangeNotifier {
 
     _isLoading = true;
     _errorMessage = null;
+    _createdShareholder = null;
     notifyListeners();
 
     try {
@@ -72,14 +76,12 @@ class AddShareholderViewModel extends ChangeNotifier {
       final email = emailController.text.trim();
       final phone = phoneController.text.trim();
 
-      // 0. Pre-check email existence
       final existingShareholder = await _shareholderRepository.getShareholderByEmail(email);
       if (existingShareholder != null) {
         throw Exception('A shareholder with this email already exists.');
       }
 
-      // 1. Register User in Laravel (No avatar during creation by admin)
-      final UserModel userModel = await _authRepository.register(
+      final result = await _authRepository.register(
         email: email,
         password: passwordController.text.trim(),
         username: usernameController.text.trim(),
@@ -88,20 +90,24 @@ class AddShareholderViewModel extends ChangeNotifier {
         role: UserRole.shareholder,
       );
 
-      // 2. Upload ID Image if provided
+      final UserModel? userModel = result['user'];
+      if (userModel == null) {
+        throw Exception('Failed to retrieve user information after registration.');
+      }
+
+      // 🚀 FIXED: Added 'private/' prefix to satisfy your Supabase RLS Policy
       if (_idFileBytes != null) {
         try {
           _idUrl = await _storageRepository.uploadFile(
             fileBytes: _idFileBytes!,
-            fileName: 'ID_${userModel.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-            folder: 'shareholder-ids',
+            fileName: 'private/ID_${userModel.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            folder: 'shareholders_id', 
           );
         } catch (e) {
           debugPrint('Storage upload failed: $e');
         }
       }
 
-      // 3. Create Shareholder linked to the NEW User ID
       final Map<String, dynamic> shareholderData = {
         'user_id': userModel.id,
         'full_name': '$firstName $lastName',
@@ -117,6 +123,8 @@ class AddShareholderViewModel extends ChangeNotifier {
       };
 
       await _shareholderRepository.addShareholder(shareholderData);
+      _createdShareholder = await _shareholderRepository.getShareholderByUserId(userModel.id);
+      
       return true;
 
     } catch (e) {

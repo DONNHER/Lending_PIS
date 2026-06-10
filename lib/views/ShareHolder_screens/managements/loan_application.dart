@@ -5,6 +5,7 @@ import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/repositories/lending_repository.dart';
 import 'package:capstone_application/repositories/shareholder_repository.dart';
 import 'package:capstone_application/viewmodels/add_loan_viewmodel.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/widgets/shareholder_search_selector.dart';
 import 'package:capstone_application/models/shareholder_model.dart';
 
@@ -13,10 +14,13 @@ class AddLoanPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.read<AuthViewModel>();
+    
     return ChangeNotifierProvider(
       create: (context) => AddLoanViewModel(
         context.read<LendingRepository>(),
         context.read<ShareholderRepository>(),
+        currentUserId: auth.currentUser?.id,
       ),
       child: const _AddLoanBody(),
     );
@@ -96,7 +100,7 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
                           hint: 'Type your name to search...',
                           results: viewModel.borrowerSearchResults,
                           onSearch: viewModel.setBorrowerSearchQuery,
-                          navigateToDetail: false,
+                          navigateToDetail: true, // 🚀 Changed to true to display selected name
                           initialValue: viewModel.selectedBorrower?.fullName,
                           onSelected: (s) {
                             viewModel.setBorrower(s);

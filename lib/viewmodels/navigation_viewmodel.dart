@@ -29,7 +29,7 @@ class NavigationViewModel extends ChangeNotifier {
         icon: Icons.dashboard_outlined,
         activeIcon: Icons.dashboard_rounded,
         route: '/dashboard',
-        allowedRoles: [UserRole.admin],
+        allowedRoles: [UserRole.admin, UserRole.cashier],
       ),
       const NavItemModel(
         label: 'Loans',
@@ -40,10 +40,10 @@ class NavigationViewModel extends ChangeNotifier {
       ),
 
       const NavItemModel(
-        label: 'Shareholders',
+        label: 'Users',
         icon: Icons.people_outline_rounded,
         activeIcon: Icons.people_rounded,
-        route: '/shareholders',
+        route: '/users',
         allowedRoles: [UserRole.admin],
       ),
       const NavItemModel(
@@ -92,6 +92,8 @@ class NavigationViewModel extends ChangeNotifier {
   }
 
   int getBottomNavIndex() {
-    return _selectedIndex < getBottomNavItems().length ? _selectedIndex : 0;
+    final bottomItems = getBottomNavItems();
+    if (bottomItems.isEmpty) return 0;
+    return _selectedIndex < bottomItems.length ? _selectedIndex : 0;
   }
 }

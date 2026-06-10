@@ -19,7 +19,6 @@ class TransactionController extends Controller
             $query->withTrashed();
         }
 
-        // ✅ FIXED: Removed redundant $query argument in scope call
         $query->with('shareholder')->applyControls($request, $searchable);
 
         if ($request->filled('types')) {
@@ -31,22 +30,27 @@ class TransactionController extends Controller
             $query->where('shareholder_id', $request->shareholder_id);
         }
 
+        if ($request->filled('reference_id')) {
+            $query->where('reference_id', $request->reference_id);
+        }
+
         return response()->json(Transaction::getPaginatedResponse($query, $request));
     }
 
-    public function export(Request $request, $ids = null)
+    /**
+     * Get transaction history for a specific reference (e.g. Loan History)
+     */
+    public function history($referenceId)
     {
-        $query = Transaction::with('shareholder');
-        if ($ids) {
-            $query->whereIn('id', $ids);
-        } else {
-            // ✅ FIXED
-            $query->applyControls($request, ['reference_id', 'type']);
-        }
-
-        $data = $query->get();
-        // ... rest of the method logic
-        return response()->json(['success' => true, 'message' => 'Export logic simplified for fix']);
+        $transactions = Transaction::where('reference_id', $referenceId)
+            ->with('shareholder')
+            ->latest('date')
+            ->get();
+            
+        return response()->json([
+            'success' => true,
+            'data' => $transactions
+        ]);
     }
 
     public function count(Request $request)
@@ -58,6 +62,9 @@ class TransactionController extends Controller
         }
         if ($request->has('status') && $request->status !== 'All') {
             $query->where('status', $request->status);
+        }
+        if ($request->has('reference_id')) {
+            $query->where('reference_id', $request->reference_id);
         }
         return response()->json(['success' => true, 'total' => $query->count()]);
     }

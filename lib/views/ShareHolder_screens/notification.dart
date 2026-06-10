@@ -1,14 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/notification_viewmodel.dart';
 import '../../models/notification_model.dart';
 import '../../app_theme.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/loan_request_approval.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
+
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _triggerFetch();
+  }
+
+  void _triggerFetch() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthViewModel>();
+      final viewModel = context.read<NotificationViewModel>();
+      if (auth.currentUser != null) {
+        viewModel.fetchData(userId: auth.currentUser!.id);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,28 +52,83 @@ class NotificationScreen extends StatelessWidget {
             child: const Text("Mark all as read", 
                 style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700, fontSize: 13)),
           ),
-          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 22),
+            onPressed: () => _showClearAllDialog(context),
+            tooltip: 'Clear all notifications',
+          ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: Consumer<NotificationViewModel>(
-        builder: (context, viewModel, _) {
-          if (viewModel.isLoading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+      body: Consumer2<NotificationViewModel, AuthViewModel>(
+        builder: (context, viewModel, auth, _) {
+          // Reactive fetch if user is logged in but profile isn't resolved yet
+          if (auth.currentUser != null && viewModel.shareholderId == null && !viewModel.isLoading) {
+            Future.microtask(() => viewModel.fetchData(userId: auth.currentUser!.id));
+          }
 
-          if (viewModel.shareholderId == null) {
-            return const Center(
+          debugPrint('DEBUG: [NotificationScreen] UI Rebuild - isLoading: ${viewModel.isLoading}, notifications: ${viewModel.notifications.length}, shareholderId: ${viewModel.shareholderId}');
+          
+          if (viewModel.isLoading && viewModel.notifications.isEmpty) {
+            return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+          }
+
+          if (viewModel.shareholderId == null && !viewModel.isLoading) {
+            debugPrint('DEBUG: [NotificationScreen] shareholderId is NULL');
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Text("Could not resolve shareholder profile.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppTheme.textMuted)),
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.person_search_rounded, size: 64, color: AppTheme.textMuted),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Resolving your profile...",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "We're setting up your notification feed. This should only take a moment.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppTheme.textMuted),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (auth.currentUser != null) {
+                          viewModel.fetchData(userId: auth.currentUser!.id, forceRefresh: true);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text("Retry Connection"),
+                    ),
+                  ],
+                ),
               ),
             );
           }
 
-          if (viewModel.notifications.isEmpty) return _buildEmptyState();
+          if (viewModel.notifications.isEmpty) {
+            debugPrint('DEBUG: [NotificationScreen] notifications list is EMPTY');
+            return RefreshIndicator(
+              onRefresh: () => viewModel.fetchData(forceRefresh: true),
+              child: Stack(
+                children: [
+                  ListView(), // Required for RefreshIndicator to work on empty list
+                  _buildEmptyState(),
+                ],
+              ),
+            );
+          }
 
           return RefreshIndicator(
-            onRefresh: () => viewModel.fetchData(),
+            onRefresh: () => viewModel.fetchData(forceRefresh: true),
             color: AppTheme.primary,
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -61,6 +139,30 @@ class NotificationScreen extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showClearAllDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Clear Notifications", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text("Are you sure you want to delete all notifications? This action cannot be undone."),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel", style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<NotificationViewModel>().deleteAllNotifications();
+              Navigator.pop(context);
+            },
+            child: const Text("Clear All", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
@@ -93,11 +195,11 @@ class NotificationScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: n.isUnread ? Colors.white : const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: n.isUnread ? AppTheme.primary.withValues(alpha:0.1) : const Color(0xFFF3F4F6)),
+        border: Border.all(color: n.isUnread ? AppTheme.primary.withOpacity(0.1) : const Color(0xFFF3F4F6)),
         boxShadow: n.isUnread
             ? [
                 BoxShadow(
-                  color: AppTheme.primary.withValues(alpha:0.05),
+                  color: AppTheme.primary.withOpacity(0.05),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 )
@@ -120,7 +222,7 @@ class NotificationScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha:0.1),
+                    color: iconColor.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(iconData, color: iconColor, size: 22),
@@ -155,7 +257,7 @@ class NotificationScreen extends StatelessWidget {
                       Text(
                         n.content,
                         style: TextStyle(
-                          color: n.isUnread ? AppTheme.textDark.withValues(alpha:0.8) : AppTheme.textMuted,
+                          color: n.isUnread ? AppTheme.textDark.withOpacity(0.8) : AppTheme.textMuted,
                           fontSize: 13,
                           height: 1.4,
                         ),
@@ -178,7 +280,6 @@ class NotificationScreen extends StatelessWidget {
 
   void _handleTap(BuildContext context, NotificationModel n) {
     final loanId = n.metadata?['loan_request_id']?.toString();
-
     if (n.type == 'comaker_request') {
       if (loanId != null) {
         Navigator.push(

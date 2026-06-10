@@ -7,6 +7,7 @@ class TransactionRepository {
 
   TransactionRepository(this._api);
 
+  /// Fetches a paginated list of all transactions
   Future<List<TransactionModel>> getTransactions({
     int offset = 0,
     int limit = 10,
@@ -14,52 +15,55 @@ class TransactionRepository {
     List<String>? typesIn,
     String? status,
   }) async {
-    try {
-      final Map<String, String> queryParams = {
-        'offset': offset.toString(),
-        'limit': limit.toString(),
-      };
+    final int page = (offset ~/ limit) + 1;
+    
+    final Map<String, String> queryParams = {
+      'page': page.toString(),
+      'per_page': limit.toString(),
+      'sort_by': sortBy ?? 'date',
+      'sort_order': 'desc',
+    };
 
-      if (sortBy != null) queryParams['sort_by'] = sortBy;
-      if (typesIn != null && typesIn.isNotEmpty) queryParams['types'] = typesIn.join(',');
-      if (status != null && status != 'All') queryParams['status'] = status;
+    if (typesIn != null && typesIn.isNotEmpty) queryParams['types'] = typesIn.join(',');
+    if (status != null && status != 'All') queryParams['status'] = status;
 
-      final response = await _api.get('transactions', queryParams: queryParams);
-      final List<dynamic> data = response['data'];
-      
-      return data.map((json) => TransactionModel.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      debugPrint('Error getting transactions: $e');
-      return [];
+    final response = await _api.get('transactions', queryParams: queryParams);
+    
+    if (response == null) return [];
+    
+    dynamic rawData = response['data'];
+    List<dynamic> list = [];
+    
+    if (rawData is List) {
+      list = rawData;
+    } else if (rawData is Map && rawData['data'] is List) {
+      list = rawData['data'];
+    } else if (response is List) {
+      list = response;
     }
+
+    return list.map((json) => TransactionModel.fromJson(json as Map<String, dynamic>)).toList();
   }
 
   Future<int> getTransactionsCount({
     List<String>? typesIn,
     String? status,
   }) async {
-    try {
-      final Map<String, String> queryParams = {};
-      if (typesIn != null && typesIn.isNotEmpty) queryParams['types'] = typesIn.join(',');
-      if (status != null && status != 'All') queryParams['status'] = status;
+    final Map<String, String> queryParams = {};
+    if (typesIn != null && typesIn.isNotEmpty) queryParams['types'] = typesIn.join(',');
+    if (status != null && status != 'All') queryParams['status'] = status;
 
-      final response = await _api.get('transactions/count', queryParams: queryParams);
-      return response['total'] as int? ?? 0;
-    } catch (e) {
-      debugPrint('Error getting transactions count: $e');
-      return 0;
-    }
+    final response = await _api.get('transactions/count', queryParams: queryParams);
+    if (response == null) return 0;
+    
+    return response['total'] as int? ?? response['count'] as int? ?? 0;
   }
 
   Future<List<TransactionModel>> getTransactionsByShareholderId(String shareholderId) async {
-    try {
-      final response = await _api.get('transactions/shareholder/$shareholderId');
-      final List<dynamic> data = response['data'];
-      return data.map((json) => TransactionModel.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      debugPrint('Error getting transactions for shareholder: $e');
-      return [];
-    }
+    final response = await _api.get('transactions/shareholder/$shareholderId');
+    if (response == null) return [];
+    final List<dynamic> data = response is List ? response : (response['data'] ?? []);
+    return data.map((json) => TransactionModel.fromJson(json as Map<String, dynamic>)).toList();
   }
 
   Future<List<TransactionModel>> getUserTransactions({
@@ -67,44 +71,46 @@ class TransactionRepository {
     int limit = 5,
     List<String>? typesIn,
   }) async {
-    try {
-      final Map<String, String> queryParams = {'limit': limit.toString()};
-      if (typesIn != null && typesIn.isNotEmpty) queryParams['types'] = typesIn.join(',');
+    final Map<String, String> queryParams = {'limit': limit.toString()};
+    if (typesIn != null && typesIn.isNotEmpty) queryParams['types'] = typesIn.join(',');
 
-      final response = await _api.get('transactions/shareholder/$shareholderId', queryParams: queryParams);
-      final List<dynamic> data = response['data'];
-      return data.map((json) => TransactionModel.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      debugPrint('Error getting user transactions: $e');
-      return [];
-    }
+    final response = await _api.get('transactions/shareholder/$shareholderId', queryParams: queryParams);
+    if (response == null) return [];
+    
+    final List<dynamic> data = response is List ? response : (response['data'] ?? []);
+    return data.map((json) => TransactionModel.fromJson(json as Map<String, dynamic>)).toList();
   }
 
+  /// 🚀 STABLE FIX: Fetches history via Query Parameters to avoid 404 "Route not found" errors.
   Future<List<TransactionModel>> getTransactionsByReferenceId(String referenceId) async {
-    try {
-      final response = await _api.get('transactions/reference/$referenceId');
-      final List<dynamic> data = response['data'];
-      return data.map((json) => TransactionModel.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      debugPrint('Error getting transactions by reference: $e');
-      return [];
+    // This will hit: /api/transactions?reference_id=...
+    debugPrint('🚀 [TX_REPO] CALLING: /api/transactions?reference_id=$referenceId');
+    
+    final response = await _api.get('transactions', queryParams: {
+      'reference_id': referenceId,
+      'per_page': '100', 
+    });
+    
+    if (response == null) return [];
+    
+    dynamic rawData = response['data'];
+    List<dynamic> list = [];
+    
+    if (rawData is List) {
+      list = rawData;
+    } else if (rawData is Map && rawData['data'] is List) {
+      list = rawData['data'];
     }
+    
+    return list.map((json) => TransactionModel.fromJson(json as Map<String, dynamic>)).toList();
   }
 
   Future<void> deleteTransaction(String id) async {
-    try {
-      await _api.delete('transactions/$id');
-    } catch (e) {
-      throw Exception('Failed to delete transaction: $e');
-    }
+    await _api.delete('transactions/$id');
   }
 
   Future<void> insertTransaction(Map<String, dynamic> data) async {
-    try {
-      await _api.post('transactions', body: data);
-    } catch (e) {
-      throw Exception('Failed to record transaction history: $e');
-    }
+    await _api.post('transactions', body: data);
   }
 
   Future<void> logActivity({

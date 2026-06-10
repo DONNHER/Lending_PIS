@@ -5,14 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletes; // Import the SoftDeletes trait
 use App\Traits\Loggable;
 use App\Traits\AdvancedDataControls;
 use App\Traits\Versionable;
 
 class Shareholder extends Model
 {
-    use HasFactory, HasUuids, Loggable, AdvancedDataControls, SoftDeletes, Versionable;
+    use HasFactory, HasUuids, Loggable, AdvancedDataControls, Versionable, SoftDeletes; // Use the SoftDeletes trait
+
+    /**
+     * Disable standard Eloquent timestamps.
+     * We override the methods to ensure Laravel NEVER tries to use updated_at
+     * because the column is missing in the database.
+     */
+    public $timestamps = false;
+
+    public function getUpdatedAtColumn() { return null; }
+    public function getCreatedAtColumn() { return 'created_at'; }
 
     protected $fillable = [
         'user_id',

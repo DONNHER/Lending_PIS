@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../app_theme.dart';
-import '../viewmodels/auth_viewmodel.dart';
-import '../widgets/auth_text_field.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/widgets/auth_text_field.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});

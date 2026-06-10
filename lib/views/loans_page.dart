@@ -12,21 +12,31 @@ import 'loan_details_page.dart';
 
 class LoansPage extends StatelessWidget {
   final String? shareholderId;
+  final String? shareholderName;
 
   const LoansPage({
     super.key,
     this.shareholderId,
+    this.shareholderName,
   });
 
   @override
   Widget build(BuildContext context) {
-    // 🚀 Uses the global LoanRequestViewModel provided in main.dart
-    return const _LoansBody();
+    return _LoansBody(
+      initialShareholderId: shareholderId,
+      initialShareholderName: shareholderName,
+    );
   }
 }
 
 class _LoansBody extends StatefulWidget {
-  const _LoansBody();
+  final String? initialShareholderId;
+  final String? initialShareholderName;
+
+  const _LoansBody({
+    this.initialShareholderId,
+    this.initialShareholderName,
+  });
 
   @override
   State<_LoansBody> createState() => _LoansBodyState();
@@ -36,10 +46,18 @@ class _LoansBodyState extends State<_LoansBody> {
   @override
   void initState() {
     super.initState();
-    // Ensure data is loaded if this is the first time or context changed
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final vm = context.read<LoanRequestViewModel>();
-      vm.fetchLoanRequests();
+      
+      // If we came from a specific shareholder profile, apply filter immediately
+      if (widget.initialShareholderId != null) {
+        vm.setShareholderFilter(
+          widget.initialShareholderId!, 
+          widget.initialShareholderName ?? 'Shareholder'
+        );
+      } else {
+        vm.fetchLoanRequests();
+      }
     });
   }
 
@@ -49,83 +67,103 @@ class _LoansBodyState extends State<_LoansBody> {
       builder: (context, viewModel, _) {
         return Scaffold(
           backgroundColor: const Color(0xFFFDF8F5),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Loans Management', 
+              style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+                onPressed: () => viewModel.fetchLoanRequests(forceRefresh: true),
+                tooltip: 'Refresh Loans',
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
           body: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(context, viewModel),
-                if (viewModel.errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      viewModel.errorMessage!,
-                      style: const TextStyle(color: AppTheme.error),
-                    ),
-                  ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+            child: RefreshIndicator(
+              onRefresh: () async => viewModel.fetchLoanRequests(forceRefresh: true),
+              color: const Color(0xFFC06C4D),
+              child: Column(
+                children: [
+                  _buildHeader(context, viewModel),
+                  if (viewModel.errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        viewModel.errorMessage!,
+                        style: const TextStyle(color: AppTheme.error),
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        children: [
-                          LoanRequestsTable(
-                            loanRequests: viewModel.loanRequests,
-                            onView: (req) {
-                              Widget destinationPage;
-                              final status = req.status.toString().toLowerCase();
-
-                              if (status.contains('pending')) {
-                                destinationPage = LoanEvaluationPage(request: req);
-                              }
-                              else if (status.contains('approved')) {
-                                destinationPage = LoanApprovalPage(initialRequest: req);
-                              }
-                              else {
-                                destinationPage = LoanDetailsPage(loanId: req.id, shareholderId: req.shareholderId);
-                              }
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => destinationPage),
-                              ).then((_) => viewModel.fetchLoanRequests(forceRefresh: true));
-                            },
-                          ),
-                          // 🚀 Only show full loading if initialized for the first time
-                          if (viewModel.isLoading && !viewModel.isInitialized)
-                            Container(
-                              color: Colors.white.withOpacity(0.6),
-                              child: const Center(
-                                child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
-                              ),
+                    ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.02),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                        ],
+                          ],
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          children: [
+                            LoanRequestsTable(
+                              loanRequests: viewModel.loanRequests,
+                              onView: (req) {
+                                Widget destinationPage;
+                                final status = req.status.toString().toLowerCase();
+
+                                if (status.contains('pending')) {
+                                  destinationPage = LoanEvaluationPage(request: req);
+                                }
+                                else if (status.contains('approved')) {
+                                  destinationPage = LoanApprovalPage(initialRequest: req);
+                                }
+                                else {
+                                  destinationPage = LoanDetailsPage(loanId: req.id, shareholderId: req.shareholderId);
+                                }
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => destinationPage),
+                                ).then((_) => viewModel.fetchLoanRequests(forceRefresh: true));
+                              },
+                            ),
+                            if (viewModel.isLoading && !viewModel.isInitialized)
+                              Container(
+                                color: Colors.white.withOpacity(0.6),
+                                child: const Center(
+                                  child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                PageTurner(
-                  currentPage: viewModel.currentPage,
-                  totalPages: viewModel.totalPages,
-                  totalRows: viewModel.totalRows,
-                  rowsPerPage: viewModel.rowsPerPage,
-                  onPageChanged: (page) => viewModel.setPage(page),
-                  onRowsPerPageChanged: (val) {
-                    if (val != null) viewModel.setRowsPerPage(val);
-                  },
-                ),
-              ],
+                  PageTurner(
+                    currentPage: viewModel.currentPage,
+                    totalPages: viewModel.totalPages,
+                    totalRows: viewModel.totalRows,
+                    rowsPerPage: viewModel.rowsPerPage,
+                    onPageChanged: (page) => viewModel.setPage(page),
+                    onRowsPerPageChanged: (val) {
+                      if (val != null) viewModel.setRowsPerPage(val);
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -143,17 +181,18 @@ class _LoansBodyState extends State<_LoansBody> {
             children: [
               if (viewModel.filteredShareholderId != null) ...[
                 InputChip(
-                  label: const Text('Filtered Shareholder'),
+                  label: Text(viewModel.filteredShareholderName ?? 'Filtered Shareholder'),
                   onDeleted: () => viewModel.clearShareholderFilter(),
                   deleteIconColor: Colors.white,
                   backgroundColor: const Color(0xFFC06C4D),
                   labelStyle: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 const SizedBox(width: 12),
               ],
               _buildFilterButton(
                 context: context,
-                label: viewModel.selectedStatus == null ? 'All' : viewModel.selectedStatus!,
+                label: viewModel.selectedStatus == null ? 'All Status' : viewModel.selectedStatus!,
                 options: [
                   'All',
                   'Active',
@@ -174,18 +213,6 @@ class _LoansBodyState extends State<_LoansBody> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (viewModel.filteredShareholderId != null) ...[
-                IconButton(
-                  tooltip: 'Back to Profile',
-                  icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF32211A)),
-                  onPressed: () => Navigator.maybePop(context),
-                  style: IconButton.styleFrom(
-                    hoverColor: const Color(0xFF32211A).withOpacity(0.04),
-                    padding: const EdgeInsets.all(12),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.push(

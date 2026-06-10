@@ -18,8 +18,21 @@ class UpdateInterestPage extends StatelessWidget {
   }
 }
 
-class _UpdateInterestBody extends StatelessWidget {
+class _UpdateInterestBody extends StatefulWidget {
   const _UpdateInterestBody();
+
+  @override
+  State<_UpdateInterestBody> createState() => _UpdateInterestBodyState();
+}
+
+class _UpdateInterestBodyState extends State<_UpdateInterestBody> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UpdateInterestViewModel>().init();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,30 +40,52 @@ class _UpdateInterestBody extends StatelessWidget {
       builder: (context, viewModel, _) {
         return Scaffold(
           backgroundColor: const Color(0xFFFDF8F5),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Interest Rate Settings', 
+              style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+                onPressed: () => viewModel.loadData(forceRefresh: true),
+                tooltip: 'Refresh Data',
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left Side: Current Rate & Form
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      children: [
-                        _buildCurrentRateCard(viewModel),
-                        const SizedBox(height: 24),
-                        _buildUpdateForm(context, viewModel),
-                      ],
+            child: RefreshIndicator(
+              onRefresh: () async => viewModel.loadData(forceRefresh: true),
+              color: const Color(0xFFC06C4D),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left Side: Current Rate & Form
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          _buildCurrentRateCard(viewModel),
+                          const SizedBox(height: 24),
+                          _buildUpdateForm(context, viewModel),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 24),
-                  // Right Side: Audit Log
-                  Expanded(
-                    flex: 1,
-                    child: _buildAuditLogCard(viewModel),
-                  ),
-                ],
+                    const SizedBox(width: 24),
+                    // Right Side: Audit Log
+                    Expanded(
+                      flex: 1,
+                      child: _buildAuditLogCard(viewModel),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../app_theme.dart';
 import '../models/lending_models.dart';
 import '../models/user_model.dart';
+import '../models/activity_log_model.dart';
 import '../repositories/shareholder_repository.dart';
 import '../repositories/transaction_repository.dart';
 import '../repositories/lending_repository.dart';
@@ -15,11 +16,13 @@ import 'activity_logs_page.dart';
 import 'add_share_capital_page.dart';
 
 class ShareholderDetailPage extends StatelessWidget {
-  final String shareholderId;
+  final String? shareholderId;
+  final String? userId;
 
   const ShareholderDetailPage({
     super.key,
-    required this.shareholderId,
+    this.shareholderId,
+    this.userId,
   });
 
   @override
@@ -32,6 +35,7 @@ class ShareholderDetailPage extends StatelessWidget {
         activityRepo: context.read<ActivityLogRepository>(),
         authRepo: context.read<AuthRepository>(),
         shareholderId: shareholderId,
+        userId: userId,
       ),
       child: const _ShareholderDetailBody(),
     );
@@ -128,8 +132,8 @@ class _ShareholderDetailBody extends StatelessWidget {
                           _buildInfoCard(
                             title: "Capital Contributions",
                             trailing: TextButton.icon(
-                              onPressed: () {
-                                Navigator.push(
+                              onPressed: () async {
+                                final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => AddShareCapitalPage(
@@ -137,6 +141,10 @@ class _ShareholderDetailBody extends StatelessWidget {
                                     ),
                                   ),
                                 );
+                                
+                                if (result == true && context.mounted) {
+                                  viewModel.fetchDetails();
+                                }
                               },
                               icon: const Icon(Icons.account_balance_wallet_outlined, size: 16),
                               label: const Text('Add Capital', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
@@ -188,6 +196,7 @@ class _ShareholderDetailBody extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) => LoansPage(
                                   shareholderId: sh.id,
+                                  shareholderName: sh.fullName,
                                 ),
                               ),
                             );
@@ -235,6 +244,13 @@ class _ShareholderDetailBody extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 40),
+                const Text(
+                  'Recent Transactions',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                ),
+                const SizedBox(height: 16),
+                _buildTransactionTable(viewModel.activities),
+                const SizedBox(height: 32),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -249,6 +265,7 @@ class _ShareholderDetailBody extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => ActivityLogsPage(
                               shareholderId: sh.id,
+                              userId: sh.userId,
                             ),
                           ),
                         );
@@ -258,7 +275,7 @@ class _ShareholderDetailBody extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildActivityTable(viewModel.activities),
+                _buildActivityLogTable(viewModel.recentActivityLogs),
                 const SizedBox(height: 32),
                 Align(
                   alignment: Alignment.centerRight,
@@ -360,22 +377,28 @@ class _ShareholderDetailBody extends StatelessWidget {
           InkWell(
             onTap: isStatus ? onStatusTap : null,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start, // Align to top for multi-line text
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 16, color: AppTheme.textMuted),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2), // Align icon with the first line of text
+                    child: Icon(icon, size: 16, color: AppTheme.textMuted),
+                  ),
                   const SizedBox(width: 6),
                 ],
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: isStatus ? Colors.green : AppTheme.textDark,
-                    decoration: isStatus ? TextDecoration.underline : null,
+                Expanded( // Added Expanded to allow the value (like a long email) to wrap to the next line
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isStatus ? Colors.green : AppTheme.textDark,
+                      decoration: isStatus ? TextDecoration.underline : null,
+                    ),
                   ),
                 ),
                 if (showMeter) ...[
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   const Icon(Icons.speed, size: 20, color: AppTheme.textMuted),
                 ]
               ],
@@ -386,7 +409,7 @@ class _ShareholderDetailBody extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityTable(List<TransactionModel> activities) {
+  Widget _buildTransactionTable(List<TransactionModel> activities) {
     final dateFormat = DateFormat('MMM dd, yyyy');
     final currencyFormat = NumberFormat.currency(symbol: '₱ ', decimalDigits: 2);
 
@@ -421,7 +444,7 @@ class _ShareholderDetailBody extends StatelessWidget {
               child: Text('No recent activities found', style: TextStyle(color: AppTheme.textMuted)),
             )
           else
-            ...activities.take(2).map((tx) {
+            ...activities.take(5).map((tx) {
               final dynamic txDate = tx.date;
               final String typeLabel = tx.type.toString().toUpperCase();
               final String referenceId = tx.referenceId.toString();
@@ -459,6 +482,72 @@ class _ShareholderDetailBody extends StatelessWidget {
                               ? Colors.green
                               : Colors.orange,
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityLogTable(List<ActivityLogModel> logs) {
+    final dateFormat = DateFormat('MMM dd, yyyy HH:mm');
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: const BoxDecoration(
+              color: Color(0xFFC06C4D),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+            ),
+            child: const Row(
+              children: [
+                Expanded(flex: 3, child: Text('Date & Time', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                Expanded(flex: 3, child: Text('Action', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                Expanded(flex: 6, child: Text('Description', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+              ],
+            ),
+          ),
+          if (logs.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Text('No recent logs found', style: TextStyle(color: AppTheme.textMuted)),
+            )
+          else
+            ...logs.take(5).map((log) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Text(dateFormat.format(log.createdAt), style: const TextStyle(fontSize: 13)),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(log.action, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
+                    Expanded(
+                      flex: 6,
+                      child: Text(
+                        log.description,
+                        style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],

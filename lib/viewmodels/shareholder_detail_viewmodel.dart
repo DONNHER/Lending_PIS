@@ -15,7 +15,8 @@ class ShareholderDetailViewModel extends ChangeNotifier {
   final LendingRepository _lendingRepo;
   final ActivityLogRepository _activityRepo;
   final AuthRepository _authRepo;
-  final String shareholderId;
+  final String? shareholderId;
+  final String? userId;
 
   ShareholderModel? _shareholder;
   List<TransactionModel> _activities = [];
@@ -42,7 +43,8 @@ class ShareholderDetailViewModel extends ChangeNotifier {
     required LendingRepository lendingRepo,
     required ActivityLogRepository activityRepo,
     required AuthRepository authRepo,
-    required this.shareholderId,
+    this.shareholderId,
+    this.userId,
   })  : _shareholderRepo = shareholderRepo,
         _transactionRepo = transactionRepo,
         _lendingRepo = lendingRepo,
@@ -65,64 +67,94 @@ class ShareholderDetailViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    debugPrint('DEBUG: [ShareholderDetailVM] fetchDetails started. Params - shareholderId: "$shareholderId", userId: "$userId"');
+
     try {
-      _shareholder = await _shareholderRepo.getShareholderById(shareholderId);
+      // 1. Try to find the shareholder record
+      if (shareholderId != null && shareholderId!.isNotEmpty) {
+        debugPrint('DEBUG: [ShareholderDetailVM] Attempting fetch by Shareholder ID: $shareholderId');
+        _shareholder = await _shareholderRepo.getShareholderById(shareholderId!);
+        if (_shareholder != null) debugPrint('DEBUG: [ShareholderDetailVM] Found via Shareholder ID');
+      }
       
-      if (_shareholder == null) {
-        throw Exception('Shareholder not found');
+      // 2. If not found by SH ID, try by User ID (Checking for existing shareholder link)
+      if (_shareholder == null && userId != null && userId!.isNotEmpty) {
+        debugPrint('DEBUG: [ShareholderDetailVM] Attempting fetch by User ID (Shareholder lookup): $userId');
+        _shareholder = await _shareholderRepo.getShareholderByUserId(userId!);
+        if (_shareholder != null) debugPrint('DEBUG: [ShareholderDetailVM] Found via User ID lookup');
       }
 
-      // 1. Fetch Transactions
-      _activities = await _transactionRepo.getUserTransactions(shareholderId: shareholderId, limit: 5);
+      // 3. Fallback: If still null, try to get basic user info (for non-shareholders or newly registered)
+      if (_shareholder == null && userId != null && userId!.isNotEmpty) {
+        debugPrint('DEBUG: [ShareholderDetailVM] Attempting fallback fetch from general Users table with userId: $userId');
+        _shareholder = await _shareholderRepo.getUserById(userId!);
+        if (_shareholder != null) debugPrint('DEBUG: [ShareholderDetailVM] Found via general User fallback');
+      }
+      
+      if (_shareholder == null) {
+        debugPrint('DEBUG: [ShareholderDetailVM] FAILED: No record found for SH_ID: $shareholderId or U_ID: $userId');
+        throw Exception('User not found');
+      }
 
-      // 2. Fetch Activity Logs
-      if (_shareholder!.userId.isNotEmpty) {
+      final String actualShId = _shareholder!.id;
+      final String actualUId = _shareholder!.userId;
+      debugPrint('DEBUG: [ShareholderDetailVM] Resolved Profile - actualShId: "$actualShId", actualUId: "$actualUId"');
+
+      // 4. Fetch Transactions (only if it's a shareholder)
+      if (actualShId.isNotEmpty) {
+        _activities = await _transactionRepo.getUserTransactions(shareholderId: actualShId, limit: 5);
+      }
+
+      // 5. Fetch Activity Logs
+      if (actualUId.isNotEmpty) {
         _recentActivityLogs = await _activityRepo.getActivityLogs(
-          userId: _shareholder!.userId,
+          userId: actualUId,
           limit: 5,
         );
       }
 
-      // 3. Fetch Loans and calculate stats
-      _loans = await _lendingRepo.getLoansByShareholderId(shareholderId);
-      
-      outstandingBalance = 0;
-      activeLoans = 0;
-      totalLoanAmount = 0;
-      DateTime? earliestDue;
+      // 6. Fetch Loans and calculate stats (only if it's a shareholder)
+      if (actualShId.isNotEmpty) {
+        _loans = await _lendingRepo.getLoansByShareholderId(actualShId);
+        
+        outstandingBalance = 0;
+        activeLoans = 0;
+        totalLoanAmount = 0;
+        DateTime? earliestDue;
 
-      for (var loan in _loans) {
-        totalLoanAmount += loan.principalAmount;
-        if (loan.status.toLowerCase() == 'active' || loan.status.toLowerCase() == 'released') {
-          activeLoans++;
-          outstandingBalance += loan.remainingBalance;
-          
-          if (loan.nextRepaymentDate != null) {
-            if (earliestDue == null || loan.nextRepaymentDate!.isBefore(earliestDue)) {
-              earliestDue = loan.nextRepaymentDate;
+        for (var loan in _loans) {
+          totalLoanAmount += loan.principalAmount;
+          if (loan.status.toLowerCase() == 'active' || loan.status.toLowerCase() == 'released') {
+            activeLoans++;
+            outstandingBalance += loan.remainingBalance;
+            
+            if (loan.nextRepaymentDate != null) {
+              if (earliestDue == null || loan.nextRepaymentDate!.isBefore(earliestDue)) {
+                earliestDue = loan.nextRepaymentDate;
+              }
             }
           }
         }
+        
+        repaymentDue = earliestDue ?? DateTime.now();
+
+        // 7. Calculate Total Paid from Transactions
+        final allPayments = await _transactionRepo.getUserTransactions(
+          shareholderId: actualShId, 
+          limit: 1000,
+          typesIn: ['Loan Payment']
+        );
+        totalPaid = allPayments.fold(0.0, (sum, tx) => sum + tx.amount);
+
+        // 8. Portfolio stats (Mocked until investment tables exist)
+        estimatedPortfolio = _shareholder!.totalShareCapital * 1.05;
+        investedFunds = 2;
+        roi = 5.0;
       }
-      
-      repaymentDue = earliestDue ?? DateTime.now();
-
-      // 4. Calculate Total Paid from Transactions
-      final allPayments = await _transactionRepo.getUserTransactions(
-        shareholderId: shareholderId, 
-        limit: 1000,
-        typesIn: ['Loan Payment']
-      );
-      totalPaid = allPayments.fold(0.0, (sum, tx) => sum + tx.amount);
-
-      // 5. Portfolio stats (Mocked until investment tables exist)
-      estimatedPortfolio = _shareholder!.totalShareCapital * 1.05;
-      investedFunds = 2;
-      roi = 5.0;
 
     } catch (e) {
       _errorMessage = e.toString();
-      debugPrint('Error in ShareholderDetailViewModel: $e');
+      debugPrint('DEBUG: [ShareholderDetailVM] EXCEPTION: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

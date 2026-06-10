@@ -169,8 +169,11 @@ class LendingRepository {
     return 0.0;
   }
 
-  Future<List<TransactionModel>> getRecentLoanTransactions({int limit = 5}) async {
-    final response = await _api.get('/transactions', queryParams: {'limit': limit.toString()});
+  Future<List<TransactionModel>> getRecentLoanTransactions({int limit = 5, String? loanId}) async {
+    final Map<String, String> params = {'limit': limit.toString()};
+    if (loanId != null) params['reference_id'] = loanId;
+    
+    final response = await _api.get('/transactions', queryParams: params);
     if (response != null && response['success'] == true) {
       final List<dynamic> data = response['data'];
       return data.map((e) => TransactionModel.fromJson(e)).toList();
@@ -204,28 +207,41 @@ class LendingRepository {
 
   Future<void> updateLoanRequestStatus(dynamic id, dynamic status, {LoanRequestModel? request}) async {
     final statusString = status is String ? status : status.toString().split('.').last;
-    await _api.put('/loan-requests/$id/status', body: {
+    debugPrint('DEBUG: [LendingRepo] updateLoanRequestStatus for ID: $id to status: $statusString');
+    
+    // We send a minimal payload to avoid server-side validation issues with unexpected fields
+    final body = {
       'status': statusString,
-      if (request != null) ...request.toJson(),
-    });
+      if (request != null) 'requested_amount': request.requestedAmount,
+      if (request != null) 'tenure_months': request.tenureMonths,
+      if (request != null) 'interest_rate': request.interestRate,
+    };
+    
+    await _api.put('/loan-requests/$id/status', body: body);
   }
 
   Future<void> disburseLoan(dynamic loanOrRequest) async {
     final id = (loanOrRequest is LoanModel) ? loanOrRequest.loanRequestId : (loanOrRequest is LoanRequestModel ? loanOrRequest.id : loanOrRequest);
+    debugPrint('DEBUG: [LendingRepo] disburseLoan triggered for Request ID: $id');
     await _api.post('/loan-requests/$id/disburse');
   }
 
-  Future<void> recordLoanPayment({
+  Future<TransactionModel?> recordLoanPayment({
     required String loanId,
     required double amount,
     required String method,
     String? reference,
   }) async {
-    await _api.post('/loans/$loanId/payments', body: {
+    final response = await _api.post('/loans/$loanId/payments', body: {
       'amount': amount,
       'method': method,
       'reference': reference,
     });
+    
+    if (response != null && response['success'] == true && response['data'] != null) {
+      return TransactionModel.fromJson(response['data']['transaction']);
+    }
+    return null;
   }
 
   Future<int> getActiveLoansCount() async {

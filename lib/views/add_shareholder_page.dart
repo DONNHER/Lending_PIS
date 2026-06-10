@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_theme.dart';
 import '../viewmodels/add_shareholder_viewmodel.dart';
+import 'shareholder_detail_page.dart';
 
 class AddShareholderPage extends StatelessWidget {
   const AddShareholderPage({super.key});
@@ -294,10 +295,18 @@ class AddShareholderPage extends StatelessWidget {
                     final success = await viewModel.createAccount();
                     if (success) {
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Shareholder created successfully')),
-                        );
-                        Navigator.pop(context, true);
+                        final created = viewModel.createdShareholder;
+                        if (created != null) {
+                          // Redirect to detail page instead of showing success dialog
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ShareholderDetailPage(shareholderId: created.id),
+                            ),
+                          );
+                        } else {
+                          Navigator.pop(context, true);
+                        }
                       }
                     } else if (viewModel.errorMessage != null) {
                       if (context.mounted) {

@@ -6,6 +6,8 @@ import '../repositories/shareholder_repository.dart';
 import '../repositories/transaction_repository.dart';
 import '../viewmodels/add_share_capital_viewmodel.dart';
 import '../models/shareholder_model.dart';
+import 'ShareHolder_screens/details_page/repayment_details.dart';
+
 class AddShareCapitalPage extends StatelessWidget {
   final ShareholderModel shareholder;
 
@@ -87,7 +89,6 @@ class _AddShareCapitalBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✨ UPDATED: Changed from 'Select a Loan' dropdown to an explicit read-only Account Owner string field
           _buildFieldLabel('Shareholder Account Owner'),
           TextField(
             readOnly: true,
@@ -99,7 +100,6 @@ class _AddShareCapitalBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          // ✨ UPDATED: Updated labels to focus strictly on Capital Investment actions
           _buildFieldLabel('Capital Addition Amount'),
           TextField(
             controller: viewModel.amountController,
@@ -129,7 +129,6 @@ class _AddShareCapitalBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          // ✨ UPDATED: Changed content presentation to clarify capital accounting structures
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -163,7 +162,6 @@ class _AddShareCapitalBody extends StatelessWidget {
   }
 
   Widget _buildSummaryCard(AddShareCapitalViewModel viewModel, NumberFormat currencyFormat) {
-    // Safely parse user inputs to show real-time compounding visual feedback
     final double addedAmount = double.tryParse(viewModel.amountController.text) ?? 0.0;
     final double updatedTotalCapital = viewModel.shareholder.totalShareCapital + addedAmount;
 
@@ -176,7 +174,6 @@ class _AddShareCapitalBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✨ UPDATED: Re-branded card headers to display Capital Account summaries instead of Loans
           const Text(
             'Portfolio Summary',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
@@ -234,17 +231,27 @@ class _AddShareCapitalBody extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         SizedBox(
-          width: 240, // Expanded size tracking width constraints cleanly
+          width: 240,
           child: ElevatedButton(
             onPressed: viewModel.isLoading
                 ? null
                 : () async {
-              final success = await viewModel.executeInvestment();
-              if (success && context.mounted) {
+              final transaction = await viewModel.executeInvestment();
+              if (transaction != null && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Capital deposit executed successfully')),
                 );
-                Navigator.pop(context, true);
+                
+                // 🚀 Redirect to the Transaction Detail (Receipt) page
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RepaymentDetailsScreen(transaction: transaction),
+                  ),
+                ).then((_) {
+                  // After they close the receipt, return 'true' to the profile page to refresh
+                  if (context.mounted) Navigator.pop(context, true);
+                });
               }
             },
             style: ElevatedButton.styleFrom(

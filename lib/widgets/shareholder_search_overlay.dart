@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../app_theme.dart';
 import '../models/shareholder_model.dart';
 
@@ -32,19 +33,27 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   OverlayEntry? _overlayEntry;
+  
+  // Track if mouse is over dropdown to prevent closure on focus loss (Web workaround)
+  bool _isMouseOverDropdown = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
+    _controller = TextEditingController(text: widget.initialValue ?? '');
     _focusNode.addListener(_onFocusChange);
   }
 
   void _onFocusChange() {
+    if (!mounted) return;
+    
     if (!_focusNode.hasFocus) {
-      // Small delay to allow the overlay's ListTile onTap to fire before the overlay is removed
+      // 🚀 Web fix: If focus is lost but mouse is over dropdown, don't close yet.
+      // This allows the onTap event to process.
+      if (kIsWeb && _isMouseOverDropdown) return;
+
       Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted && !_focusNode.hasFocus) {
+        if (mounted && !_focusNode.hasFocus && !_isMouseOverDropdown) {
           _removeOverlay();
         }
       });
@@ -60,8 +69,8 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
         _overlayEntry?.markNeedsBuild();
       });
     }
-    if (widget.initialValue != oldWidget.initialValue && widget.initialValue != null) {
-      _controller.text = widget.initialValue!;
+    if (widget.initialValue != oldWidget.initialValue) {
+      _controller.text = widget.initialValue ?? '';
     }
   }
 
@@ -72,8 +81,10 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
   }
 
   void _removeOverlay() {
+    if (_overlayEntry == null) return;
     _overlayEntry?.remove();
     _overlayEntry = null;
+    _isMouseOverDropdown = false;
   }
 
   OverlayEntry _buildOverlayEntry() {
@@ -91,57 +102,81 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
             elevation: 8,
             borderRadius: BorderRadius.circular(12),
             color: Colors.white,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 280),
-              child: widget.results.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text(
-                        'No shareholders found',
-                        style: TextStyle(color: AppTheme.textMuted),
-                      ),
-                    )
-                  : Scrollbar(
-                      controller: _scrollController,
-                      thumbVisibility: true,
-                      child: ListView.separated(
+            clipBehavior: Clip.antiAlias,
+            child: MouseRegion(
+              onEnter: (_) => _isMouseOverDropdown = true,
+              onExit: (_) {
+                _isMouseOverDropdown = false;
+                if (!_focusNode.hasFocus) _removeOverlay();
+              },
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: widget.results.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                          'No shareholders found',
+                          style: TextStyle(color: AppTheme.textMuted),
+                        ),
+                      )
+                    : Scrollbar(
                         controller: _scrollController,
-                        padding: EdgeInsets.zero,
-                        shrinkWrap: true,
-                        itemCount: widget.results.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, indent: 16, endIndent: 16),
-                        itemBuilder: (context, index) {
-                          final item = widget.results[index];
-                          return ListTile(
-                            dense: true,
-                            mouseCursor: SystemMouseCursors.click,
-                            title: Text(
-                              item.fullName,
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textDark),
-                            ),
-                            onTap: () {
-                              if (widget.navigateToDetail) {
-                                _controller.text = item.fullName;
-                              } else {
-                                // If it's a picker (like in loan application), clear text after selection
-                                _controller.clear();
-                                widget.onSearch('');
-                              }
-                              widget.onSelected?.call(item);
-                              _removeOverlay();
-                              _focusNode.unfocus();
-                            },
-                          );
-                        },
+                        thumbVisibility: true,
+                        child: ListView.separated(
+                          controller: _scrollController,
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: widget.results.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                          itemBuilder: (context, index) {
+                            final item = widget.results[index];
+                            return ListTile(
+                              dense: false,
+                              mouseCursor: SystemMouseCursors.click,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              title: Text(
+                                item.fullName,
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textDark),
+                              ),
+                              subtitle: Text(
+                                '${item.role.toUpperCase()} • ${item.email}',
+                                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: const Icon(Icons.chevron_right, size: 16, color: AppTheme.textMuted),
+                              onTap: () {
+                                _handleSelection(item);
+                              },
+                            );
+                          },
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _handleSelection(ShareholderModel item) {
+    _isMouseOverDropdown = false;
+    _removeOverlay();
+    _focusNode.unfocus();
+    
+    if (widget.navigateToDetail) {
+      _controller.text = item.fullName;
+    } else {
+      _controller.clear();
+      widget.onSearch('');
+    }
+
+    if (mounted) {
+      widget.onSelected?.call(item);
+    }
   }
 
   @override
@@ -171,7 +206,7 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
               } else {
                 _removeOverlay();
               }
-              setState(() {}); 
+              if (mounted) setState(() {}); 
             },
             onTap: () {
               if (_controller.text.isNotEmpty) _showOverlay();
@@ -187,7 +222,7 @@ class _ShareholderSearchOverlayState extends State<ShareholderSearchOverlay> {
                         widget.onSearch('');
                         widget.onSelected?.call(null);
                         _removeOverlay();
-                        setState(() {});
+                        if (mounted) setState(() {});
                       },
                     )
                   : null,
