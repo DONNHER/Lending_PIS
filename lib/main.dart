@@ -57,7 +57,7 @@ void main() async {
     );
   }
 
-  final apiBaseUrl = dotenv.env['API_URL'] ?? 'https://lending-pis.onrender.com/api';
+  final apiBaseUrl = dotenv.env['API_URL'] ?? 'https://lending-pis-1.onrender.com/api';
   final apiService = ApiService(baseUrl: apiBaseUrl);
   final cacheService = LocalCacheService();
 
