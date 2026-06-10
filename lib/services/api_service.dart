@@ -114,29 +114,46 @@ class ApiService {
     debugPrint('DEBUG: [ApiService] Response from $method $url: Status ${response.statusCode}');
     
     if (response.body.isEmpty) return null;
-    
-    final dynamic decoded = await compute(_parseJson, response.body);
-    
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return decoded;
-    } else {
-      if (response.statusCode == 401) {
-        debugPrint('DEBUG: [ApiService] 401 Unauthorized detected at $url. Content: ${response.body}');
-        onUnauthorized?.call();
-      }
 
-      String errorMessage = decoded['message'] ?? 'API Error ${response.statusCode}';
+    final contentType = response.headers['content-type'] ?? '';
+    
+    // Check if the response is actually JSON before trying to decode
+    if (!contentType.contains('application/json') && !response.body.startsWith('{') && !response.body.startsWith('[')) {
+      debugPrint('DEBUG: [ApiService] ERROR: Received HTML/Text instead of JSON. Status: ${response.statusCode}');
+      debugPrint('DEBUG: [ApiService] ERROR BODY: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
+      throw Exception('Server returned an error (${response.statusCode}). Please check server logs.');
+    }
+    
+    try {
+      final dynamic decoded = await compute(_parseJson, response.body);
       
-      if (response.statusCode == 422 && decoded['errors'] != null) {
-        debugPrint('DEBUG: [ApiService] Validation Error at $url: ${decoded['errors']}');
-        final Map<String, dynamic> errors = decoded['errors'];
-        final allErrors = errors.values.expand((e) => e as List).join(' ');
-        if (allErrors.isNotEmpty) {
-          errorMessage = allErrors;
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return decoded;
+      } else {
+        if (response.statusCode == 401) {
+          debugPrint('DEBUG: [ApiService] 401 Unauthorized detected at $url.');
+          onUnauthorized?.call();
         }
+
+        String errorMessage = 'API Error ${response.statusCode}';
+        if (decoded is Map && decoded.containsKey('message')) {
+          errorMessage = decoded['message'];
+        }
+        
+        if (response.statusCode == 422 && decoded is Map && decoded['errors'] != null) {
+          final Map<String, dynamic> errors = decoded['errors'];
+          final allErrors = errors.values.expand((e) => e as List).join(' ');
+          if (allErrors.isNotEmpty) {
+            errorMessage = allErrors;
+          }
+        }
+        
+        throw Exception(errorMessage);
       }
-      
-      throw Exception(errorMessage);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      debugPrint('DEBUG: [ApiService] JSON Parsing Error: $e');
+      throw Exception('Failed to parse server response.');
     }
   }
 }
