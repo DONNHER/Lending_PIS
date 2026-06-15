@@ -176,21 +176,22 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         }
 
+        // ✅ FIXED: Check MFA required first, return immediately
         if (result['mfa_required'] == true) {
-          bool shouldShowVerification = user == null || user.status != UserStatus.active || result['supabase_mfa'] == true;
+          _pendingMfaEmail = result['email'] ?? email;
+          _currentUser = user; 
+          _status = AuthStatus.mfaRequired;
           
-          if (shouldShowVerification) {
-            _pendingMfaEmail = result['email'] ?? email;
-            _currentUser = user; 
-            _status = AuthStatus.mfaRequired;
-            if (result['supabase_mfa'] == true) {
-               _mfaFactors = await _repository.listMfaFactors();
-            }
-            notifyListeners();
-            return false;
+          debugPrint('DEBUG: [AuthViewModel] MFA Required. Email: $_pendingMfaEmail, User Status: ${user?.status}');
+          
+          if (result['supabase_mfa'] == true) {
+            _mfaFactors = await _repository.listMfaFactors();
           }
+          notifyListeners();
+          return false;  // ✅ Return false to trigger MFA page
         }
 
+        // Only reached if MFA is NOT required
         if (user == null) {
            _status = AuthStatus.error;
            _errorMessage = 'Login succeeded but user profile was not found.';
@@ -209,6 +210,7 @@ class AuthViewModel extends ChangeNotifier {
         _currentUser = user;
         _status = AuthStatus.authenticated;
         await logActivity('LOGIN', 'User logged in successfully');
+        debugPrint('DEBUG: [AuthViewModel] Login successful. User: ${user.email}');
         notifyListeners();
         return true;
       } else {
@@ -220,6 +222,7 @@ class AuthViewModel extends ChangeNotifier {
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      debugPrint('DEBUG: [AuthViewModel] Login error: $_errorMessage');
       notifyListeners();
       return false;
     }
