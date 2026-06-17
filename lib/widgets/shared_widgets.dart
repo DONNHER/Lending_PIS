@@ -358,7 +358,7 @@ class ProductHeaderCard extends StatelessWidget {
               Switch(
                 value: isActive,
                 onChanged: (_) => onToggle(),
-                activeThumbColor: AppTheme.primary,
+                thumbColor: const WidgetStatePropertyAll(AppTheme.primary),
               ),
               Text(
                 isActive ? 'Active' : 'Inactive',

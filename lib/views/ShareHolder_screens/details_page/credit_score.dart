@@ -164,7 +164,7 @@ class _GaugePainter extends CustomPainter {
 
     // Draw Inner Dashed Arc
     final dashPaint = Paint()
-      ..color = Colors.grey.withValues(alpha: 100)
+      ..color = (Colors.grey as Color).withValues(alpha: 0.4) // Fixed alpha and cast
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 20), math.pi, math.pi, false, dashPaint);

@@ -135,7 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: Switch(
                       value: _notificationsEnabled,
                       onChanged: (value) => setState(() => _notificationsEnabled = value),
-                      activeThumbColor: AppTheme.primary,
+                      thumbColor: const WidgetStatePropertyAll(AppTheme.primary),
                     ),
                     onTap: () => setState(() => _notificationsEnabled = !_notificationsEnabled),
                   ),

@@ -372,7 +372,7 @@ class _AddEditGroceryProductPageState extends State<AddEditGroceryProductPage> {
                         Switch(
                           value: _isActive,
                           onChanged: (v) => setState(() => _isActive = v),
-                          activeThumbColor: AppTheme.primary,
+                          thumbColor: const WidgetStatePropertyAll(AppTheme.primary),
                         ),
                       ],
                     ),
