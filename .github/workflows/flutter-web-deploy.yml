@@ -16,14 +16,14 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.24.0'
+        flutter-version: '3.27.0'
         channel: 'stable'
 
     - name: Get dependencies
       run: flutter pub get
 
     - name: Build web release
-      run: flutter build web --release
+      run: flutter build web --base-href "/Lending_system/" --release --no-tree-shake-icons
 
     - name: Deploy to GitHub Pages (Lending_system)
       uses: peaceiris/actions-gh-pages@v3
