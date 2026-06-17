@@ -151,9 +151,17 @@ class AuthController extends Controller
         
         try {
             $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
-            $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
+            $sent = $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
+            
+            if (!$sent) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to send verification email. Please contact support.'
+                ], 500);
+            }
         } catch (\Exception $e) {
             Log::error("Resend Email Error during login: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Email service error'], 500);
         }
 
         return response()->json([
@@ -197,10 +205,16 @@ class AuthController extends Controller
 
         try {
             $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
-            $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
-            return response()->json(['success' => true, 'message' => 'Verification code resent.']);
+            $sent = $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
+            
+            if ($sent) {
+                return response()->json(['success' => true, 'message' => 'Verification code resent.']);
+            } else {
+                return response()->json(['success' => false, 'message' => 'Email delivery failed'], 500);
+            }
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Email failed'], 500);
+            Log::error("Resend MFA Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Email component error: ' . $e->getMessage()], 500);
         }
     }
 

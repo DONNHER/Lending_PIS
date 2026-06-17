@@ -25,7 +25,10 @@ class ResendService
             return false;
         }
 
-        $from = $from ?? config('mail.from.name') . ' <' . config('mail.from.address') . '>';
+        // Use onboarding email if none provided or for testing
+        $fromAddress = env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev');
+        $fromName = env('MAIL_FROM_NAME', 'Engr Canteen');
+        $from = $from ?? "$fromName <$fromAddress>";
         
         $payload = [
             'from' => $from,
@@ -39,15 +42,17 @@ class ResendService
         }
 
         try {
+            Log::info("Attempting to send email via Resend to: " . (is_array($to) ? implode(',', $to) : $to));
+            
             $response = Http::withToken($this->apiKey)
                 ->post("{$this->baseUrl}/emails", $payload);
 
             if ($response->successful()) {
-                Log::info("Email sent via Resend to: " . (is_array($to) ? implode(',', $to) : $to));
+                Log::info("Email sent successfully via Resend.");
                 return true;
             }
 
-            Log::error('Resend API Error: ' . $response->body());
+            Log::error('Resend API Error Response: ' . $response->status() . ' - ' . $response->body());
             return false;
         } catch (\Exception $e) {
             Log::error('Resend Service Exception: ' . $e->getMessage());
