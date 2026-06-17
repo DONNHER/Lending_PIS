@@ -42,17 +42,25 @@ class ResendService
         }
 
         try {
-            Log::info("Attempting to send email via Resend to: " . (is_array($to) ? implode(',', $to) : $to));
+            Log::debug("Resend API Request Details:", [
+                'to' => $payload['to'],
+                'from' => $payload['from'],
+                'subject' => $payload['subject']
+            ]);
             
             $response = Http::withToken($this->apiKey)
                 ->post("{$this->baseUrl}/emails", $payload);
 
+            // Log the full response from Resend for debugging
+            Log::debug("Resend API Response Status: " . $response->status());
+            Log::debug("Resend API Response Body: " . $response->body());
+
             if ($response->successful()) {
-                Log::info("Email sent successfully via Resend.");
+                Log::info("Email sent successfully via Resend to: " . (is_array($to) ? implode(',', $to) : $to));
                 return true;
             }
 
-            Log::error('Resend API Error Response: ' . $response->status() . ' - ' . $response->body());
+            Log::error('Resend API Error: Status ' . $response->status() . ' - Body: ' . $response->body());
             return false;
         } catch (\Exception $e) {
             Log::error('Resend Service Exception: ' . $e->getMessage());
