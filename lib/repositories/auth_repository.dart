@@ -81,7 +81,9 @@ class AuthRepository {
       });
 
       if (response != null && response['success'] == true) {
-        final String? token = response['token'] ?? (response['data'] is Map ? response['data']['token'] : null);
+        final String? token = response['token'] ?? 
+                             response['access_token'] ?? 
+                             (response['data'] is Map ? response['data']['token'] : null);
         
         if (token != null) {
           await _api.setToken(token);
@@ -93,6 +95,7 @@ class AuthRepository {
           'token': token,
           'mfa_required': response['mfa_required'] == true,
           'email': response['email'],
+          'supabase_mfa': response['supabase_mfa'] == true,
           'message': response['message'],
         };
       } else {

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import '../models/lending_models.dart';
-import '../models/activity_log_model.dart';
-import '../repositories/shareholder_repository.dart';
-import '../repositories/transaction_repository.dart';
-import '../repositories/lending_repository.dart';
-import '../repositories/activity_log_repository.dart';
-import '../repositories/auth_repository.dart';
-import '../models/shareholder_model.dart';
-import '../models/user_model.dart';
-import '../services/email_service.dart';
+import 'package:capstone_application/models/lending_models.dart';
+import 'package:capstone_application/models/activity_log_model.dart';
+import 'package:capstone_application/repositories/shareholder_repository.dart';
+import 'package:capstone_application/repositories/transaction_repository.dart';
+import 'package:capstone_application/repositories/lending_repository.dart';
+import 'package:capstone_application/repositories/activity_log_repository.dart';
+import 'package:capstone_application/repositories/auth_repository.dart';
+import 'package:capstone_application/models/shareholder_model.dart';
+import 'package:capstone_application/models/user_model.dart';
+import 'package:capstone_application/services/email_service.dart';
 
 class ShareholderDetailViewModel extends ChangeNotifier {
   final ShareholderRepository _shareholderRepo;

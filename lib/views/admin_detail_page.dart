@@ -12,6 +12,7 @@ import 'package:capstone_application/viewmodels/shareholder_detail_viewmodel.dar
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/views/activity_logs_page.dart';
 import 'package:capstone_application/views/mfa_enrollment_page.dart';
+import 'package:capstone_application/services/email_service.dart';
 
 class AdminDetailPage extends StatelessWidget {
   final String userId;
@@ -30,6 +31,7 @@ class AdminDetailPage extends StatelessWidget {
         lendingRepo: context.read<LendingRepository>(),
         activityRepo: context.read<ActivityLogRepository>(),
         authRepo: context.read<AuthRepository>(),
+        emailService: context.read<EmailService>(),
         userId: userId,
       ),
       child: const _AdminDetailBody(),

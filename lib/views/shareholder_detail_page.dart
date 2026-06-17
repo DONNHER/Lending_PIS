@@ -11,6 +11,7 @@ import '../repositories/lending_repository.dart';
 import '../repositories/activity_log_repository.dart';
 import '../repositories/auth_repository.dart';
 import '../viewmodels/shareholder_detail_viewmodel.dart';
+import '../services/email_service.dart';
 import 'loans_page.dart';
 import 'activity_logs_page.dart';
 import 'add_share_capital_page.dart';
@@ -34,6 +35,7 @@ class ShareholderDetailPage extends StatelessWidget {
         lendingRepo: context.read<LendingRepository>(),
         activityRepo: context.read<ActivityLogRepository>(),
         authRepo: context.read<AuthRepository>(),
+        emailService: context.read<EmailService>(),
         shareholderId: shareholderId,
         userId: userId,
       ),

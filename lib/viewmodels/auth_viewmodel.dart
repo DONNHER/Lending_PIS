@@ -38,10 +38,7 @@ class AuthViewModel extends ChangeNotifier {
   bool _rememberMe = false;
   
   Uint8List? _avatarBytes;
-  String? _avatarName;
-
   Uint8List? _idImageBytes;
-  String? _idImageName;
 
   // Supabase MFA State
   AuthMFAEnrollResponse? _mfaEnrollResponse;
@@ -161,8 +158,9 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
+      final normalizedEmail = email.trim().toLowerCase();
       final result = await _repository.login(
-        email: email.trim(),
+        email: normalizedEmail,
         password: password,
       );
 
@@ -176,9 +174,9 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         }
 
-        // ✅ FIXED: Check MFA required first, return immediately
+        // Check MFA required first, return immediately
         if (result['mfa_required'] == true) {
-          _pendingMfaEmail = result['email'] ?? email;
+          _pendingMfaEmail = result['email'] ?? normalizedEmail;
           _currentUser = user;
           _status = AuthStatus.mfaRequired;
 
@@ -188,7 +186,7 @@ class AuthViewModel extends ChangeNotifier {
             _mfaFactors = await _repository.listMfaFactors();
           }
           notifyListeners();
-          return false;  // ✅ Return false to trigger MFA page
+          return false; 
         }
 
         // Only reached if MFA is NOT required
@@ -319,7 +317,7 @@ class AuthViewModel extends ChangeNotifier {
       }
 
       final user = await _repository.verifyMfa(
-        email: _pendingMfaEmail!,
+        email: _pendingMfaEmail!.trim().toLowerCase(),
         code: code,
         remember: _rememberMe,
       );
@@ -357,7 +355,7 @@ class AuthViewModel extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
     try {
-      final success = await _repository.resendMfaCode(email);
+      final success = await _repository.resendMfaCode(email.trim().toLowerCase());
       _status = AuthStatus.mfaRequired;
       notifyListeners();
       return success;
@@ -381,32 +379,38 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
+      final normalizedEmail = email.trim().toLowerCase();
       final result = await _repository.register(
         username: username.trim(),
-        email: email.trim(),
+        email: normalizedEmail,
         password: password,
-        firstname: firstName.trim(),
-        lastname: lastName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         role: role,
       );
 
       if (result['mfa_required'] == true) {
-        _pendingMfaEmail = result['email'];
+        _pendingMfaEmail = result['email'] ?? normalizedEmail;
         _status = AuthStatus.mfaRequired; 
-        if (result.containsKey('user')) {
+        if (result['user'] != null) {
            _currentUser = result['user'];
         }
         notifyListeners();
         return true;
       }
       
-      if (result.containsKey('user')) {
+      if (result['user'] != null) {
         _currentUser = result['user'];
         _status = AuthStatus.authenticated;
+        await logActivity('REGISTER', 'User registered successfully');
         notifyListeners();
         return true;
+      } else {
+        _status = AuthStatus.error;
+        _errorMessage = 'Registration succeeded but user profile was not returned.';
+        notifyListeners();
+        return false;
       }
-      return false;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -421,7 +425,6 @@ class AuthViewModel extends ChangeNotifier {
       final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
       if (image != null) {
         _avatarBytes = await image.readAsBytes();
-        _avatarName = image.name;
         notifyListeners();
       }
     } catch (e) {
@@ -435,7 +438,6 @@ class AuthViewModel extends ChangeNotifier {
       final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
       if (image != null) {
         _idImageBytes = await image.readAsBytes();
-        _idImageName = image.name;
         notifyListeners();
       }
     } catch (e) {
@@ -454,7 +456,7 @@ class AuthViewModel extends ChangeNotifier {
     try {
       String? avatarUrl = _currentUser!.avatarUrl;
       if (_avatarBytes != null && _storageRepository != null) {
-        avatarUrl = await _storageRepository!.uploadFile(
+        avatarUrl = await _storageRepository.uploadFile(
           fileBytes: _avatarBytes!,
           fileName: 'avatar_${_currentUser!.id}.jpg',
           folder: 'avatars',
@@ -464,7 +466,7 @@ class AuthViewModel extends ChangeNotifier {
 
       String? idImageUrl = _currentUser!.idImageUrl;
       if (_idImageBytes != null && _storageRepository != null) {
-        idImageUrl = await _storageRepository!.uploadFile(
+        idImageUrl = await _storageRepository.uploadFile(
           fileBytes: _idImageBytes!,
           fileName: 'id_${_currentUser!.id}.jpg',
           folder: 'id-images',
@@ -473,8 +475,8 @@ class AuthViewModel extends ChangeNotifier {
       }
       
       final updatedUser = await _repository.updateProfile(
-        firstname: firstName,
-        lastname: lastName,
+        firstName: firstName,
+        lastName: lastName,
         address: address,
         avatarUrl: avatarUrl,
         idImageUrl: idImageUrl,
@@ -482,9 +484,7 @@ class AuthViewModel extends ChangeNotifier {
       
       _currentUser = updatedUser;
       _avatarBytes = null;
-      _avatarName = null;
       _idImageBytes = null;
-      _idImageName = null;
       _status = AuthStatus.authenticated;
       await logActivity('PROFILE_UPDATE', 'User updated their profile information');
       notifyListeners();
@@ -523,10 +523,10 @@ class AuthViewModel extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
     try {
-      final success = await _repository.requestPasswordReset(email);
+      final result = await _repository.requestPasswordReset(email.trim().toLowerCase());
       _status = AuthStatus.unauthenticated;
       notifyListeners();
-      return success;
+      return result['success'] == true;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -544,7 +544,7 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final success = await _repository.resetPassword(
-        email: email,
+        email: email.trim().toLowerCase(),
         code: code,
         newPassword: newPassword,
       );

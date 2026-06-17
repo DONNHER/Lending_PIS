@@ -107,7 +107,6 @@ class CanteenApp extends StatelessWidget {
           create: (context) {
             final authVM = AuthViewModel(
               context.read<AuthRepository>(), 
-              emailService,
               context.read<ActivityLogRepository>(),
               context.read<StorageRepository>(),
             );
