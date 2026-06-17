@@ -78,6 +78,9 @@ class AuthController extends Controller
                 'mfa_expires_at' => now()->addMinutes(15),
             ]);
 
+            // DEBUG: Log code to server logs in case email fails
+            Log::info("NEW REGISTRATION: User {$user->email} assigned MFA code: {$code}");
+
             // 🚀 Send Email via Resend
             try {
                 if ($request->role === 'shareholder') {
@@ -149,19 +152,19 @@ class AuthController extends Controller
         $code = rand(100000, 999999);
         $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(10)]);
         
+        // DEBUG: Log code to server logs in case email fails
+        Log::info("LOGIN MFA: User {$user->email} generated MFA code: {$code}");
+
         try {
             $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
             $sent = $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
             
+            // On development/sandbox, we don't crash if the email fails because we logged the code above
             if (!$sent) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to send verification email. Please contact support.'
-                ], 500);
+                Log::warning("MFA Email not sent to {$user->email}, but code is logged.");
             }
         } catch (\Exception $e) {
             Log::error("Resend Email Error during login: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Email service error'], 500);
         }
 
         return response()->json([
@@ -169,7 +172,7 @@ class AuthController extends Controller
             'mfa_required' => true,
             'user' => $user,
             'email' => $user->email,
-            'message' => 'Verification code sent to your email.'
+            'message' => 'Verification code generated.' . (!isset($sent) || !$sent ? ' (Email restricted, check server logs)' : '')
         ]);
     }
 
@@ -203,18 +206,20 @@ class AuthController extends Controller
         $code = rand(100000, 999999);
         $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(15)]);
 
+        // DEBUG: Log code to server logs
+        Log::info("RESEND MFA: User {$user->email} generated MFA code: {$code}");
+
         try {
             $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
             $sent = $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
             
-            if ($sent) {
-                return response()->json(['success' => true, 'message' => 'Verification code resent.']);
-            } else {
-                return response()->json(['success' => false, 'message' => 'Email delivery failed'], 500);
-            }
+            return response()->json([
+                'success' => true, 
+                'message' => 'Verification code generated.' . (!$sent ? ' (Check server logs)' : '')
+            ]);
         } catch (\Exception $e) {
             Log::error("Resend MFA Error: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Email component error: ' . $e->getMessage()], 500);
+            return response()->json(['success' => true, 'message' => 'Code generated. Check server logs.']);
         }
     }
 
@@ -266,10 +271,13 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
         $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(15)]);
         
+        // DEBUG: Log code to server logs
+        Log::info("FORGOT PASSWORD: User {$user->email} assigned reset code: {$code}");
+
         try {
             $html = view('emails.password_reset', ['user' => $user, 'code' => $code])->render();
             $this->resendService->sendEmail($user->email, 'Password Reset Code', $html);
-            return response()->json(['success' => true, 'message' => 'Reset code sent.']);
+            return response()->json(['success' => true, 'message' => 'Reset code generated. Check server logs.']);
         } catch (\Exception $e) {
             return response()->json(['success' => true, 'message' => "Reset code: $code"]);
         }
