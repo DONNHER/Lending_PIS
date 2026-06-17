@@ -9,7 +9,6 @@ class AuthRepository {
 
   AuthRepository(this._api);
 
-  /// Syncs the Laravel token with Supabase Auth so Storage policies work
   Future<void> _syncSupabaseSession(String? token) async {
     if (token == null || token.isEmpty) return;
     try {
@@ -65,8 +64,8 @@ class AuthRepository {
     required String username,
     required String email,
     required String password,
-    required String firstname,
-    required String lastname,
+    required String firstName,
+    required String lastName,
     required UserRole role,
     String? avatarUrl,
   }) async {
@@ -75,24 +74,26 @@ class AuthRepository {
         'username': username,
         'email': email,
         'password': password,
-        'firstname': firstname,
-        'lastname': lastname,
+        'firstname': firstName,
+        'lastname': lastName,
         'role': role.name,
         'avatar_url': avatarUrl,
       });
 
       if (response != null && response['success'] == true) {
-        final String? token = response['token'];
+        final String? token = response['token'] ?? (response['data'] is Map ? response['data']['token'] : null);
+        
         if (token != null) {
           await _api.setToken(token);
           await _syncSupabaseSession(token);
         }
         
         return {
-          'user': UserModel.fromJson(response['user']),
+          'user': response['user'] != null ? UserModel.fromJson(response['user']) : null,
           'token': token,
           'mfa_required': response['mfa_required'] == true,
           'email': response['email'],
+          'message': response['message'],
         };
       } else {
         throw Exception(response?['message'] ?? 'Registration failed');
@@ -111,21 +112,25 @@ class AuthRepository {
       });
 
       if (response != null && response['success'] == true) {
-        final userJson = response['user'];
-        final user = userJson != null ? UserModel.fromJson(userJson) : null;
-        final String? token = response['token'];
+        final String? token = response['token'] ?? 
+                             response['access_token'] ?? 
+                             (response['data'] is Map ? response['data']['token'] : null);
 
         if (token != null) {
           await _api.setToken(token);
           await _syncSupabaseSession(token);
+          debugPrint('DEBUG: [AuthRepository] Token successfully extracted and set in ApiService.');
+        } else {
+          debugPrint('WARNING: [AuthRepository] Login was successful but no token was found in response keys: ${response.keys.toList()}');
         }
 
         return {
-          'user': user,
+          'user': response['user'] != null ? UserModel.fromJson(response['user']) : null,
           'token': token,
           'mfa_required': response['mfa_required'] == true,
           'email': response['email'],
           'supabase_mfa': response['supabase_mfa'] == true,
+          'message': response['message'],
         };
       }
     } catch (e) {
@@ -158,9 +163,11 @@ class AuthRepository {
       });
 
       if (response != null && response['success'] == true) {
-        final String token = response['token'];
-        await _api.setToken(token);
-        await _syncSupabaseSession(token);
+        final String? token = response['token'] ?? (response['data'] is Map ? response['data']['token'] : null);
+        if (token != null) {
+          await _api.setToken(token);
+          await _syncSupabaseSession(token);
+        }
         return UserModel.fromJson(response['user']);
       }
     } catch (e) {
@@ -203,16 +210,16 @@ class AuthRepository {
   }
 
   Future<UserModel> updateProfile({
-    required String firstname,
-    required String lastname,
+    required String firstName,
+    required String lastName,
     String? address,
     String? avatarUrl,
     String? idImageUrl,
   }) async {
     try {
       final response = await _api.put('/user/profile', body: {
-        'firstname': firstname,
-        'lastname': lastname,
+        'firstname': firstName,
+        'lastname': lastName,
         'address': address,
         'avatar_url': avatarUrl,
         'id_image_url': idImageUrl,
@@ -246,10 +253,13 @@ class AuthRepository {
     }
   }
 
-  Future<bool> requestPasswordReset(String email) async {
+  Future<Map<String, dynamic>> requestPasswordReset(String email) async {
     try {
       final response = await _api.post('/forgot-password', body: {'email': email});
-      return response != null && response['success'] == true;
+      return {
+        'success': response != null && response['success'] == true,
+        'message': response?['message'],
+      };
     } catch (e) {
       rethrow;
     }

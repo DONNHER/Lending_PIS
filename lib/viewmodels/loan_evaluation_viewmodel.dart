@@ -3,17 +3,24 @@ import '../models/lending_models.dart';
 import '../models/shareholder_model.dart';
 import '../repositories/lending_repository.dart';
 import '../repositories/shareholder_repository.dart';
+import '../services/email_service.dart';
 
 class LoanEvaluationViewModel extends ChangeNotifier {
   final LendingRepository _lendingRepo;
   final ShareholderRepository _shareholderRepo;
+  final EmailService _emailService;
   final LoanRequestModel request;
 
   ShareholderModel? _shareholder;
   bool _isLoading = true;
   String? _errorMessage;
 
-  LoanEvaluationViewModel(this._lendingRepo, this._shareholderRepo, this.request) {
+  LoanEvaluationViewModel(
+    this._lendingRepo, 
+    this._shareholderRepo, 
+    this._emailService,
+    this.request
+  ) {
     _init();
   }
 
@@ -71,6 +78,15 @@ class LoanEvaluationViewModel extends ChangeNotifier {
           }
         }
         await _lendingRepo.updateLoanRequestStatus(request.id, status, request: payload);
+
+        // 🚀 Trigger Email Notification to the Shareholder via Laravel Backend
+        if (_shareholder != null && _shareholder!.email.isNotEmpty) {
+          await _emailService.sendNotification(
+            email: _shareholder!.email,
+            subject: 'Loan Request Update - ${status.name.toUpperCase()}',
+            message: 'Hello ${_shareholder!.firstName}, your loan request for PHP ${request.requestedAmount.toStringAsFixed(2)} has been ${status.name}.',
+          );
+        }
       }
       return true;
     } catch (e) {

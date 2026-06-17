@@ -34,13 +34,13 @@ class LendingBarChart extends StatelessWidget {
         // Calculate the maximum value to cap the X-axis scale
         double maxVal = 0.0;
         for (var d in data) {
-          if (d.shareCapital > maxVal) maxVal = d.shareCapital;
-          // FIX 2: Ensure we match our legend tracking (Total Disbursed instead of interest revenue)
+          // Commented out shareCapital to limit scale to Total Disbursed as requested
+          // if (d.shareCapital > maxVal) maxVal = d.shareCapital;
           if (d.totalDisbursed > maxVal) maxVal = d.totalDisbursed;
         }
 
         if (maxVal <= 0) maxVal = 1000.0;
-        maxVal = maxVal * 1.15; // 15% headroom
+        // maxVal = maxVal * 1.15; // Removed 15% headroom to limit only in total as requested
 
         return Column(
           children: [
@@ -74,9 +74,10 @@ class LendingBarChart extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Shareholder Capital Trend
-                              _horizontalBar(d.shareCapital, maxVal, const Color(0xFFD2691E)),
-                              const SizedBox(height: 4),
+                              // Shareholder Capital Trend (Commented out as requested)
+                              // _horizontalBar(d.shareCapital, maxVal, const Color(0xFFD2691E)),
+                              // const SizedBox(height: 4),
+                              
                               // Total Disbursed Trend
                               _horizontalBar(d.totalDisbursed, maxVal, const Color(0xFFF4A460)),
                             ],
@@ -105,7 +106,7 @@ class LendingBarChart extends StatelessWidget {
       return AnimatedContainer(
         duration: const Duration(milliseconds: 600),
         curve: Curves.easeOutCubic,
-        height: 10,
+        height: 14, // Increased height slightly since there's only one bar now
         width: width.clamp(0.0, constraints.maxWidth),
         decoration: BoxDecoration(
           color: color,
@@ -135,8 +136,8 @@ class LendingBarChart extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _legendItem('Shareholder Capital', const Color(0xFFD2691E)),
-        const SizedBox(width: 20),
+        // _legendItem('Shareholder Capital', const Color(0xFFD2691E)),
+        // const SizedBox(width: 20),
         _legendItem('Total Disbursed', const Color(0xFFF4A460)),
       ],
     );

@@ -207,7 +207,8 @@ class _AdminDetailBody extends StatelessWidget {
                           ElevatedButton.icon(
                             onPressed: () async {
                               final authRepo = context.read<AuthRepository>();
-                              final success = await authRepo.requestPasswordReset(admin.email);
+                              final result = await authRepo.requestPasswordReset(admin.email);
+                              final bool success = result['success'] == true;
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

@@ -6,6 +6,7 @@ import '../models/lending_models.dart';
 import '../repositories/lending_repository.dart';
 import '../repositories/shareholder_repository.dart';
 import '../viewmodels/loan_evaluation_viewmodel.dart';
+import '../services/email_service.dart';
 import 'loan_approval_page.dart';
 
 class LoanEvaluationPage extends StatelessWidget {
@@ -19,6 +20,7 @@ class LoanEvaluationPage extends StatelessWidget {
       create: (context) => LoanEvaluationViewModel(
         context.read<LendingRepository>(),
         context.read<ShareholderRepository>(),
+        context.read<EmailService>(),
         request,
       ),
       child: const _LoanEvaluationBody(),

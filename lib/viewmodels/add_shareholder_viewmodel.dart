@@ -6,11 +6,13 @@ import '../models/shareholder_model.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/shareholder_repository.dart';
 import '../repositories/storage_repository.dart';
+import '../services/email_service.dart';
 
 class AddShareholderViewModel extends ChangeNotifier {
   final ShareholderRepository _shareholderRepository;
   final StorageRepository _storageRepository;
   final AuthRepository _authRepository;
+  final EmailService _emailService;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -20,9 +22,11 @@ class AddShareholderViewModel extends ChangeNotifier {
     required ShareholderRepository shareholderRepository,
     required StorageRepository storageRepository,
     required AuthRepository authRepository,
+    required EmailService emailService,
   })  : _shareholderRepository = shareholderRepository,
         _storageRepository = storageRepository,
-        _authRepository = authRepository;
+        _authRepository = authRepository,
+        _emailService = emailService;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -85,8 +89,8 @@ class AddShareholderViewModel extends ChangeNotifier {
         email: email,
         password: passwordController.text.trim(),
         username: usernameController.text.trim(),
-        firstname: firstName,
-        lastname: lastName,
+        firstName: firstName,
+        lastName: lastName,
         role: UserRole.shareholder,
       );
 
@@ -94,6 +98,13 @@ class AddShareholderViewModel extends ChangeNotifier {
       if (userModel == null) {
         throw Exception('Failed to retrieve user information after registration.');
       }
+
+      // 🚀 Trigger Email Notification via Laravel Backend (using Resend)
+      await _emailService.sendNotification(
+        email: email,
+        subject: 'Welcome to PIL - Account Created',
+        message: result['message'] ?? 'Your account has been successfully created.',
+      );
 
       // 🚀 FIXED: Added 'private/' prefix to satisfy your Supabase RLS Policy
       if (_idFileBytes != null) {

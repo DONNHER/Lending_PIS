@@ -112,9 +112,10 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::apiResource('transactions', TransactionController::class)->only(['index', 'store']);
 
-    // Notifications
+    // Notifications & Email
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::match(['PUT', 'POST'], '/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/send-email', [NotificationController::class, 'sendEmail']);
 
     // File Upload
     Route::post('/upload', [FileUploadController::class, 'upload']);

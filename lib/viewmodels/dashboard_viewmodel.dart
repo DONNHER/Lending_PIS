@@ -57,6 +57,7 @@ class DashboardViewModel extends ChangeNotifier {
     if (_cache != null) {
       final cachedKpis = await _cache!.getData('dashboard_kpis');
       final cachedRecent = await _cache!.getData('dashboard_recent');
+      final cachedTrend = await _cache!.getData('dashboard_user_trend');
       
       if (cachedKpis != null) {
         _kpiCards = (cachedKpis as List).map((e) => KpiCardData(
@@ -68,6 +69,13 @@ class DashboardViewModel extends ChangeNotifier {
       
       if (cachedRecent != null) {
         _recentTransactions = (cachedRecent as List).map((e) => TransactionModel.fromJson(e)).toList();
+      }
+
+      if (cachedTrend != null) {
+        _userTrend = (cachedTrend as List).map((e) => UserTrendData(
+          label: e['label'] ?? '',
+          count: (e['count'] ?? 0) as int,
+        )).toList();
       }
 
       if (_kpiCards.isNotEmpty) {
@@ -138,25 +146,41 @@ class DashboardViewModel extends ChangeNotifier {
       _rawStats = responses[3] as Map<String, dynamic>?;
 
       _kpiCards = [];
+      _userTrend = [];
 
-      if (_rawStats != null && _rawStats!['user_stats'] != null) {
-        final userStats = _rawStats!['user_stats'];
-        _kpiCards.add(KpiCardData(
-          label: 'Total Users',
-          value: userStats['total_users']?.toString() ?? '0',
-          icon: Icons.people_outline,
-        ));
-        _kpiCards.add(KpiCardData(
-          label: 'Active Now',
-          value: userStats['active_now']?.toString() ?? '0',
-          icon: Icons.online_prediction_outlined,
-        ));
-        _kpiCards.add(KpiCardData(
-          label: 'New Reg.',
-          value: userStats['new_registrations']?.toString() ?? '0',
-          icon: Icons.person_add_alt_1_outlined,
-        ));
-      } else {
+      if (_rawStats != null) {
+        // 1. Process KPI Cards from user_stats
+        if (_rawStats!['user_stats'] != null) {
+          final userStats = _rawStats!['user_stats'];
+          _kpiCards.add(KpiCardData(
+            label: 'Total Users',
+            value: userStats['total_users']?.toString() ?? '0',
+            icon: Icons.people_outline,
+          ));
+          _kpiCards.add(KpiCardData(
+            label: 'Active Now',
+            value: userStats['active_now']?.toString() ?? '0',
+            icon: Icons.online_prediction_outlined,
+          ));
+          _kpiCards.add(KpiCardData(
+            label: 'New Reg.',
+            value: userStats['new_registrations']?.toString() ?? '0',
+            icon: Icons.person_add_alt_1_outlined,
+          ));
+        }
+
+        // 2. Process User Registration Trends
+        if (_rawStats!['user_trend'] != null) {
+          final List<dynamic> trend = _rawStats!['user_trend'];
+          _userTrend = trend.map((e) => UserTrendData(
+            label: e['label']?.toString() ?? '',
+            count: (e['count'] ?? 0) as int,
+          )).toList();
+        }
+      }
+
+      // Fallback if KPIs are empty
+      if (_kpiCards.isEmpty) {
          _kpiCards.add(KpiCardData(
           label: 'Interest Rate',
           value: '${(interestRate * 100).toStringAsFixed(1)}%',
@@ -172,6 +196,10 @@ class DashboardViewModel extends ChangeNotifier {
           'icon_code': e.icon.codePoint,
         }).toList());
         _cache!.saveData('dashboard_recent', _recentTransactions.map((e) => e.toJson()).toList());
+        _cache!.saveData('dashboard_user_trend', _userTrend.map((e) => {
+          'label': e.label,
+          'count': e.count,
+        }).toList());
       }
 
     } catch (e) {

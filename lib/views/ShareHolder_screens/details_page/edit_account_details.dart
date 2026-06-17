@@ -84,68 +84,6 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Picture Section - COMMENTED FOR SUBMISSION
-              /*
-              Center(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 110,
-                      height: 110,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                        border: Border.all(color: Colors.white, width: 4),
-                      ),
-                      child: ClipOval(
-                        child: authViewModel.avatarBytes != null
-                            ? Image.memory(authViewModel.avatarBytes!, fit: BoxFit.cover)
-                            : (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
-                                ? Image.network(
-                                    user.avatarUrl!,
-                                    fit: BoxFit.cover,
-                                    key: ValueKey(user.avatarUrl),
-                                    errorBuilder: (context, error, stackTrace) => const Icon(
-                                      Icons.person_rounded,
-                                      size: 55,
-                                      color: AppTheme.textMuted,
-                                    ),
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                                    },
-                                  )
-                                : const Icon(Icons.person_rounded, size: 55, color: AppTheme.textMuted),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 4,
-                      right: 4,
-                      child: GestureDetector(
-                        onTap: () => authViewModel.pickAvatar(),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 18),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              */
               _buildTextField('First Name', _firstNameController),
               const SizedBox(height: 16),
               _buildTextField('Last Name', _lastNameController),
@@ -196,59 +134,6 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                 ),
               ),
 
-              // ID VERIFICATION - COMMENTED FOR SUBMISSION
-              /*
-              const SizedBox(height: 32),
-              const Text(
-                'ID VERIFICATION',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textMuted,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const Divider(),
-              const SizedBox(height: 16),
-              
-              GestureDetector(
-                onTap: () => authViewModel.pickIdImage(),
-                child: Container(
-                  width: double.infinity,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: authViewModel.idImageBytes != null
-                        ? Image.memory(authViewModel.idImageBytes!, fit: BoxFit.cover)
-                        : (user?.idImageUrl != null && user!.idImageUrl!.isNotEmpty)
-                            ? Image.network(
-                                user.idImageUrl!,
-                                fit: BoxFit.cover,
-                                key: ValueKey(user.idImageUrl),
-                                errorBuilder: (context, error, stackTrace) => _buildIdPlaceholder(),
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                                },
-                              )
-                            : _buildIdPlaceholder(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Text(
-                  'Tap to upload or change ID image',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                ),
-              ),
-              */
-              
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: authViewModel.isLoading
@@ -295,17 +180,6 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildIdPlaceholder() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.badge_outlined, size: 48, color: Colors.grey.withOpacity(0.5)),
-        const SizedBox(height: 8),
-        Text('No ID Uploaded', style: TextStyle(color: Colors.grey.withOpacity(0.8), fontWeight: FontWeight.w500)),
-      ],
     );
   }
 

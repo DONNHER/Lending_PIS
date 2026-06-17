@@ -170,13 +170,32 @@ class LendingRepository {
   }
 
   Future<List<TransactionModel>> getRecentLoanTransactions({int limit = 5, String? loanId}) async {
-    final Map<String, String> params = {'limit': limit.toString()};
+    final Map<String, String> params = {
+      'per_page': limit.toString(),
+      'sort_by': 'date',
+      'sort_order': 'desc',
+    };
     if (loanId != null) params['reference_id'] = loanId;
     
-    final response = await _api.get('/transactions', queryParams: params);
-    if (response != null && response['success'] == true) {
-      final List<dynamic> data = response['data'];
-      return data.map((e) => TransactionModel.fromJson(e)).toList();
+    try {
+      final response = await _api.get('/transactions', queryParams: params);
+      if (response != null) {
+        dynamic rawData = response['data'];
+        List<dynamic> list = [];
+        
+        // Handle Laravel pagination structure
+        if (rawData is List) {
+          list = rawData;
+        } else if (rawData is Map && rawData['data'] is List) {
+          list = rawData['data'];
+        } else if (response is List) {
+          list = response;
+        }
+
+        return list.map((e) => TransactionModel.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error fetching recent transactions: $e');
     }
     return [];
   }
@@ -221,7 +240,7 @@ class LendingRepository {
   }
 
   Future<void> disburseLoan(dynamic loanOrRequest) async {
-    final id = (loanOrRequest is LoanModel) ? loanOrRequest.loanRequestId : (loanOrRequest is LoanRequestModel ? loanOrRequest.id : loanOrRequest);
+    final id = (loanOrRequest is LoanModel) ? loanOrRequest.loanRequestId : (loanOrRequest is LoanModel ? loanOrRequest.id : loanOrRequest);
     debugPrint('DEBUG: [LendingRepo] disburseLoan triggered for Request ID: $id');
     await _api.post('/loan-requests/$id/disburse');
   }

@@ -5,19 +5,22 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Services\ResendService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\MfaCodeMail;
-use App\Mail\PasswordResetMail;
-use App\Mail\WelcomeShareholderMail;
 
 class AuthController extends Controller
 {
     protected $passwordPolicy = 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/';
     protected $passwordPolicyMessage = 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.';
+    protected $resendService;
+
+    public function __construct(ResendService $resendService)
+    {
+        $this->resendService = $resendService;
+    }
 
     private function logAuth($user, $action, $request, $isSuspicious = false, $description = null)
     {
@@ -75,14 +78,17 @@ class AuthController extends Controller
                 'mfa_expires_at' => now()->addMinutes(15),
             ]);
 
+            // 🚀 Send Email via Resend
             try {
                 if ($request->role === 'shareholder') {
-                    Mail::to($user->email)->send(new WelcomeShareholderMail($user, $request->password));
+                    $html = view('emails.welcome_shareholder', ['user' => $user, 'temporaryPassword' => $request->password])->render();
+                    $this->resendService->sendEmail($user->email, 'Welcome to EngrCanteen Lending - Your Account Details', $html);
                 } else {
-                    Mail::to($user->email)->send(new MfaCodeMail($user, $code));
+                    $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
+                    $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
                 }
             } catch (\Exception $e) {
-                Log::error("Registration Email Error: " . $e->getMessage());
+                Log::error("Resend Email Error during registration: " . $e->getMessage());
             }
 
             $this->logAuth($user, 'Register (Pending)', $request);
@@ -128,7 +134,6 @@ class AuthController extends Controller
 
         $user->update(['failed_attempts' => 0, 'locked_until' => null]);
 
-        // 🚀 BYPASS VERIFICATION FOR ACTIVE USERS
         if ($user->status === 'active') {
             $user->tokens()->delete();
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -141,14 +146,14 @@ class AuthController extends Controller
             ]);
         }
 
-        // REQUIRE VERIFICATION FOR NON-ACTIVE ACCOUNTS (Pending, Inactive, etc.)
         $code = rand(100000, 999999);
         $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(10)]);
         
         try {
-            Mail::to($user->email)->send(new MfaCodeMail($user, $code));
+            $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
+            $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
         } catch (\Exception $e) {
-            Log::error("MFA Email Error: " . $e->getMessage());
+            Log::error("Resend Email Error during login: " . $e->getMessage());
         }
 
         return response()->json([
@@ -191,7 +196,8 @@ class AuthController extends Controller
         $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(15)]);
 
         try {
-            Mail::to($user->email)->send(new MfaCodeMail($user, $code));
+            $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
+            $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
             return response()->json(['success' => true, 'message' => 'Verification code resent.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Email failed'], 500);
@@ -247,7 +253,8 @@ class AuthController extends Controller
         $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(15)]);
         
         try {
-            Mail::to($user->email)->send(new PasswordResetMail($user, $code));
+            $html = view('emails.password_reset', ['user' => $user, 'code' => $code])->render();
+            $this->resendService->sendEmail($user->email, 'Password Reset Code', $html);
             return response()->json(['success' => true, 'message' => 'Reset code sent.']);
         } catch (\Exception $e) {
             return response()->json(['success' => true, 'message' => "Reset code: $code"]);

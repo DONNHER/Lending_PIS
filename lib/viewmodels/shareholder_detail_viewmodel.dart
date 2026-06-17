@@ -8,6 +8,7 @@ import '../repositories/activity_log_repository.dart';
 import '../repositories/auth_repository.dart';
 import '../models/shareholder_model.dart';
 import '../models/user_model.dart';
+import '../services/email_service.dart';
 
 class ShareholderDetailViewModel extends ChangeNotifier {
   final ShareholderRepository _shareholderRepo;
@@ -15,6 +16,7 @@ class ShareholderDetailViewModel extends ChangeNotifier {
   final LendingRepository _lendingRepo;
   final ActivityLogRepository _activityRepo;
   final AuthRepository _authRepo;
+  final EmailService _emailService;
   final String? shareholderId;
   final String? userId;
 
@@ -43,13 +45,15 @@ class ShareholderDetailViewModel extends ChangeNotifier {
     required LendingRepository lendingRepo,
     required ActivityLogRepository activityRepo,
     required AuthRepository authRepo,
+    required EmailService emailService,
     this.shareholderId,
     this.userId,
   })  : _shareholderRepo = shareholderRepo,
         _transactionRepo = transactionRepo,
         _lendingRepo = lendingRepo,
         _activityRepo = activityRepo,
-        _authRepo = authRepo {
+        _authRepo = authRepo,
+        _emailService = emailService {
     fetchDetails();
   }
 
@@ -169,6 +173,16 @@ class ShareholderDetailViewModel extends ChangeNotifier {
 
     try {
       await _authRepo.updateStatus(_shareholder!.userId, status);
+      
+      // 🚀 Trigger Email Notification for Account Status Change
+      if (_shareholder!.email.isNotEmpty) {
+        await _emailService.sendNotification(
+          email: _shareholder!.email,
+          subject: 'Account Status Updated',
+          message: 'Hello ${_shareholder!.firstName}, your account status has been updated to ${status.name.toUpperCase()}.',
+        );
+      }
+      
       await fetchDetails(); // Refresh to get updated status
       return true;
     } catch (e) {

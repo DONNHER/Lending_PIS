@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/services/api_service.dart';
 import 'package:capstone_application/services/local_cache_service.dart';
+import 'package:capstone_application/services/email_service.dart';
 import 'package:capstone_application/repositories/auth_repository.dart';
 import 'package:capstone_application/repositories/consignee_repository.dart';
 import 'package:capstone_application/repositories/consignment_repository.dart';
@@ -60,12 +61,14 @@ void main() async {
   final apiBaseUrl = dotenv.env['API_URL'] ?? 'https://lending-pis-1.onrender.com/api';
   final apiService = ApiService(baseUrl: apiBaseUrl);
   final cacheService = LocalCacheService();
+  final emailService = EmailService(apiService);
 
   runApp(
     MultiProvider(
       providers: [
         Provider<ApiService>.value(value: apiService),
         Provider<LocalCacheService>.value(value: cacheService),
+        Provider<EmailService>.value(value: emailService),
       ],
       child: const CanteenApp(),
     ),
@@ -79,6 +82,7 @@ class CanteenApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final apiService = context.read<ApiService>();
     final cacheService = context.read<LocalCacheService>();
+    final emailService = context.read<EmailService>();
 
     return MultiProvider(
       providers: [
@@ -86,7 +90,7 @@ class CanteenApp extends StatelessWidget {
         Provider(create: (_) => AuthRepository(apiService)),
         Provider(create: (_) => ConsigneeRepository(apiService)),
         Provider(create: (_) => ConsignmentRepository(apiService)),
-        Provider(create: (_) => StorageRepository()), // 🚀 Fixed: Removed const
+        Provider(create: (_) => StorageRepository()),
         Provider(create: (_) => ConsignmentProductsRepository(apiService)),
         Provider(create: (_) => ProductRepository(apiService)),
         Provider(create: (_) => DailyInventoryRepository(apiService)),
@@ -103,13 +107,12 @@ class CanteenApp extends StatelessWidget {
           create: (context) {
             final authVM = AuthViewModel(
               context.read<AuthRepository>(), 
+              emailService,
               context.read<ActivityLogRepository>(),
               context.read<StorageRepository>(),
             );
             
-            // 🚀 Hook global unauthorized callback to trigger logout/redirect
             apiService.onUnauthorized = authVM.handleUnauthorized;
-            
             authVM.restoreSession();
             return authVM;
           },
@@ -147,6 +150,7 @@ class CanteenApp extends StatelessWidget {
             shareholderRepository: context.read<ShareholderRepository>(),
             storageRepository: context.read<StorageRepository>(),
             authRepository: context.read<AuthRepository>(),
+            emailService: emailService,
           ),
         ),
 

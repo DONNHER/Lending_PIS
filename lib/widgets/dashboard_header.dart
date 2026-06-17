@@ -57,16 +57,7 @@ class DashboardHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 2),
-          const Text(
-            'Dashboard',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textDark,
-              letterSpacing: -0.5,
-            ),
-          ),
+
           const SizedBox(height: 4),
           Text(
             currentDate,

@@ -24,8 +24,21 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
-class _DashboardBody extends StatelessWidget {
+class _DashboardBody extends StatefulWidget {
   const _DashboardBody();
+
+  @override
+  State<_DashboardBody> createState() => _DashboardBodyState();
+}
+
+class _DashboardBodyState extends State<_DashboardBody> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DashboardViewModel>().initDashboard();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,8 +106,8 @@ class _DashboardBody extends StatelessWidget {
                   SliverToBoxAdapter(child: _buildSectionTitle('Revenue & Collection Trend')),
                   SliverToBoxAdapter(child: _buildChartSection(viewModel)),
 
-                  SliverToBoxAdapter(child: _buildSectionTitle('System Activity & User Growth')),
-                  SliverToBoxAdapter(child: _buildUserGrowthSection(viewModel)),
+                  // SliverToBoxAdapter(child: _buildSectionTitle('System Activity & User Growth')),
+                  // SliverToBoxAdapter(child: _buildUserGrowthSection(viewModel)),
                   
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
