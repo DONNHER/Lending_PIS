@@ -1,5 +1,5 @@
 # API Configuration
-API_URL=http://localhost:8000/api
+API_URL=https://lending-pis-1.onrender.com/api
 
 # Supabase configuration (MATCHING YOUR DASHBOARD)
 SUPABASE_URL=https://ybciitsrswkwejljlylz.supabase.co
