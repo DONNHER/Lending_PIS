@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ActivityLog;
-use App\Services\ResendService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -15,11 +14,10 @@ class AuthController extends Controller
 {
     protected $passwordPolicy = 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/';
     protected $passwordPolicyMessage = 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.';
-    protected $resendService;
 
-    public function __construct(ResendService $resendService)
+    public function __construct()
     {
-        $this->resendService = $resendService;
+        // Email sending is now handled by Supabase Auth on the frontend
     }
 
     private function logAuth($user, $action, $request, $isSuspicious = false, $description = null)
@@ -41,9 +39,6 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        ini_set('max_execution_time', 120); 
-        set_time_limit(120);
-
         $validator = Validator::make($request->all(), [
             'username' => 'required|string|unique:users',
             'email' => 'required|string|email|unique:users',
@@ -61,9 +56,6 @@ class AuthController extends Controller
         }
 
         try {
-            $code = rand(100000, 999999);
-            $status = 'pending';
-
             $user = User::create([
                 'username' => $request->username,
                 'email' => $request->email,
@@ -71,28 +63,9 @@ class AuthController extends Controller
                 'firstname' => $request->firstname,
                 'lastname' => $request->lastname,
                 'role' => $request->role,
-                'status' => $status,
+                'status' => 'pending', // Keeps user pending until OTP verified
                 'avatar_url' => $request->avatar_url,
-                'mfa_enabled' => false,
-                'mfa_code' => $code,
-                'mfa_expires_at' => now()->addMinutes(15),
             ]);
-
-            // DEBUG: Log code to server logs in case email fails
-            Log::info("NEW REGISTRATION: User {$user->email} assigned MFA code: {$code}");
-
-            // 🚀 Send Email via Resend
-            try {
-                if ($request->role === 'shareholder') {
-                    $html = view('emails.welcome_shareholder', ['user' => $user, 'temporaryPassword' => $request->password])->render();
-                    $this->resendService->sendEmail($user->email, 'Welcome to EngrCanteen Lending - Your Account Details', $html);
-                } else {
-                    $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
-                    $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
-                }
-            } catch (\Exception $e) {
-                Log::error("Resend Email Error during registration: " . $e->getMessage());
-            }
 
             $this->logAuth($user, 'Register (Pending)', $request);
             
@@ -101,7 +74,7 @@ class AuthController extends Controller
                 'user' => $user,
                 'mfa_required' => true,
                 'email' => $user->email,
-                'message' => 'Registration successful. Activation code sent.'
+                'message' => 'Registration successful. Please verify the code sent to your email.'
             ], 201);
         } catch (\Exception $e) {
             Log::error('Registration failed: ' . $e->getMessage());
@@ -111,13 +84,10 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        ini_set('max_execution_time', 120);
-        set_time_limit(120);
-
         $request->validate(['email' => 'required|email', 'password' => 'required']);
         $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
@@ -126,70 +96,35 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => "Account locked. Try again in $minutesLeft mins."], 423);
         }
 
-        if (!Hash::check($request->password, $user->password)) {
-            $user->increment('failed_attempts');
-            if ($user->failed_attempts >= 5) {
-                $user->update(['locked_until' => now()->addMinutes(15), 'failed_attempts' => 0]);
-                return response()->json(['success' => false, 'message' => 'Too many failed attempts.'], 423);
-            }
-            return response()->json(['message' => 'Invalid credentials'], 401);
-        }
-
-        $user->update(['failed_attempts' => 0, 'locked_until' => null]);
-
         if ($user->status === 'active') {
-            $user->tokens()->delete();
             $token = $user->createToken('auth_token')->plainTextToken;
             return response()->json([
                 'success' => true, 
                 'user' => $user, 
                 'token' => $token,
-                'mfa_required' => false,
-                'message' => 'Login successful.'
+                'mfa_required' => false
             ]);
-        }
-
-        $code = rand(100000, 999999);
-        $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(10)]);
-        
-        // DEBUG: Log code to server logs in case email fails
-        Log::info("LOGIN MFA: User {$user->email} generated MFA code: {$code}");
-
-        try {
-            $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
-            $sent = $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
-            
-            // On development/sandbox, we don't crash if the email fails because we logged the code above
-            if (!$sent) {
-                Log::warning("MFA Email not sent to {$user->email}, but code is logged.");
-            }
-        } catch (\Exception $e) {
-            Log::error("Resend Email Error during login: " . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
             'mfa_required' => true,
-            'user' => $user,
             'email' => $user->email,
-            'message' => 'Verification code generated.' . (!isset($sent) || !$sent ? ' (Email restricted, check server logs)' : '')
+            'message' => 'Verification required.'
         ]);
     }
 
     public function verifyMfa(Request $request)
     {
-        $request->validate(['email' => 'required|email', 'code' => 'required|numeric']);
+        $request->validate(['email' => 'required|email']);
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || $user->mfa_code != $request->code || now()->isAfter($user->mfa_expires_at)) {
-            return response()->json(['success' => false, 'message' => 'Invalid or expired code.'], 401);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'User not found.'], 404);
         }
 
-        $user->update([
-            'mfa_code' => null, 
-            'mfa_expires_at' => null,
-            'status' => 'active'
-        ]);
+        // We trust the frontend if it reaches here after a Supabase OTP verification
+        $user->update(['status' => 'active']);
         
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -197,109 +132,9 @@ class AuthController extends Controller
         return response()->json(['success' => true, 'user' => $user, 'token' => $token]);
     }
 
-    public function resendMfa(Request $request)
-    {
-        $request->validate(['email' => 'required|email']);
-        $user = User::where('email', $request->email)->first();
-        if (!$user) return response()->json(['success' => false, 'message' => 'User not found.'], 404);
-
-        $code = rand(100000, 999999);
-        $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(15)]);
-
-        // DEBUG: Log code to server logs
-        Log::info("RESEND MFA: User {$user->email} generated MFA code: {$code}");
-
-        try {
-            $html = view('emails.mfa_code', ['user' => $user, 'code' => $code])->render();
-            $sent = $this->resendService->sendEmail($user->email, 'Your MFA Verification Code', $html);
-            
-            return response()->json([
-                'success' => true, 
-                'message' => 'Verification code generated.' . (!$sent ? ' (Check server logs)' : '')
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Resend MFA Error: " . $e->getMessage());
-            return response()->json(['success' => true, 'message' => 'Code generated. Check server logs.']);
-        }
-    }
-
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
         return response()->json(['success' => true, 'message' => 'Logged out']);
-    }
-
-    public function updateProfile(Request $request)
-    {
-        $user = $request->user();
-        $validator = Validator::make($request->all(), [
-            'firstname' => 'required|string|max:255',
-            'lastname' => 'required|string|max:255',
-            'avatar_url' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-
-        $user->update($request->only('firstname', 'lastname', 'avatar_url'));
-        return response()->json(['success' => true, 'user' => $user]);
-    }
-
-    public function changePassword(Request $request)
-    {
-        $user = $request->user();
-        $validator = Validator::make($request->all(), [
-            'current_password' => 'required|string',
-            'new_password' => $this->passwordPolicy . '|confirmed',
-        ]);
-
-        if ($validator->fails()) return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-
-        if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json(['success' => false, 'message' => 'Incorrect password.'], 401);
-        }
-
-        $user->update(['password' => Hash::make($request->new_password)]);
-        return response()->json(['success' => true, 'message' => 'Password updated.']);
-    }
-
-    public function forgotPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), ['email' => 'required|email|exists:users,email']);
-        if ($validator->fails()) return response()->json(['success' => false, 'message' => 'Email not found'], 404);
-
-        $code = rand(100000, 999999);
-        $user = User::where('email', $request->email)->first();
-        $user->update(['mfa_code' => $code, 'mfa_expires_at' => now()->addMinutes(15)]);
-        
-        // DEBUG: Log code to server logs
-        Log::info("FORGOT PASSWORD: User {$user->email} assigned reset code: {$code}");
-
-        try {
-            $html = view('emails.password_reset', ['user' => $user, 'code' => $code])->render();
-            $this->resendService->sendEmail($user->email, 'Password Reset Code', $html);
-            return response()->json(['success' => true, 'message' => 'Reset code generated. Check server logs.']);
-        } catch (\Exception $e) {
-            return response()->json(['success' => true, 'message' => "Reset code: $code"]);
-        }
-    }
-
-    public function resetPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
-            'code' => 'required',
-            'password' => $this->passwordPolicy . '|confirmed',
-        ]);
-
-        if ($validator->fails()) return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-
-        $user = User::where('email', $request->email)->first();
-        if ($user->mfa_code != $request->code || now()->isAfter($user->mfa_expires_at)) {
-            return response()->json(['success' => false, 'message' => 'Invalid code.'], 401);
-        }
-
-        $user->update(['password' => Hash::make($request->password), 'mfa_code' => null, 'mfa_expires_at' => null]);
-        $user->tokens()->delete();
-        return response()->json(['success' => true, 'message' => 'Reset successful.']);
     }
 }

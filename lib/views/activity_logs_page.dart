@@ -31,7 +31,7 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
       initialUserId: widget.userId,
     );
     
-    // Trigger data load after the first frame to avoid "rebuild during build" errors
+    // Trigger data load after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -47,6 +47,8 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isFiltered = widget.userId != null || widget.shareholderId != null;
+
     return ChangeNotifierProvider.value(
       value: _viewModel,
       child: Scaffold(
@@ -54,7 +56,13 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
-          automaticallyImplyLeading: false,
+          leading: isFiltered 
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF32211A)),
+                  onPressed: () => Navigator.pop(context),
+                )
+              : null,
+          automaticallyImplyLeading: !isFiltered,
           title: const Text(
             'Activity Logs', 
             style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
@@ -76,7 +84,7 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
 
 class _ActivityLogsBody extends StatelessWidget {
   final Future<void> Function() onRefresh;
-  const _ActivityLogsBody({required this.onRefresh});
+  const _ActivityLogsBody({super.key, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +154,7 @@ class _ActivityLogsBody extends StatelessWidget {
                     totalPages: viewModel.totalPages,
                     totalRows: viewModel.totalRows,
                     rowsPerPage: viewModel.rowsPerPage,
-                    onPageChanged: viewModel.setPage,
+                    onPageChanged: (page) => viewModel.setPage(page),
                     onRowsPerPageChanged: (val) {
                       if (val != null) viewModel.setRowsPerPage(val);
                     },

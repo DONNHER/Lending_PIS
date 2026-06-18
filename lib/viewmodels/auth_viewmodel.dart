@@ -26,6 +26,7 @@ class AuthViewModel extends ChangeNotifier {
   final ActivityLogRepository? _activityLogRepo;
   final StorageRepository? _storageRepository;
   final LocalCacheService _cacheService = LocalCacheService();
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   AuthStatus _status = AuthStatus.initial;
   UserModel? _currentUser;
@@ -174,13 +175,23 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         }
 
-        // Check MFA required first, return immediately
         if (result['mfa_required'] == true) {
           _pendingMfaEmail = result['email'] ?? normalizedEmail;
           _currentUser = user;
-          _status = AuthStatus.mfaRequired;
-
-          debugPrint('DEBUG: [AuthViewModel] MFA Required. Email: $_pendingMfaEmail, User Status: ${user?.status}');
+          
+          try {
+            await _supabase.auth.signInWithOtp(
+              email: _pendingMfaEmail!,
+              shouldCreateUser: true, 
+            );
+            
+            _status = AuthStatus.mfaRequired;
+          } catch (e) {
+            _status = AuthStatus.error;
+            _errorMessage = 'OTP Error: $e';
+            notifyListeners();
+            return false;
+          }
 
           if (result['supabase_mfa'] == true) {
             _mfaFactors = await _repository.listMfaFactors();
@@ -189,7 +200,6 @@ class AuthViewModel extends ChangeNotifier {
           return false; 
         }
 
-        // Only reached if MFA is NOT required
         if (user == null) {
            _status = AuthStatus.error;
            _errorMessage = 'Login succeeded but user profile was not found.';
@@ -219,7 +229,6 @@ class AuthViewModel extends ChangeNotifier {
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      debugPrint('DEBUG: [AuthViewModel] Login error: $_errorMessage');
       notifyListeners();
       return false;
     }
@@ -316,33 +325,52 @@ class AuthViewModel extends ChangeNotifier {
         return true;
       }
 
-      final user = await _repository.verifyMfa(
-        email: _pendingMfaEmail!.trim().toLowerCase(),
-        code: code,
-        remember: _rememberMe,
-      );
-
-      if (user != null) {
-        if (user.status != UserStatus.active) {
-          _status = AuthStatus.error;
-          _errorMessage = 'Your account is ${user.status.name}.';
-          _pendingMfaEmail = null;
-          notifyListeners();
-          return false;
+      try {
+        debugPrint('DEBUG: [AuthViewModel] Verifying Supabase OTP for: $_pendingMfaEmail');
+        
+        AuthResponse res;
+        try {
+          res = await _supabase.auth.verifyOTP(
+            email: _pendingMfaEmail!,
+            token: code,
+            type: OtpType.magiclink, 
+          );
+        } catch (_) {
+          res = await _supabase.auth.verifyOTP(
+            email: _pendingMfaEmail!,
+            token: code,
+            type: OtpType.signup,
+          );
         }
 
-        _currentUser = user;
-        _status = AuthStatus.authenticated;
-        _pendingMfaEmail = null;
-        await logActivity('MFA_VERIFIED', 'MFA verification successful');
-        notifyListeners();
-        return true;
-      } else {
+        if (res.session != null || res.user != null) {
+          final user = await _repository.verifyMfa(
+            email: _pendingMfaEmail!.trim().toLowerCase(),
+            code: code,
+            remember: _rememberMe,
+          );
+
+          if (user != null) {
+            _currentUser = user;
+            _status = AuthStatus.authenticated;
+            _pendingMfaEmail = null;
+            await logActivity('MFA_VERIFIED', 'MFA verification successful');
+            notifyListeners();
+            return true;
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ DEBUG: [AuthViewModel] OTP verification failed: $e');
         _status = AuthStatus.mfaRequired;
-        _errorMessage = 'Invalid MFA code.';
+        _errorMessage = 'Invalid or expired verification code.';
         notifyListeners();
         return false;
       }
+
+      _status = AuthStatus.mfaRequired;
+      _errorMessage = 'Verification failed.';
+      notifyListeners();
+      return false;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -355,10 +383,14 @@ class AuthViewModel extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
     try {
-      final success = await _repository.resendMfaCode(email.trim().toLowerCase());
+      await _supabase.auth.signInWithOtp(
+        email: email.trim().toLowerCase(),
+        shouldCreateUser: true,
+      );
+      
       _status = AuthStatus.mfaRequired;
       notifyListeners();
-      return success;
+      return true;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -380,6 +412,28 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final normalizedEmail = email.trim().toLowerCase();
+      
+      // 🚀 1. REGISTER IN SUPABASE AUTH TABLE FIRST
+      try {
+        debugPrint('DEBUG: [AuthViewModel] Attempting Supabase signUp for: $normalizedEmail');
+        await _supabase.auth.signUp(
+          email: normalizedEmail,
+          password: password,
+        );
+        debugPrint('✅ DEBUG: [AuthViewModel] Registered in Supabase Auth table.');
+      } catch (e) {
+        if (e is AuthApiException && e.code == 'user_already_exists') {
+           debugPrint('ℹ️ DEBUG: [AuthViewModel] User is already in this Supabase project.');
+        } else {
+           _status = AuthStatus.error;
+           _errorMessage = 'Supabase Register Error: ${e.toString()}';
+           notifyListeners();
+           return false;
+        }
+      }
+
+      // 🚀 2. SAVE TO LARAVEL DATABASE (only if step 1 is ok)
+      debugPrint('DEBUG: [AuthViewModel] Saving to Laravel database...');
       final result = await _repository.register(
         username: username.trim(),
         email: normalizedEmail,
@@ -389,9 +443,18 @@ class AuthViewModel extends ChangeNotifier {
         role: role,
       );
 
+      // 🚀 3. TRIGGER OTP EMAIL
       if (result['mfa_required'] == true) {
         _pendingMfaEmail = result['email'] ?? normalizedEmail;
-        _status = AuthStatus.mfaRequired; 
+        
+        await _supabase.auth.signInWithOtp(
+          email: _pendingMfaEmail!,
+          shouldCreateUser: true,
+        );
+        
+        _status = AuthStatus.mfaRequired;
+        debugPrint('✅ DEBUG: [AuthViewModel] OTP Email triggered.');
+
         if (result['user'] != null) {
            _currentUser = result['user'];
         }
@@ -405,12 +468,9 @@ class AuthViewModel extends ChangeNotifier {
         await logActivity('REGISTER', 'User registered successfully');
         notifyListeners();
         return true;
-      } else {
-        _status = AuthStatus.error;
-        _errorMessage = 'Registration succeeded but user profile was not returned.';
-        notifyListeners();
-        return false;
       }
+      
+      return false;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -469,7 +529,7 @@ class AuthViewModel extends ChangeNotifier {
         idImageUrl = await _storageRepository.uploadFile(
           fileBytes: _idImageBytes!,
           fileName: 'id_${_currentUser!.id}.jpg',
-          folder: 'id-images',
+          folder: 'image_id_url', // FIXED: Use image_id_url bucket
         );
         idImageUrl = '$idImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
       }
@@ -523,10 +583,13 @@ class AuthViewModel extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
     try {
-      final result = await _repository.requestPasswordReset(email.trim().toLowerCase());
+      await _supabase.auth.signInWithOtp(
+        email: email.trim().toLowerCase(),
+        shouldCreateUser: true,
+      );
       _status = AuthStatus.unauthenticated;
       notifyListeners();
-      return result['success'] == true;
+      return true;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -543,14 +606,27 @@ class AuthViewModel extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
     try {
-      final success = await _repository.resetPassword(
+      final AuthResponse res = await _supabase.auth.verifyOTP(
         email: email.trim().toLowerCase(),
-        code: code,
-        newPassword: newPassword,
+        token: code,
+        type: OtpType.magiclink,
       );
-      _status = AuthStatus.unauthenticated;
+
+      if (res.session != null || res.user != null) {
+        final success = await _repository.resetPassword(
+          email: email.trim().toLowerCase(),
+          code: code,
+          newPassword: newPassword,
+        );
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        return success;
+      }
+      
+      _status = AuthStatus.error;
+      _errorMessage = 'Invalid reset code.';
       notifyListeners();
-      return success;
+      return false;
     } catch (e) {
       _status = AuthStatus.error;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');

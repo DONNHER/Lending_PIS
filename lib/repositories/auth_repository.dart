@@ -68,16 +68,36 @@ class AuthRepository {
     required String lastName,
     required UserRole role,
     String? avatarUrl,
+    String? idImageUrl,
   }) async {
     try {
+      final normalizedEmail = email.trim().toLowerCase();
+
+      // 🚀 1. Supabase Auth Registration
+      try {
+        debugPrint('DEBUG: [AuthRepository] Registering in Supabase Auth: $normalizedEmail');
+        await _supabase.auth.signUp(
+          email: normalizedEmail,
+          password: password,
+        );
+      } catch (e) {
+        // If user already exists in Supabase, we treat it as successful for the local sync step
+        if (e is AuthApiException && e.code != 'user_already_exists') {
+          debugPrint('❌ DEBUG: [AuthRepository] Supabase SignUp Failed: $e');
+          rethrow;
+        }
+      }
+
+      // 🚀 2. Laravel Database Registration (Users Table)
       final response = await _api.post('/register', body: {
         'username': username,
-        'email': email,
+        'email': normalizedEmail,
         'password': password,
         'firstname': firstName,
         'lastname': lastName,
         'role': role.name,
         'avatar_url': avatarUrl,
+        'id_image_url': idImageUrl,
       });
 
       if (response != null && response['success'] == true) {
@@ -94,7 +114,7 @@ class AuthRepository {
           'user': response['user'] != null ? UserModel.fromJson(response['user']) : null,
           'token': token,
           'mfa_required': response['mfa_required'] == true,
-          'email': response['email'],
+          'email': response['email'] ?? normalizedEmail,
           'supabase_mfa': response['supabase_mfa'] == true,
           'message': response['message'],
         };
@@ -123,8 +143,6 @@ class AuthRepository {
           await _api.setToken(token);
           await _syncSupabaseSession(token);
           debugPrint('DEBUG: [AuthRepository] Token successfully extracted and set in ApiService.');
-        } else {
-          debugPrint('WARNING: [AuthRepository] Login was successful but no token was found in response keys: ${response.keys.toList()}');
         }
 
         return {

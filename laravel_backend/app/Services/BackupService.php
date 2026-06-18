@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\SiteSetting;
+use App\Mail\BackupNotificationMail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use ZipArchive;
 use Exception;
 
@@ -16,11 +18,9 @@ use Exception;
  */
 class BackupService
 {
-    protected $resend;
-
-    public function __construct(ResendService $resend)
+    public function __construct()
     {
-        $this->resend = $resend;
+        // ResendService removed
     }
 
     /**
@@ -61,8 +61,7 @@ class BackupService
 
     protected function backupDatabase()
     {
-        // ... (implementation same as before, but ensure it points to correct DB)
-        $dbConfig = config('database.connections.pgsql'); // Changed to pgsql as per your .env
+        $dbConfig = config('database.connections.pgsql');
         $filename = 'backups/db_backup_' . date('Y-m-d_H-i-s') . '.sql';
         $fullPath = storage_path('app/' . $filename);
 
@@ -70,7 +69,6 @@ class BackupService
             mkdir(storage_path('app/backups'), 0755, true);
         }
 
-        // Note: For pgsql, we'd use pg_dump
         $command = sprintf(
             'PGPASSWORD=%s pg_dump -h %s -p %s -U %s %s > %s',
             escapeshellarg($dbConfig['password']),
@@ -132,23 +130,12 @@ class BackupService
 
     protected function notify($status, $type, $filePath = null, $error = null)
     {
-        $adminEmail = env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev');
-        $subject = "Backup " . ucfirst($status) . ": " . ucfirst($type);
-        
-        $html = "<h1>Backup Status: " . ucfirst($status) . "</h1>";
-        $html .= "<p>Type: " . ucfirst($type) . "</p>";
-        if ($error) $html .= "<p style='color:red;'>Error: $error</p>";
-        $html .= "<p>Date: " . date('Y-m-d H:i:s') . "</p>";
-
-        $attachments = [];
-        if ($status === 'success' && $filePath && file_exists($filePath) && filesize($filePath) < 10 * 1024 * 1024) {
-            $attachments[] = [
-                'filename' => basename($filePath),
-                'path' => $filePath,
-            ];
+        try {
+            $adminEmail = env('MAIL_FROM_ADDRESS', 'noreply@lending-pis.com');
+            Mail::to($adminEmail)->send(new BackupNotificationMail($status, $type, $filePath, $error));
+        } catch (\Exception $e) {
+            Log::error("Failed to send backup notification: " . $e->getMessage());
         }
-
-        $this->resend->sendEmail($adminEmail, $subject, $html, null, $attachments);
     }
 
     public function cleanup()

@@ -14,6 +14,7 @@ class ShareholderModel {
   final double totalShareCapital;
   final int creditScore;
   final String? idImageUrl;
+  final String? avatarUrl; // Added avatarUrl
   final double? membershipFee;
   final String role; 
 
@@ -30,6 +31,7 @@ class ShareholderModel {
     required this.totalShareCapital,
     required this.creditScore,
     this.idImageUrl,
+    this.avatarUrl,
     this.membershipFee,
     required this.role,
   });
@@ -97,6 +99,7 @@ class ShareholderModel {
       totalShareCapital: Parsers.parseDouble(json['total_share_capital'] ?? shData?['total_share_capital']),
       creditScore: Parsers.parseInt(json['creditscore'] ?? json['credit_score'] ?? shData?['credit_score']),
       idImageUrl: json['id_image_url']?.toString(),
+      avatarUrl: json['avatar_url']?.toString(), // Added avatarUrl extraction
       membershipFee: Parsers.parseDouble(json['membership_fee']),
       role: role,
     );
@@ -116,6 +119,7 @@ class ShareholderModel {
       'total_share_capital': totalShareCapital,
       'creditscore': creditScore,
       'id_image_url': idImageUrl,
+      'avatar_url': avatarUrl,
       'membership_fee': membershipFee,
       'role': role,
     };

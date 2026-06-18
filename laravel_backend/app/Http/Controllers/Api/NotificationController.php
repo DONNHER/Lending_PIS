@@ -3,21 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\ResendService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class NotificationController extends Controller
 {
-    protected $resend;
-
-    public function __construct(ResendService $resend)
+    public function __construct()
     {
-        $this->resend = $resend;
+        // ResendService removed
     }
 
     /**
-     * Trigger a Resend email from the app
+     * Trigger an email from the app using Supabase SMTP
      */
     public function sendEmail(Request $request)
     {
@@ -27,21 +25,21 @@ class NotificationController extends Controller
             'message' => 'required|string',
         ]);
 
-        $html = "<div style='font-family: sans-serif; line-height: 1.5;'>";
-        $html .= "<h2>Notification</h2>";
-        $html .= "<p>" . nl2br(e($request->message)) . "</p>";
-        $html .= "</div>";
+        try {
+            $emailTo = $request->to;
+            $subject = $request->subject;
+            $content = $request->message;
 
-        $success = $this->resend->sendEmail(
-            $request->to,
-            $request->subject,
-            $html
-        );
+            Mail::send([], [], function ($message) use ($emailTo, $subject, $content) {
+                $message->to($emailTo)
+                    ->subject($subject)
+                    ->html("<div style='font-family: sans-serif; line-height: 1.5;'><h2>Notification</h2><p>" . nl2br(e($content)) . "</p></div>");
+            });
 
-        if ($success) {
-            return response()->json(['success' => true, 'message' => 'Email sent via Resend']);
+            return response()->json(['success' => true, 'message' => 'Email sent successfully']);
+        } catch (\Exception $e) {
+            Log::error("Notification Email Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to send email'], 500);
         }
-
-        return response()->json(['success' => false, 'message' => 'Failed to send email'], 500);
     }
 }

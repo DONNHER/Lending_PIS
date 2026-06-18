@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../models/shareholder_model.dart';
 import '../repositories/auth_repository.dart';
@@ -13,6 +14,7 @@ class AddShareholderViewModel extends ChangeNotifier {
   final StorageRepository _storageRepository;
   final AuthRepository _authRepository;
   final EmailService _emailService;
+  final _supabase = Supabase.instance.client;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -79,46 +81,86 @@ class AddShareholderViewModel extends ChangeNotifier {
       final lastName = lastNameController.text.trim();
       final email = emailController.text.trim();
       final phone = phoneController.text.trim();
+      final username = usernameController.text.trim();
+      final password = passwordController.text.trim();
 
+      // Check for existing shareholder in local DB
       final existingShareholder = await _shareholderRepository.getShareholderByEmail(email);
       if (existingShareholder != null) {
         throw Exception('A shareholder with this email already exists.');
       }
 
+      // 🚀 1. REGISTER IN SUPABASE AUTH (New User)
+      debugPrint('DEBUG: [AddShareholder] Step 1: Registering in Supabase Auth...');
+      final authRes = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+      );
+      
+      final supabaseUserId = authRes.user?.id;
+      if (supabaseUserId == null) {
+        throw Exception('Failed to create Supabase account.');
+      }
+
+      // 🚀 2. UPLOAD ID IMAGE (Using Admin Authentication)
+      if (_idFileBytes != null) {
+        try {
+          debugPrint('DEBUG: [AddShareholder] Step 2: Uploading ID image...');
+          final String fileName = 'ID_${supabaseUserId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          _idUrl = await _storageRepository.uploadFile(
+            fileBytes: _idFileBytes!,
+            fileName: fileName,
+            folder: 'image_id_url',
+          );
+          debugPrint('✅ DEBUG: [AddShareholder] ID Uploaded. URL: $_idUrl');
+        } catch (e) {
+          debugPrint('⚠️ DEBUG: [AddShareholder] Upload failed: $e. Proceeding without URL.');
+        }
+      }
+
+      // 🚀 3. REGISTER IN LARAVEL USERS TABLE
+      debugPrint('DEBUG: [AddShareholder] Step 3: Registering in Laravel (Users Table)...');
       final result = await _authRepository.register(
         email: email,
-        password: passwordController.text.trim(),
-        username: usernameController.text.trim(),
+        password: password,
+        username: username,
         firstName: firstName,
         lastName: lastName,
         role: UserRole.shareholder,
+        idImageUrl: _idUrl, 
       );
 
       final UserModel? userModel = result['user'];
       if (userModel == null) {
-        throw Exception('Failed to retrieve user information after registration.');
+        throw Exception('Failed to create Laravel user account.');
       }
 
-      // 🚀 Trigger Email Notification via Laravel Backend (using Resend)
+      // 🚀 4. SEND WELCOME EMAIL (Laravel Backend)
+      // Since the admin creates the account, we send credentials via our custom email service.
+      final welcomeMessage = '''
+Greetings $firstName,
+
+Welcome to PIL - Account Created!
+
+Username: $username
+Password: $password
+
+You can access the login page here: http://localhost:8000/login 
+
+Registration successful. You can now use your credentials to log in.
+
+Thank you,
+Lending PIS Team
+''';
+
       await _emailService.sendNotification(
         email: email,
         subject: 'Welcome to PIL - Account Created',
-        message: result['message'] ?? 'Your account has been successfully created.',
+        message: welcomeMessage,
       );
 
-      // 🚀 FIXED: Added 'private/' prefix to satisfy your Supabase RLS Policy
-      if (_idFileBytes != null) {
-        try {
-          _idUrl = await _storageRepository.uploadFile(
-            fileBytes: _idFileBytes!,
-            fileName: 'private/ID_${userModel.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-            folder: 'shareholders_id', 
-          );
-        } catch (e) {
-          debugPrint('Storage upload failed: $e');
-        }
-      }
-
+      // 🚀 5. SAVE TO SHAREHOLDER DETAILS TABLE
+      debugPrint('DEBUG: [AddShareholder] Step 5: Saving shareholder details...');
       final Map<String, dynamic> shareholderData = {
         'user_id': userModel.id,
         'full_name': '$firstName $lastName',
@@ -130,7 +172,7 @@ class AddShareholderViewModel extends ChangeNotifier {
         'creditscore': 700,
         'total_share_capital': double.tryParse(initialCapitalController.text.trim()) ?? 0.0,
         'membership_fee': double.tryParse(membershipFeeController.text.trim()) ?? 200.0,
-        'id_image_url': _idUrl,
+        'id_image_url': _idUrl, 
       };
 
       await _shareholderRepository.addShareholder(shareholderData);

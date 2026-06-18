@@ -65,12 +65,20 @@ class _LoansBodyState extends State<_LoansBody> {
   Widget build(BuildContext context) {
     return Consumer<LoanRequestViewModel>(
       builder: (context, viewModel, _) {
+        final bool isFiltered = widget.initialShareholderId != null;
+
         return Scaffold(
           backgroundColor: const Color(0xFFFDF8F5),
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 0,
-            automaticallyImplyLeading: false,
+            leading: isFiltered 
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF32211A)),
+                  onPressed: () => Navigator.pop(context),
+                )
+              : null,
+            automaticallyImplyLeading: !isFiltered,
             title: const Text(
               'Loans Management', 
               style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
