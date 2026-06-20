@@ -418,6 +418,7 @@ class _AdminDetailBody extends StatelessWidget {
       switch (status) {
         case UserStatus.active: return Colors.green;
         case UserStatus.inactive: return Colors.orange;
+        case UserStatus.pending: return Colors.blue;
         case UserStatus.suspended: 
         case UserStatus.rejected:
         case UserStatus.blocked:

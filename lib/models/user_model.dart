@@ -16,7 +16,8 @@ enum UserStatus {
   inactive,
   suspended,
   rejected,
-  blocked;
+  blocked,
+  pending; // 🚀 Added pending status
 
   static UserStatus fromString(String? status) {
     if (status == null) return UserStatus.active;

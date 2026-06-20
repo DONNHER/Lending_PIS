@@ -106,8 +106,10 @@ class AuthController extends Controller
             ]);
         }
 
+        // If status is pending or anything else, require MFA/OTP
         return response()->json([
             'success' => true,
+            'user' => $user, // Return user to check status on frontend
             'mfa_required' => true,
             'email' => $user->email,
             'message' => 'Verification required.'

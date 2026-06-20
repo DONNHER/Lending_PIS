@@ -175,22 +175,32 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         }
 
+        // If account is pending or MFA is required by Laravel
         if (result['mfa_required'] == true) {
           _pendingMfaEmail = result['email'] ?? normalizedEmail;
           _currentUser = user;
           
+          // Trigger the 6-digit OTP code through Supabase
           try {
+            debugPrint('DEBUG: [AuthViewModel] Triggering OTP for pending account: $_pendingMfaEmail');
             await _supabase.auth.signInWithOtp(
               email: _pendingMfaEmail!,
-              shouldCreateUser: true, 
+              shouldCreateUser: false, // User already exists if they are in Laravel 'pending'
             );
             
             _status = AuthStatus.mfaRequired;
           } catch (e) {
-            _status = AuthStatus.error;
-            _errorMessage = 'OTP Error: $e';
-            notifyListeners();
-            return false;
+            debugPrint('❌ DEBUG: [AuthViewModel] Supabase OTP Trigger Error: $e');
+            // If the user doesn't exist in Supabase yet (sync issue), try signUp which also sends a code
+            try {
+               await _supabase.auth.signUp(email: _pendingMfaEmail!, password: password);
+               _status = AuthStatus.mfaRequired;
+            } catch (signUpError) {
+               _status = AuthStatus.error;
+               _errorMessage = 'Verification Error: ${signUpError.toString()}';
+               notifyListeners();
+               return false;
+            }
           }
 
           if (result['supabase_mfa'] == true) {
@@ -329,6 +339,7 @@ class AuthViewModel extends ChangeNotifier {
         debugPrint('DEBUG: [AuthViewModel] Verifying Supabase OTP for: $_pendingMfaEmail');
         
         AuthResponse res;
+        // Try multiple OTP types to ensure we catch both Magic Link codes and Signup codes
         try {
           res = await _supabase.auth.verifyOTP(
             email: _pendingMfaEmail!,
@@ -336,11 +347,19 @@ class AuthViewModel extends ChangeNotifier {
             type: OtpType.magiclink, 
           );
         } catch (_) {
-          res = await _supabase.auth.verifyOTP(
-            email: _pendingMfaEmail!,
-            token: code,
-            type: OtpType.signup,
-          );
+          try {
+             res = await _supabase.auth.verifyOTP(
+               email: _pendingMfaEmail!,
+               token: code,
+               type: OtpType.signup,
+             );
+          } catch (e2) {
+             res = await _supabase.auth.verifyOTP(
+               email: _pendingMfaEmail!,
+               token: code,
+               type: OtpType.email,
+             );
+          }
         }
 
         if (res.session != null || res.user != null) {
@@ -414,6 +433,7 @@ class AuthViewModel extends ChangeNotifier {
       final normalizedEmail = email.trim().toLowerCase();
       
       // 🚀 1. REGISTER IN SUPABASE AUTH TABLE FIRST
+      // This will trigger the "Confirm Signup" email with the {{ .Token }} you set up
       try {
         debugPrint('DEBUG: [AuthViewModel] Attempting Supabase signUp for: $normalizedEmail');
         await _supabase.auth.signUp(
@@ -432,7 +452,7 @@ class AuthViewModel extends ChangeNotifier {
         }
       }
 
-      // 🚀 2. SAVE TO LARAVEL DATABASE (only if step 1 is ok)
+      // 🚀 2. SAVE TO LARAVEL DATABASE
       debugPrint('DEBUG: [AuthViewModel] Saving to Laravel database...');
       final result = await _repository.register(
         username: username.trim(),
@@ -443,21 +463,16 @@ class AuthViewModel extends ChangeNotifier {
         role: role,
       );
 
-      // 🚀 3. TRIGGER OTP EMAIL
+      // 🚀 3. SET STATE FOR OTP VERIFICATION
       if (result['mfa_required'] == true) {
         _pendingMfaEmail = result['email'] ?? normalizedEmail;
-        
-        await _supabase.auth.signInWithOtp(
-          email: _pendingMfaEmail!,
-          shouldCreateUser: true,
-        );
-        
         _status = AuthStatus.mfaRequired;
-        debugPrint('✅ DEBUG: [AuthViewModel] OTP Email triggered.');
-
+        
         if (result['user'] != null) {
            _currentUser = result['user'];
         }
+        
+        debugPrint('✅ DEBUG: [AuthViewModel] Registration successful, waiting for OTP code from Confirm Signup email.');
         notifyListeners();
         return true;
       }
@@ -529,7 +544,7 @@ class AuthViewModel extends ChangeNotifier {
         idImageUrl = await _storageRepository.uploadFile(
           fileBytes: _idImageBytes!,
           fileName: 'id_${_currentUser!.id}.jpg',
-          folder: 'image_id_url', // FIXED: Use image_id_url bucket
+          folder: 'image_id_url', 
         );
         idImageUrl = '$idImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
       }
@@ -609,7 +624,7 @@ class AuthViewModel extends ChangeNotifier {
       final AuthResponse res = await _supabase.auth.verifyOTP(
         email: email.trim().toLowerCase(),
         token: code,
-        type: OtpType.magiclink,
+        type: OtpType.recovery, // Use recovery for password resets
       );
 
       if (res.session != null || res.user != null) {
