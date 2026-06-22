@@ -48,6 +48,17 @@ class DashboardViewModel extends ChangeNotifier {
   List<ShareholderModel> get searchResults => _searchResults;
   ChartFilter get selectedFilter => _selectedFilter;
 
+  /// 🚀 Helper to map labels to constant IconData to support Icon Tree Shaking
+  IconData _getIconForLabel(String label) {
+    switch (label) {
+      case 'Total Users': return Icons.people_outline;
+      case 'Active Now': return Icons.online_prediction_outlined;
+      case 'New Reg.': return Icons.person_add_alt_1_outlined;
+      case 'Interest Rate': return Icons.schedule_rounded;
+      default: return Icons.info_outline;
+    }
+  }
+
   Future<void> initDashboard({bool forceRefresh = false}) async {
     if ((_isInitialized || _isInitializing) && !forceRefresh) return;
     
@@ -60,11 +71,14 @@ class DashboardViewModel extends ChangeNotifier {
       final cachedTrend = await _cache!.getData('dashboard_user_trend');
       
       if (cachedKpis != null) {
-        _kpiCards = (cachedKpis as List).map((e) => KpiCardData(
-          label: e['label'],
-          value: e['value'],
-          icon: IconData(e['icon_code'], fontFamily: 'MaterialIcons'),
-        )).toList();
+        _kpiCards = (cachedKpis as List).map((e) {
+          final String label = e['label'] ?? '';
+          return KpiCardData(
+            label: label,
+            value: e['value'],
+            icon: _getIconForLabel(label), // Fix: Avoid non-constant IconData
+          );
+        }).toList();
       }
       
       if (cachedRecent != null) {
@@ -193,8 +207,7 @@ class DashboardViewModel extends ChangeNotifier {
         _cache!.saveData('dashboard_kpis', _kpiCards.map((e) => {
           'label': e.label,
           'value': e.value,
-          'icon_code': e.icon.codePoint,
-        }).toList());
+        }).toList()); // No longer saving icon_code to avoid confusion
         _cache!.saveData('dashboard_recent', _recentTransactions.map((e) => e.toJson()).toList());
         _cache!.saveData('dashboard_user_trend', _userTrend.map((e) => {
           'label': e.label,

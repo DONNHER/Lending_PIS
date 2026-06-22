@@ -647,8 +647,9 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      String? finalAvatarUrl = avatarUrl;
-      String? finalIdImageUrl = idImageUrl;
+      // 🚀 Fix: Default to current URLs to avoid overwriting them with null in the database
+      String? finalAvatarUrl = avatarUrl ?? _currentUser?.avatarUrl;
+      String? finalIdImageUrl = idImageUrl ?? _currentUser?.idImageUrl;
       
       // 🚀 Handle avatar upload - non-fatal if storage fails
       if (_avatarBytes != null && _storageRepository != null) {
