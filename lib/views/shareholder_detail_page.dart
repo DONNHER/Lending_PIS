@@ -14,6 +14,7 @@ import '../services/email_service.dart';
 import 'loans_page.dart';
 import 'activity_logs_page.dart';
 import 'add_share_capital_page.dart';
+import 'address_selector_page.dart';
 
 class ShareholderDetailPage extends StatelessWidget {
   final String? shareholderId;
@@ -57,6 +58,68 @@ class _ShareholderDetailBodyState extends State<_ShareholderDetailBody> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleAddressEdit(BuildContext context, ShareholderDetailViewModel viewModel) async {
+    final newAddress = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddressSelectorPage()),
+    );
+
+    if (newAddress != null && context.mounted) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Confirm Address Update', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Are you sure you want to update the address to:'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Text(newAddress, style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true && context.mounted) {
+        final success = await viewModel.updateAddress(newAddress);
+        if (success && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Address updated successfully')),
+          );
+        } else if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(viewModel.errorMessage ?? 'Failed to update address')),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -136,6 +199,17 @@ class _ShareholderDetailBodyState extends State<_ShareholderDetailBody> {
                               onStatusTap: () => _showStatusDialog(context, viewModel)
                             ),
                             _buildDetailItem('Credit Score', '${sh.creditScore} - Excellent', showMeter: true),
+                            _buildDetailItem(
+                              'Address', 
+                              sh.address.isEmpty ? 'No address provided' : sh.address,
+                              icon: Icons.location_on_outlined,
+                              trailing: IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 16, color: AppTheme.primary),
+                                onPressed: () => _handleAddressEdit(context, viewModel),
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -448,7 +522,15 @@ class _ShareholderDetailBodyState extends State<_ShareholderDetailBody> {
     );
   }
 
-  Widget _buildDetailItem(String label, String value, {IconData? icon, bool isStatus = false, bool showMeter = false, VoidCallback? onStatusTap}) {
+  Widget _buildDetailItem(
+    String label, 
+    String value, {
+    IconData? icon, 
+    bool isStatus = false, 
+    bool showMeter = false, 
+    VoidCallback? onStatusTap,
+    Widget? trailing,
+  }) {
     Color statusColor = AppTheme.textDark;
     if (isStatus) {
       final v = value.toLowerCase();
@@ -490,6 +572,10 @@ class _ShareholderDetailBodyState extends State<_ShareholderDetailBody> {
                 if (showMeter) ...[
                   const SizedBox(width: 8),
                   const Icon(Icons.speed, size: 20, color: AppTheme.textMuted),
+                ],
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  trailing,
                 ]
               ],
             ),

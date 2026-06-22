@@ -192,4 +192,22 @@ class ShareholderDetailViewModel extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> updateAddress(String address) async {
+    if (_shareholder == null || _shareholder!.userId.isEmpty) return false;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _shareholderRepo.updateAddress(_shareholder!.userId, address);
+      await fetchDetails(); // Refresh data
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
 }

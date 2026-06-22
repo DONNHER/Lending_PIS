@@ -3,9 +3,17 @@ import 'package:provider/provider.dart';
 import '../app_theme.dart';
 import '../viewmodels/add_shareholder_viewmodel.dart';
 import 'shareholder_detail_page.dart';
+import 'address_selector_page.dart';
 
-class AddShareholderPage extends StatelessWidget {
+class AddShareholderPage extends StatefulWidget {
   const AddShareholderPage({super.key});
+
+  @override
+  State<AddShareholderPage> createState() => _AddShareholderPageState();
+}
+
+class _AddShareholderPageState extends State<AddShareholderPage> {
+  bool _obscurePassword = true;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +38,7 @@ class AddShareholderPage extends StatelessWidget {
                             children: [
                               Expanded(
                                 flex: 2,
-                                child: _buildPersonalInformationCard(viewModel, isWide: true),
+                                child: _buildPersonalInformationCard(context, viewModel, isWide: true),
                               ),
                               const SizedBox(width: 24),
                               Expanded(
@@ -47,7 +55,7 @@ class AddShareholderPage extends StatelessWidget {
                           )
                         : Column(
                             children: [
-                              _buildPersonalInformationCard(viewModel, isWide: false),
+                              _buildPersonalInformationCard(context, viewModel, isWide: false),
                               const SizedBox(height: 24),
                               _buildCapitalAndFeesCard(viewModel),
                               const SizedBox(height: 24),
@@ -99,7 +107,7 @@ class AddShareholderPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPersonalInformationCard(AddShareholderViewModel viewModel, {required bool isWide}) {
+  Widget _buildPersonalInformationCard(BuildContext context, AddShareholderViewModel viewModel, {required bool isWide}) {
     return _Card(
       title: 'Personal Information',
       child: Column(
@@ -153,8 +161,19 @@ class AddShareholderPage extends StatelessWidget {
           const SizedBox(height: 20),
           _Field(
             label: 'Residential Address',
-            hint: 'Residential Address',
+            hint: 'Tap to select address',
             controller: viewModel.addressController,
+            readOnly: true,
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddressSelectorPage()),
+              );
+              if (result != null) {
+                viewModel.addressController.text = result as String;
+              }
+            },
+            suffixIcon: const Icon(Icons.location_on_outlined, color: AppTheme.primary, size: 20),
           ),
           const SizedBox(height: 24),
           
@@ -261,6 +280,41 @@ class AddShareholderPage extends StatelessWidget {
             label: 'Temporary Password',
             hint: 'Temporary Password',
             controller: viewModel.passwordController,
+            obscureText: _obscurePassword,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                color: AppTheme.textMuted,
+                size: 20,
+              ),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline_rounded, color: AppTheme.primary, size: 14),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Requirement: At least 8 characters, with uppercase, lowercase, number, and special character.',
+                    style: TextStyle(
+                      color: AppTheme.textDark,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -297,7 +351,6 @@ class AddShareholderPage extends StatelessWidget {
                       if (context.mounted) {
                         final created = viewModel.createdShareholder;
                         if (created != null) {
-                          // Redirect to detail page instead of showing success dialog
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
@@ -368,17 +421,23 @@ class _Field extends StatelessWidget {
   final String label;
   final String hint;
   final Widget? prefix;
+  final Widget? suffixIcon;
   final TextEditingController? controller;
   final bool readOnly;
+  final bool obscureText;
   final Color? fillColor;
+  final VoidCallback? onTap;
 
   const _Field({
     required this.label,
     required this.hint,
     this.prefix,
+    this.suffixIcon,
     this.controller,
     this.readOnly = false,
+    this.obscureText = false,
     this.fillColor,
+    this.onTap,
   });
 
   @override
@@ -391,9 +450,12 @@ class _Field extends StatelessWidget {
         TextField(
           controller: controller,
           readOnly: readOnly,
+          obscureText: obscureText,
+          onTap: onTap,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefix,
+            suffixIcon: suffixIcon,
             fillColor: fillColor ?? Colors.white,
             filled: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

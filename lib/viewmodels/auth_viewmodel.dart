@@ -34,12 +34,15 @@ class AuthViewModel extends ChangeNotifier {
   UserModel? _currentUser;
   String? _errorMessage;
   String? _pendingMfaEmail;
+  OtpType _pendingOtpType = OtpType.email; 
+  bool _isSyncing = false;
   bool _isInitialized = false;
   bool _isPasswordRecoveryMode = false;
 
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
   bool _rememberMe = false;
+  String? _rememberedEmail;
   
   Uint8List? _avatarBytes;
   Uint8List? _idImageBytes;
@@ -49,8 +52,10 @@ class AuthViewModel extends ChangeNotifier {
   List<dynamic> _mfaFactors = [];
 
   AuthViewModel(this._repository, [this._activityLogRepo, this._storageRepository]) {
+    _pendingOtpType = OtpType.email; // 🚀 Force initialization
     _initSupabaseListener();
     _checkInitialUrl();
+    _loadRememberedEmail();
   }
 
   // 🚀 Step 1: URL detection (Optional if using OTP, but kept for compatibility)
@@ -99,6 +104,12 @@ class AuthViewModel extends ChangeNotifier {
         debugPrint('DEBUG: [AuthViewModel] User confirmed recovery flow.');
         _isPasswordRecoveryMode = true;
         notifyListeners();
+      } else if (event == AuthChangeEvent.signedIn && session != null) {
+        // Automatically sync with Laravel if user is already in MFA mode and verifies via link
+        if (_status == AuthStatus.mfaRequired && _pendingMfaEmail != null) {
+          debugPrint('DEBUG: [AuthViewModel] Auto-verifying via Supabase session event.');
+          _syncVerificationWithLaravel('link_verification');
+        }
       }
     });
   }
@@ -116,6 +127,7 @@ class AuthViewModel extends ChangeNotifier {
   bool get obscurePassword => _obscurePassword;
   bool get agreeToTerms => _agreeToTerms;
   bool get rememberMe => _rememberMe;
+  String? get rememberedEmail => _rememberedEmail;
   Uint8List? get avatarBytes => _avatarBytes;
   Uint8List? get idImageBytes => _idImageBytes;
 
@@ -128,6 +140,19 @@ class AuthViewModel extends ChangeNotifier {
       _status = isAuthenticated ? AuthStatus.authenticated : AuthStatus.unauthenticated;
     }
     notifyListeners();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    try {
+      final email = await _cacheService.getData('remembered_email');
+      if (email != null && email is String) {
+        _rememberedEmail = email;
+        _rememberMe = true;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading remembered email: $e');
+    }
   }
 
   Future<void> logActivity(String action, String description) async {
@@ -161,6 +186,24 @@ class AuthViewModel extends ChangeNotifier {
       if (user != null) {
         if (user.status != UserStatus.active) {
           if (!_isPasswordRecoveryMode) {
+            // 🚀 Handle pending status verification during restoration
+            if (user.status == UserStatus.pending) {
+              debugPrint('DEBUG: [AuthViewModel] Session restored for pending user. Requiring OTP/MFA.');
+              _pendingMfaEmail = user.email;
+              
+              // 🚀 Trigger Supabase OTP for restored pending session
+              try {
+                await _supabase.auth.signInWithOtp(email: _pendingMfaEmail!);
+                _pendingOtpType = OtpType.email;
+              } catch (e) {
+                debugPrint('DEBUG: [AuthViewModel] Supabase OTP trigger failed: $e');
+              }
+
+              _status = AuthStatus.mfaRequired;
+              notifyListeners();
+              return;
+            }
+
             await logout();
             _errorMessage = 'Your account is ${user.status.name}.';
             _status = AuthStatus.error;
@@ -192,11 +235,13 @@ class AuthViewModel extends ChangeNotifier {
         if (e.message.toLowerCase().contains('email not confirmed')) {
           try {
             await _supabase.auth.resend(type: OtpType.signup, email: normalizedEmail);
+            _pendingOtpType = OtpType.signup;
             _errorMessage = 'Email not confirmed. Check inbox.';
           } catch (_) {
             _errorMessage = 'Email not confirmed. Please verify your email.';
           }
-          _status = AuthStatus.error;
+          _pendingMfaEmail = normalizedEmail;
+          _status = AuthStatus.mfaRequired;
           notifyListeners();
           return false;
         }
@@ -204,7 +249,34 @@ class AuthViewModel extends ChangeNotifier {
 
       final result = await _repository.login(email: normalizedEmail, password: password);
       if (result != null) {
+        if (_rememberMe) {
+          await _cacheService.saveData('remembered_email', normalizedEmail);
+          _rememberedEmail = normalizedEmail;
+        } else {
+          await _cacheService.clearCache('remembered_email');
+          _rememberedEmail = null;
+        }
+
         UserModel? user = result['user'] as UserModel?;
+        
+        // 🚀 CRITICAL: Check if MFA is required OR account is still pending verification
+        if (result['mfa_required'] == true || user?.status == UserStatus.pending) {
+          debugPrint('DEBUG: [AuthViewModel] MFA required or Account Pending. Triggering Supabase OTP.');
+          _pendingMfaEmail = result['email'] ?? normalizedEmail;
+          
+          // 🚀 Trigger Supabase OTP instead of using Laravel's OTP delivery
+          try {
+            await _supabase.auth.signInWithOtp(email: _pendingMfaEmail!);
+            _pendingOtpType = OtpType.email; 
+          } catch (e) {
+            debugPrint('DEBUG: [AuthViewModel] Supabase signInWithOtp Error: $e');
+          }
+
+          _status = AuthStatus.mfaRequired;
+          notifyListeners();
+          return false; // Return false so LoginPage navigates to MfaPage
+        }
+
         _currentUser = user;
         _status = AuthStatus.authenticated;
         notifyListeners();
@@ -231,7 +303,8 @@ class AuthViewModel extends ChangeNotifier {
         } catch (_) {}
         await _repository.logout();
       }
-      await _cacheService.clearAll();
+      // Don't use clearAll() because we want to keep remembered_email
+      await _cacheService.clearCache('auth_token'); 
       await _supabase.auth.signOut();
     } catch (e) {
       debugPrint('Logout Error: $e');
@@ -251,7 +324,8 @@ class AuthViewModel extends ChangeNotifier {
       _currentUser = null;
       _status = AuthStatus.unauthenticated;
       _repository.clearLocalSession();
-      _cacheService.clearAll();
+      // Only clear cache related to session
+      _cacheService.clearCache('auth_token');
       notifyListeners();
     }
   }
@@ -262,8 +336,20 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final result = await _repository.register(username: username.trim(), email: email.trim().toLowerCase(), password: password, firstName: firstName.trim(), lastName: lastName.trim(), role: role);
-      if (result['user'] != null) {
-        _currentUser = result['user'];
+      
+      UserModel? user = result['user'] as UserModel?;
+      
+      if (result['mfa_required'] == true || user?.status == UserStatus.pending) {
+         debugPrint('DEBUG: [AuthViewModel] Registration successful. Switching to MFA mode.');
+         _pendingMfaEmail = result['email'] ?? email.trim().toLowerCase();
+         _pendingOtpType = OtpType.signup; // signUp already triggered OTP in repository
+         _status = AuthStatus.mfaRequired;
+         notifyListeners();
+         return false; // Return false to navigate to MFA page
+      }
+
+      if (user != null) {
+        _currentUser = user;
         _status = AuthStatus.authenticated;
         notifyListeners();
         return true;
@@ -279,27 +365,112 @@ class AuthViewModel extends ChangeNotifier {
 
   Future<bool> verifyMfa(String code) async {
     _status = AuthStatus.loading;
+    _errorMessage = null;
     notifyListeners();
     try {
-      final user = await _repository.verifyMfa(email: _pendingMfaEmail!, code: code);
-      if (user != null) {
-        _currentUser = user;
-        _status = AuthStatus.authenticated;
-        _pendingMfaEmail = null;
-        notifyListeners();
-        return true;
+      final email = _pendingMfaEmail!.trim().toLowerCase();
+      final token = code.trim();
+      
+      // 🚀 Exhaustive verification type attempt
+      final typesToTry = [
+        _pendingOtpType,   
+        OtpType.email,      
+        OtpType.signup,     
+        OtpType.magiclink,  
+      ].toSet().toList();
+
+      AuthResponse? response;
+      dynamic lastError;
+
+      for (final type in typesToTry) {
+        try {
+          debugPrint('DEBUG: [AuthViewModel] Attempting Supabase Verification (Type: $type) for $email');
+          response = await _supabase.auth.verifyOTP(
+            email: email,
+            token: token,
+            type: type,
+          );
+          if (response.session != null) {
+            debugPrint('DEBUG: [AuthViewModel] Supabase OTP Verification SUCCESS ($type).');
+            break;
+          }
+        } catch (e) {
+          lastError = e;
+          debugPrint('DEBUG: [AuthViewModel] Supabase OTP Verification FAILED ($type): $e');
+        }
       }
+
+      if (response?.session != null) {
+        return await _syncVerificationWithLaravel(token);
+      }
+      
+      _status = AuthStatus.mfaRequired;
+      if (lastError is AuthApiException) {
+        _errorMessage = lastError.message;
+        if (lastError.code == 'otp_expired' || lastError.message.contains('expired')) {
+          _errorMessage = 'The verification code has expired. Please request a new one.';
+        }
+      } else {
+        _errorMessage = 'Invalid or expired verification code.';
+      }
+      
+      notifyListeners();
       return false;
     } catch (e) {
-      _status = AuthStatus.authenticated;
-      _errorMessage = e.toString();
+      debugPrint('DEBUG: [AuthViewModel] Unexpected Verification Error: $e');
+      _status = AuthStatus.mfaRequired;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return false;
     }
   }
 
+  Future<bool> _syncVerificationWithLaravel(String code) async {
+    if (_isSyncing) return true;
+    _isSyncing = true;
+    
+    try {
+        debugPrint('DEBUG: [AuthViewModel] Syncing verification with Laravel Backend.');
+        UserModel? user = await _repository.verifyMfa(
+          email: _pendingMfaEmail!, 
+          code: code
+        );
+        
+        if (user != null) {
+          _currentUser = user;
+          _status = AuthStatus.authenticated;
+          _pendingMfaEmail = null;
+          notifyListeners();
+          return true;
+        }
+        throw Exception('Failed to synchronize session with server.');
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Laravel Sync Error: $e');
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _status = AuthStatus.mfaRequired;
+      notifyListeners();
+      return false;
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
   Future<bool> resendMfaCode(String email) async {
-    return await _repository.resendMfaCode(email);
+    try {
+      final normalizedEmail = email.trim().toLowerCase();
+      debugPrint('DEBUG: [AuthViewModel] Resending Supabase OTP to $normalizedEmail (Mode: $_pendingOtpType)');
+      
+      if (_pendingOtpType == OtpType.signup) {
+         await _supabase.auth.resend(type: OtpType.signup, email: normalizedEmail);
+      } else {
+         await _supabase.auth.signInWithOtp(email: normalizedEmail);
+         _pendingOtpType = OtpType.email;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Failed to resend Supabase OTP: $e');
+      return false;
+    }
   }
 
   Future<void> startMfaEnrollment() async {
@@ -476,11 +647,24 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
+      String? finalAvatarUrl = avatarUrl;
+      
+      // 🚀 Handle avatar upload if bytes are present
+      if (_avatarBytes != null && _storageRepository != null) {
+        final fileName = 'avatar_${_currentUser!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        finalAvatarUrl = await _storageRepository!.uploadFile(
+          fileBytes: _avatarBytes!,
+          fileName: fileName,
+          folder: 'avatars',
+        );
+        _avatarBytes = null; // Clear bytes after upload
+      }
+
       final updatedUser = await _repository.updateProfile(
         firstName: firstName,
         lastName: lastName,
         address: address,
-        avatarUrl: avatarUrl,
+        avatarUrl: finalAvatarUrl,
         idImageUrl: idImageUrl,
       );
       _currentUser = updatedUser;

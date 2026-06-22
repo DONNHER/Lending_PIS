@@ -18,15 +18,30 @@ class ActivityLogModel {
   });
 
   factory ActivityLogModel.fromJson(Map<String, dynamic> json) {
+    DateTime parsedDate;
+    if (json['created_at'] != null) {
+      String dateStr = json['created_at'].toString();
+      // Ensure the parser knows it's UTC if the 'Z' or offset is missing
+      if (!dateStr.contains('Z') && !dateStr.contains('+')) {
+        // Laravel default timestamp is Y-m-d H:i:s, we need to treat it as UTC
+        if (dateStr.length == 19) {
+          dateStr = dateStr.replaceAll(' ', 'T') + 'Z';
+        } else if (!dateStr.contains('T')) {
+          dateStr += 'Z';
+        }
+      }
+      parsedDate = DateTime.parse(dateStr).toLocal();
+    } else {
+      parsedDate = DateTime.now();
+    }
+
     return ActivityLogModel(
       id: json['id']?.toString(),
       userId: json['user_id']?.toString(),
       shareholderId: json['shareholder_id']?.toString(),
       action: json['action']?.toString() ?? '',
       ipAddress: json['ip_address']?.toString(),
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'].toString())
-          : DateTime.now(),
+      createdAt: parsedDate,
       description: json['description'] ?? json['details'] ?? '',
     );
   }
@@ -40,8 +55,6 @@ class ActivityLogModel {
     };
     
     if (id != null && id!.isNotEmpty) map['id'] = id;
-    
-    // Validate UUIDs to avoid Supabase casting errors
     if (_isValidUuid(userId)) map['user_id'] = userId;
     if (_isValidUuid(shareholderId)) map['shareholder_id'] = shareholderId;
     

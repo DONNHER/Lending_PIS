@@ -64,15 +64,36 @@ class NotificationModel {
   }
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    DateTime parsedDate;
+    if (json['created_at'] != null) {
+      String dateStr = json['created_at'].toString();
+      
+      // 🚀 Robust UTC to Local conversion
+      if (!dateStr.contains('Z') && !dateStr.contains('+')) {
+        // If it's a standard Laravel 'Y-m-d H:i:s', replace space with 'T' and add 'Z'
+        if (dateStr.length == 19) {
+          dateStr = dateStr.replaceAll(' ', 'T') + 'Z';
+        } else if (!dateStr.contains('T')) {
+          dateStr += 'Z';
+        }
+      }
+      
+      try {
+        parsedDate = DateTime.parse(dateStr).toLocal();
+      } catch (e) {
+        parsedDate = DateTime.now();
+      }
+    } else {
+      parsedDate = DateTime.now();
+    }
+
     return NotificationModel(
       id: json['id']?.toString() ?? '',
       shareholderId: json['shareholder_id']?.toString() ?? json['user_id']?.toString() ?? '',
       comakerId: json['comaker_id']?.toString(),
       title: json['title']?.toString() ?? '',
       content: json['content']?.toString() ?? '',
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'].toString()) 
-          : DateTime.now(),
+      createdAt: parsedDate,
       isUnread: json['is_unread'] as bool? ?? true,
       category: NotificationCategory.fromString(json['category']?.toString()),
       type: json['type']?.toString(),

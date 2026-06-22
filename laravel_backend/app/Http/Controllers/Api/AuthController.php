@@ -84,7 +84,7 @@ class AuthController extends Controller
             
             return response()->json([
                 'success' => true, 
-                'user' => $user,
+                'user' => $user->load('shareholder'),
                 'mfa_required' => true,
                 'email' => $user->email,
                 'message' => 'Registration successful. Please verify the code sent to your email.'
@@ -108,7 +108,7 @@ class AuthController extends Controller
             $token = $user->createToken('auth_token')->plainTextToken;
             return response()->json([
                 'success' => true, 
-                'user' => $user, 
+                'user' => $user->load('shareholder'), 
                 'token' => $token,
                 'mfa_required' => false
             ]);
@@ -116,7 +116,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'user' => $user, 
+            'user' => $user->load('shareholder'), 
             'mfa_required' => true,
             'email' => $user->email,
             'message' => 'Verification required.'
@@ -128,8 +128,8 @@ class AuthController extends Controller
         $user = $request->user();
 
         $validator = Validator::make($request->all(), [
-            'firstname' => 'required|string|max:255',
-            'lastname' => 'required|string|max:255',
+            'firstname' => 'sometimes|string|max:255',
+            'lastname' => 'sometimes|string|max:255',
             'address' => 'nullable|string',
             'avatar_url' => 'nullable|string',
             'id_image_url' => 'nullable|string',
@@ -140,21 +140,21 @@ class AuthController extends Controller
         }
 
         try {
-            $user->update([
-                'firstname' => $request->firstname,
-                'lastname' => $request->lastname,
-                'address' => $request->address,
-                'avatar_url' => $request->avatar_url,
-                'id_image_url' => $request->id_image_url ?? $user->id_image_url,
-            ]);
+            $user->update($request->only([
+                'firstname', 
+                'lastname', 
+                'address', 
+                'avatar_url', 
+                'id_image_url'
+            ]));
 
             // Sync with shareholders table if user is a shareholder
             if ($user->role === 'shareholder' && $user->shareholder) {
                 $user->shareholder->update([
-                    'first_name' => $request->firstname,
-                    'last_name' => $request->lastname,
-                    'full_name' => $request->firstname . ' ' . $request->lastname,
-                    'address' => $request->address,
+                    'first_name' => $user->firstname,
+                    'last_name' => $user->lastname,
+                    'full_name' => $user->firstname . ' ' . $user->lastname,
+                    'address' => $user->address,
                 ]);
             }
 
@@ -255,7 +255,14 @@ class AuthController extends Controller
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json(['success' => true, 'user' => $user, 'token' => $token]);
+        return response()->json(['success' => true, 'user' => $user->load('shareholder'), 'token' => $token]);
+    }
+
+    public function resendMfa(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        Log::info("MFA Resend requested for: " . $request->email);
+        return response()->json(['success' => true, 'message' => 'Delivery is handled by Supabase.']);
     }
 
     public function logout(Request $request)

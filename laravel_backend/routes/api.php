@@ -33,7 +33,8 @@ Route::post('/resend-mfa', [AuthController::class, 'resendMfa']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        // 🚀 Eager load shareholder to provide address and other details
+        return $request->user()->load('shareholder');
     });
     
     // Support both PUT and POST for profile updates
@@ -64,6 +65,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/users/count', [UserController::class, 'count']);
         Route::apiResource('admin/users', UserController::class)->names('admin.users');
         Route::get('/admin/users/{id}/login-history', [UserController::class, 'loginHistory']);
+        
+        // 🚀 Status & Address Updates
+        Route::match(['PUT', 'POST'], '/admin/users/{id}/status', [UserController::class, 'updateStatus']);
+        Route::match(['PUT', 'POST'], '/admin/users/{id}/address', [UserController::class, 'updateAddress']);
+
         Route::post('/activity-logs/cleanup', [ActivityLogController::class, 'cleanup']);
     });
 
@@ -106,8 +112,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Transactions
     Route::get('/transactions/count', [TransactionController::class, 'count']);
     Route::get('/transactions/shareholder/{shareholderId}', [TransactionController::class, 'getByShareholder']);
-    
-    // 🚀 FIXED: Added explicit path route to resolve "Route not found" error
     Route::get('/transactions/reference/{referenceId}', [TransactionController::class, 'getByReference']);
     
     Route::apiResource('transactions', TransactionController::class)->only(['index', 'store']);

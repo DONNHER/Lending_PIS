@@ -95,11 +95,9 @@ class AddShareholderViewModel extends ChangeNotifier {
       debugPrint('DEBUG: [AddShareholder] Admin session before starting: ${currentSupabaseUser?.email ?? "NONE"}');
 
       // 🚀 1. UPLOAD ID IMAGE (MUST BE FIRST while Admin is still authenticated)
-      // IMPORTANT: We do this BEFORE registering the new user, because registration signs the Admin out of Supabase.
       if (_idFileBytes != null) {
         try {
           debugPrint('DEBUG: [AddShareholder] Step 1: Uploading ID image...');
-          // Since we don't have the user ID yet, we use a clean version of the email + timestamp for unique filename
           final String safeEmail = email.split('@').first.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
           final String fileExt = _idFileName?.split('.').last ?? 'jpg';
           final String fileName = 'ID_${safeEmail}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
@@ -112,14 +110,11 @@ class AddShareholderViewModel extends ChangeNotifier {
           debugPrint('✅ DEBUG: [AddShareholder] ID Uploaded. URL: $_idUrl');
         } catch (e) {
           debugPrint('⚠️ DEBUG: [AddShareholder] Upload failed: $e');
-          // If RLS fails here, the Admin isn't logged into Supabase or RLS is too restrictive
           throw Exception('ID Upload failed. Please ensure you are logged in as Admin and the "image_id_url" bucket allows authenticated uploads.');
         }
       }
 
       // 🚀 2. REGISTER USER (In Supabase & Laravel)
-      // Note: AuthRepository.register handles the Supabase signUp. 
-      // This WILL clear the Admin's Supabase session and replace it with the new user's (unconfirmed) session.
       debugPrint('DEBUG: [AddShareholder] Step 2: Registering user...');
       final result = await _authRepository.register(
         email: email,
@@ -187,6 +182,15 @@ class AddShareholderViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+
+    final password = passwordController.text;
+    final passwordRegex = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$');
+    if (!passwordRegex.hasMatch(password)) {
+      _errorMessage = 'Password does not meet complexity requirements.';
+      notifyListeners();
+      return false;
+    }
+
     return true;
   }
 

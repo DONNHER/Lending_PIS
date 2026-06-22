@@ -44,6 +44,17 @@ class _LoginContentState extends State<_LoginContent>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
     _animCtrl.forward();
+
+    // Pre-fill email if remembered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final viewModel = context.read<AuthViewModel>();
+      if (viewModel.rememberedEmail != null) {
+        setState(() {
+          _emailController.text = viewModel.rememberedEmail!;
+        });
+      }
+    });
   }
 
   @override
@@ -56,6 +67,9 @@ class _LoginContentState extends State<_LoginContent>
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Unfocus to prevent DOM sync errors on Web
+    FocusScope.of(context).unfocus();
 
     debugPrint('DEBUG: [LoginPage] Login button clicked for: ${_emailController.text}');
 
@@ -258,18 +272,31 @@ class _LoginContentState extends State<_LoginContent>
                                 // ── Remember Me ───────────────────────
                                 Row(
                                   children: [
-                                    SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: Checkbox(
-                                        value: viewModel.rememberMe,
-                                        onChanged: (val) => viewModel.setRememberMe(val ?? false),
-                                        activeColor: AppTheme.primary,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                    InkWell(
+                                      onTap: () => viewModel.setRememberMe(!viewModel.rememberMe),
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            SizedBox(
+                                              height: 20,
+                                              width: 20,
+                                              child: Checkbox(
+                                                value: viewModel.rememberMe,
+                                                onChanged: (val) => viewModel.setRememberMe(val ?? false),
+                                                activeColor: AppTheme.primary,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Text('Remember Me', style: TextStyle(fontSize: 13, color: AppTheme.textDark)),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    const Text('Remember Me', style: TextStyle(fontSize: 13, color: AppTheme.textDark)),
                                     const Spacer(),
                                     TextButton(
                                       onPressed: () {

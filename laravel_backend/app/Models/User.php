@@ -59,6 +59,14 @@ class User extends Authenticatable
         'version' => 'integer',
     ];
 
+    // 🚀 Automatically include address from the shareholder relationship
+    protected $appends = ['address'];
+
+    public function getAddressAttribute()
+    {
+        return $this->shareholder ? $this->shareholder->address : null;
+    }
+
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;

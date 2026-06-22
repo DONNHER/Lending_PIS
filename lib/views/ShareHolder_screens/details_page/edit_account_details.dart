@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/app_theme.dart';
+import '../../address_selector_page.dart';
 
 class EditAccountDetailsScreen extends StatefulWidget {
   const EditAccountDetailsScreen({super.key});
@@ -15,11 +16,7 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _emailController;
-  
-  late TextEditingController _streetController;
-  late TextEditingController _barangayController;
-  late TextEditingController _cityController;
-  late TextEditingController _provinceController;
+  late TextEditingController _addressController;
 
   @override
   void initState() {
@@ -28,16 +25,7 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
     _firstNameController = TextEditingController(text: user?.firstName ?? '');
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
-    
-    final address = user?.address ?? '';
-    final parts = address.trim().isNotEmpty 
-        ? address.split(',').map((e) => e.trim()).toList() 
-        : <String>[];
-
-    _streetController = TextEditingController(text: parts.isNotEmpty ? parts[0] : '');
-    _barangayController = TextEditingController(text: parts.length > 1 ? parts[1] : '');
-    _cityController = TextEditingController(text: parts.length > 2 ? parts[2] : '');
-    _provinceController = TextEditingController(text: parts.length > 3 ? parts[3] : '');
+    _addressController = TextEditingController(text: user?.address ?? '');
   }
 
   @override
@@ -45,20 +33,20 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
-    _streetController.dispose();
-    _barangayController.dispose();
-    _cityController.dispose();
-    _provinceController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
-  String get _currentAddressSummary {
-    final List<String> addressParts = [];
-    if (_streetController.text.trim().isNotEmpty) addressParts.add(_streetController.text.trim());
-    if (_barangayController.text.trim().isNotEmpty) addressParts.add(_barangayController.text.trim());
-    if (_cityController.text.trim().isNotEmpty) addressParts.add(_cityController.text.trim());
-    if (_provinceController.text.trim().isNotEmpty) addressParts.add(_provinceController.text.trim());
-    return addressParts.isEmpty ? 'No address provided' : addressParts.join(', ');
+  Future<void> _selectAddress() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddressSelectorPage()),
+    );
+    if (result != null) {
+      setState(() {
+        _addressController.text = result;
+      });
+    }
   }
 
   @override
@@ -126,57 +114,54 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
               ),
               const SizedBox(height: 32),
               
-              _buildTextField('First Name', _firstNameController),
+              _buildTextField('First Name', _firstNameController, isRequired: false),
               const SizedBox(height: 16),
-              _buildTextField('Last Name', _lastNameController),
+              _buildTextField('Last Name', _lastNameController, isRequired: false),
               const SizedBox(height: 16),
-              _buildTextField('Email Address', _emailController, enabled: false),
+              _buildTextField('Email Address', _emailController, enabled: false, isRequired: false),
               
               const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'ADDRESS DETAILS',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textMuted,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => _showEditAddressDialog(context),
-                    icon: const Icon(Icons.edit_location_alt_rounded, size: 16, color: AppTheme.primary),
-                    label: const Text('Edit', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-              const Divider(),
+              const Text('Address', style: TextStyle(color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Current Address:', style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 4),
-                    Text(
-                      _currentAddressSummary,
-                      style: const TextStyle(fontSize: 14, color: AppTheme.textDark, fontWeight: FontWeight.w500),
-                    ),
-                  ],
+              // Address Interactive Card (Styled like details page)
+              InkWell(
+                onTap: _selectAddress,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2),
+                        child: Icon(Icons.location_on_outlined, size: 20, color: AppTheme.textMuted),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _addressController.text.trim().isEmpty ? 'No address provided' : _addressController.text,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: _addressController.text.trim().isEmpty ? AppTheme.textMuted : AppTheme.textDark,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.edit_outlined, size: 20, color: AppTheme.primary),
+                    ],
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 48),
               ElevatedButton(
                 onPressed: authViewModel.isLoading
                     ? null
@@ -185,7 +170,7 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                           final success = await authViewModel.updateProfile(
                             firstName: _firstNameController.text.trim(),
                             lastName: _lastNameController.text.trim(),
-                            address: _currentAddressSummary == 'No address provided' ? '' : _currentAddressSummary,
+                            address: _addressController.text.trim(),
                           );
                           
                           if (context.mounted) {
@@ -206,12 +191,12 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  minimumSize: const Size.fromHeight(54),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
                 child: authViewModel.isLoading
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    ? const SizedBox(height: 24, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
               const SizedBox(height: 16),
@@ -228,73 +213,15 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
     );
   }
 
-  void _showEditAddressDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Update Address', style: TextStyle(fontWeight: FontWeight.bold)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTextField('Street', _streetController, isRequired: false),
-              const SizedBox(height: 12),
-              _buildTextField('Barangay', _barangayController, isRequired: false),
-              const SizedBox(height: 12),
-              _buildTextField('Municipality/City', _cityController, isRequired: false),
-              const SizedBox(height: 12),
-              _buildTextField('Province', _provinceController, isRequired: false),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {}); 
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Update', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showErrorDialog(BuildContext context, String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Update Failed'),
-          ],
+          children: [Icon(Icons.error_outline, color: Colors.red), SizedBox(width: 8), Text('Update Failed')],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(message),
-            const SizedBox(height: 16),
-            const Text('Troubleshooting:', style: TextStyle(fontWeight: FontWeight.bold)),
-            const Text('• Check if bucket ID "avatars" exists in Supabase.'),
-            const Text('• Ensure the storage policy allows authenticated uploads.'),
-            const Text('• Check your internet connection.'),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
-        ],
+        content: Text(message),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
       ),
     );
   }
@@ -350,22 +277,10 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                 
                 if (context.mounted) {
                   if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Password changed successfully'),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password changed successfully'), backgroundColor: Colors.green));
                     Navigator.pop(context);
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(authViewModel.errorMessage ?? 'Failed to change password'),
-                        backgroundColor: AppTheme.error,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authViewModel.errorMessage ?? 'Failed to change password'), backgroundColor: AppTheme.error));
                   }
                 }
               }
@@ -377,7 +292,7 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool enabled = true, bool isRequired = true}) {
+  Widget _buildTextField(String label, TextEditingController controller, {String? hint, bool enabled = true, bool isRequired = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -386,8 +301,10 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
         TextFormField(
           controller: controller,
           enabled: enabled,
+          maxLines: null,
           style: TextStyle(color: enabled ? AppTheme.textDark : Colors.grey),
           decoration: InputDecoration(
+            hintText: hint,
             filled: true,
             fillColor: enabled ? Colors.white : Colors.grey.withOpacity(0.05),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

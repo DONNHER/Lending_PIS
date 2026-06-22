@@ -24,7 +24,6 @@ class UserController extends Controller
             $query->withTrashed();
         }
 
-        // Fix: Call scope correctly on the query builder instance
         $query->applyControls($request, $searchable);
 
         return response()->json(User::getPaginatedResponse($query, $request));
@@ -69,7 +68,7 @@ class UserController extends Controller
             'firstname' => 'required|string',
             'lastname' => 'required|string',
             'role' => 'required|string',
-            'status' => 'required|string|in:active,inactive,suspended',
+            'status' => 'required|string|in:active,inactive,suspended,pending',
         ]);
 
         if ($validator->fails()) {
@@ -100,8 +99,7 @@ class UserController extends Controller
             'firstname' => 'string',
             'lastname' => 'string',
             'role' => 'string',
-            'status' => 'string|in:active,inactive,suspended',
-            'version' => 'required|integer',
+            'status' => 'string|in:active,inactive,suspended,pending',
         ]);
 
         if ($validator->fails()) {
@@ -109,8 +107,7 @@ class UserController extends Controller
         }
 
         try {
-            $data = $request->except(['password', 'version']);
-            $user->version = $request->version;
+            $data = $request->except(['password']);
             if ($request->filled('password')) {
                 $data['password'] = Hash::make($request->password);
             }
@@ -119,6 +116,34 @@ class UserController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
         }
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $user->update(['status' => $request->status]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'User status updated to ' . $request->status,
+            'user' => $user
+        ]);
+    }
+
+    public function updateAddress(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $user->update(['address' => $request->address]);
+
+        if ($user->shareholder) {
+            $user->shareholder->update(['address' => $request->address]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User address updated successfully',
+            'user' => $user
+        ]);
     }
 
     public function destroy($id)

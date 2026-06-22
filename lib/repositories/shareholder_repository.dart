@@ -162,4 +162,14 @@ class ShareholderRepository {
       throw Exception('Failed to update share capital: $e');
     }
   }
+
+  Future<void> updateAddress(String userId, String address) async {
+    try {
+      await _api.put('/admin/users/$userId/address', body: {
+        'address': address,
+      });
+    } catch (e) {
+      throw Exception('Failed to update address: $e');
+    }
+  }
 }

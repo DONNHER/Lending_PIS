@@ -48,6 +48,25 @@ int parseInt(dynamic value) {
   return 0;
 }
 
+/// 🚀 Helper to safely parse UTC string to Local DateTime
+DateTime _parseDateTime(dynamic value) {
+  if (value == null) return DateTime.now();
+  try {
+    String dateStr = value.toString();
+    if (!dateStr.contains('Z') && !dateStr.contains('+')) {
+      if (dateStr.length == 19) {
+        dateStr = dateStr.replaceAll(' ', 'T') + 'Z';
+      } else if (!dateStr.contains('T')) {
+        dateStr += 'Z';
+      }
+    }
+    return DateTime.parse(dateStr).toLocal();
+  } catch (e) {
+    debugPrint('Date Parsing Error: $e for value $value');
+    return DateTime.now();
+  }
+}
+
 /// 🚀 Robust helper to extract full name from any nested JSON structure (Loan, Request, or Transaction)
 String _extractClientName(Map<String, dynamic> json) {
   // 1. Try direct keys first (often provided by API accessors or direct fields)
@@ -264,9 +283,7 @@ class LoanRequestModel {
       tenureMonths: parseInt(json['months'] ?? json['tenure_months'] ?? 1),
       purpose: json['purpose']?.toString() ?? '',
       status: LoanStatus.fromString(json['status']?.toString()),
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'].toString()) 
-          : DateTime.now(),
+      createdAt: _parseDateTime(json['created_at']),
       loanComakers: comakerIds,
       comakers: comakersList,
       comakerDecisions: decisions,
@@ -319,9 +336,7 @@ class TransactionModel {
       clientName: _extractClientName(json),
       amount: parseDouble(json['amount']),
       status: json['status']?.toString() ?? 'Successful',
-      date: json['date'] != null 
-          ? DateTime.parse(json['date'].toString()) 
-          : (json['release_date'] != null ? DateTime.parse(json['release_date'].toString()) : DateTime.now()),
+      date: _parseDateTime(json['date'] ?? json['release_date']),
     );
   }
 
@@ -385,15 +400,9 @@ class LoanModel {
       remainingBalance: parseDouble(json['remaining_balance']),
       monthlyAmortization: parseDouble(json['monthly_amortization']),
       totalRepayable: parseDouble(json['total_repayable'] ?? json['total_amount_to_pay']),
-      disbursedAt: DateTime.parse(
-        json['release_date'] ?? json['disbursed_at'] ?? DateTime.now().toIso8601String(),
-      ),
-      dispatchedAt: json['dispatched_at'] != null
-          ? DateTime.parse(json['dispatched_at'])
-          : null,
-      nextRepaymentDate: json['next_repayment_date'] != null
-          ? DateTime.parse(json['next_repayment_date'])
-          : null,
+      disbursedAt: _parseDateTime(json['release_date'] ?? json['disbursed_at']),
+      dispatchedAt: json['dispatched_at'] != null ? _parseDateTime(json['dispatched_at']) : null,
+      nextRepaymentDate: json['next_repayment_date'] != null ? _parseDateTime(json['next_repayment_date']) : null,
       status: json['status']?.toString() ?? 'active',
     );
   }
