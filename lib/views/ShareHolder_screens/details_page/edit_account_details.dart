@@ -124,7 +124,6 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
               const Text('Address', style: TextStyle(color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               
-              // Address Interactive Card (Styled like details page)
               InkWell(
                 onTap: _selectAddress,
                 borderRadius: BorderRadius.circular(12),
@@ -183,7 +182,13 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                               );
                               Navigator.pop(context);
                             } else {
-                              _showErrorDialog(context, authViewModel.errorMessage ?? 'Unknown error');
+                              // Use SnackBar instead of popup dialog
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(authViewModel.errorMessage ?? 'Update failed'),
+                                  backgroundColor: AppTheme.error,
+                                ),
+                              );
                             }
                           }
                         }
@@ -209,19 +214,6 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showErrorDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [Icon(Icons.error_outline, color: Colors.red), SizedBox(width: 8), Text('Update Failed')],
-        ),
-        content: Text(message),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
       ),
     );
   }

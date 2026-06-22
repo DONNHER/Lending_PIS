@@ -648,16 +648,36 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       String? finalAvatarUrl = avatarUrl;
+      String? finalIdImageUrl = idImageUrl;
       
-      // 🚀 Handle avatar upload if bytes are present
+      // 🚀 Handle avatar upload - non-fatal if storage fails
       if (_avatarBytes != null && _storageRepository != null) {
-        final fileName = 'avatar_${_currentUser!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        finalAvatarUrl = await _storageRepository!.uploadFile(
-          fileBytes: _avatarBytes!,
-          fileName: fileName,
-          folder: 'avatars',
-        );
-        _avatarBytes = null; // Clear bytes after upload
+        try {
+          final fileName = 'avatar_${_currentUser!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          finalAvatarUrl = await _storageRepository!.uploadFile(
+            fileBytes: _avatarBytes!,
+            fileName: fileName,
+            folder: 'avatars',
+          );
+          _avatarBytes = null;
+        } catch (e) {
+          debugPrint('DEBUG: [AuthViewModel] Avatar upload skipped due to storage error: $e');
+        }
+      }
+
+      // 🚀 Handle ID Image upload - non-fatal if storage fails
+      if (_idImageBytes != null && _storageRepository != null) {
+        try {
+          final fileName = 'ID_${_currentUser!.username}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          finalIdImageUrl = await _storageRepository!.uploadFile(
+            fileBytes: _idImageBytes!,
+            fileName: fileName,
+            folder: 'image_id_url',
+          );
+          _idImageBytes = null;
+        } catch (e) {
+          debugPrint('DEBUG: [AuthViewModel] ID image upload skipped due to storage error: $e');
+        }
       }
 
       final updatedUser = await _repository.updateProfile(
@@ -665,14 +685,14 @@ class AuthViewModel extends ChangeNotifier {
         lastName: lastName,
         address: address,
         avatarUrl: finalAvatarUrl,
-        idImageUrl: idImageUrl,
+        idImageUrl: finalIdImageUrl,
       );
       _currentUser = updatedUser;
       _status = AuthStatus.authenticated;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _status = AuthStatus.authenticated;
       notifyListeners();
       return false;

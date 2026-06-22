@@ -21,20 +21,16 @@ class StorageRepository {
       debugPrint('DEBUG: [StorageRepository] Supabase Auth User: ${user?.id ?? "NONE (Anonymous)"}');
       debugPrint('DEBUG: [StorageRepository] Supabase Session Active: ${session != null}');
 
-      // Attempt to list buckets to verify connectivity
-      try {
-        final buckets = await _supabase.storage.listBuckets();
-        debugPrint('DEBUG: [StorageRepository] Visible Buckets: ${buckets.map((e) => e.id).toList()}');
-      } catch (e) {
-        debugPrint('DEBUG: [StorageRepository] Could not list buckets (likely permission issue): $e');
-      }
+      // Note: Listing buckets often requires extra permissions. 
+      // We'll skip the debug list and just try the upload.
 
       await _supabase.storage.from(folder).uploadBinary(
             fileName,
             Uint8List.fromList(fileBytes),
             fileOptions: const FileOptions(
               cacheControl: '3600',
-              upsert: true,
+              // Set upsert to false to avoid requiring SELECT/UPDATE permissions for the 'anon' role
+              upsert: false,
             ),
           );
 
@@ -43,9 +39,17 @@ class StorageRepository {
       return publicUrl;
     } catch (e) {
       debugPrint('DEBUG: [StorageRepository] UPLOAD FAILED: $e');
-      if (e is StorageException && e.message.contains('Bucket not found')) {
-        throw Exception('Bucket "$folder" not found or not accessible. If you use Laravel Auth, update Supabase Policy to allow "anon" role.');
+      
+      // Handle "The resource already exists" if upsert is false
+      if (e.toString().contains('already exists')) {
+        final String publicUrl = _supabase.storage.from(folder).getPublicUrl(fileName);
+        return publicUrl;
       }
+
+      if (e is StorageException && e.message.contains('Bucket not found')) {
+        throw Exception('Bucket "$folder" not found. Please ensure it is created in Supabase.');
+      }
+      
       throw Exception('Upload Error: $e');
     }
   }
