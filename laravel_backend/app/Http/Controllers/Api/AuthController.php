@@ -140,21 +140,22 @@ class AuthController extends Controller
         }
 
         try {
+            // Update User model fields
             $user->update($request->only([
                 'firstname', 
                 'lastname', 
-                'address', 
                 'avatar_url', 
-                'id_image_url'
             ]));
 
-            // Sync with shareholders table if user is a shareholder
-            if ($user->role === 'shareholder' && $user->shareholder) {
+            // Sync with shareholders table if user has a shareholder profile
+            if ($user->shareholder) {
                 $user->shareholder->update([
                     'first_name' => $user->firstname,
                     'last_name' => $user->lastname,
                     'full_name' => $user->firstname . ' ' . $user->lastname,
-                    'address' => $user->address,
+                    // Use request values directly since they aren't stored in the users table
+                    'address' => $request->has('address') ? $request->address : $user->shareholder->address,
+                    'id_image_url' => $request->has('id_image_url') ? $request->id_image_url : $user->shareholder->id_image_url,
                 ]);
             }
 
