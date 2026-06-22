@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/widgets/auth_text_field.dart';
+import 'package:capstone_application/views/change_password_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   final String? initialEmail;
@@ -14,12 +15,9 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final _emailController = TextEditingController();
-  final _codeController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
   bool _codeSent = false;
 
   @override
@@ -34,18 +32,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   void dispose() {
     _emailController.dispose();
     _codeController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleRequestReset() async {
-    if (_emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email address')),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final authViewModel = context.read<AuthViewModel>();
     final success = await authViewModel.requestPasswordReset(_emailController.text.trim());
@@ -55,7 +46,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         setState(() => _codeSent = true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('A password reset code has been sent to your email.'),
+            content: Text('Verification code sent to your email.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -70,33 +61,26 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     }
   }
 
-  Future<void> _handleResetPassword() async {
+  Future<void> _handleVerifyCode() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final authViewModel = context.read<AuthViewModel>();
-    final success = await authViewModel.resetPassword(
-      email: _emailController.text.trim(),
-      code: _codeController.text.trim(),
-      newPassword: _passwordController.text,
+    final viewModel = context.read<AuthViewModel>();
+    final success = await viewModel.verifyRecoveryCode(
+      _emailController.text.trim(),
+      _codeController.text.trim(),
     );
 
-    if (mounted) {
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password reset successfully. You can now log in with your new password.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authViewModel.errorMessage ?? 'Failed to reset password'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
-      }
+    if (success && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? 'Invalid verification code'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
     }
   }
 
@@ -128,10 +112,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   children: [
                     const Icon(Icons.lock_reset_rounded, size: 64, color: AppTheme.primary),
                     const SizedBox(height: 24),
-                    const Text(
-                      'Reset Password',
+                    Text(
+                      _codeSent ? 'Verify Your Identity' : 'Reset Your Password',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.textDark,
@@ -140,8 +124,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     const SizedBox(height: 12),
                     Text(
                       _codeSent
-                          ? 'Enter the 6-digit code sent to your email and set your new password.'
-                          : 'Enter your registered email address and we will send you a code to reset your password.',
+                          ? "We've sent a 6-digit verification code to ${_emailController.text}. Please enter it below to reset your password."
+                          : 'Enter your email address and we will send you a code to reset your password.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
@@ -151,28 +135,40 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                     const SizedBox(height: 32),
                     
-                    // Email Field
-                    AuthTextField(
-                      label: 'Email Address',
-                      hint: 'Enter your email',
-                      controller: _emailController,
-                      enabled: !_codeSent && !isLoading,
-                      keyboardType: TextInputType.emailAddress,
-                      prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.textMuted, size: 20),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Email is required';
-                        if (!value.contains('@')) return 'Invalid email format';
-                        return null;
-                      },
-                    ),
-
-                    if (_codeSent) ...[
-                      const SizedBox(height: 18),
-                      // Reset Code Field
+                    if (!_codeSent) ...[
                       AuthTextField(
-                        label: 'Reset Code',
+                        label: 'Email Address',
+                        hint: 'Enter your email',
+                        controller: _emailController,
+                        enabled: !isLoading,
+                        keyboardType: TextInputType.emailAddress,
+                        prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.textMuted, size: 20),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Email is required';
+                          if (!value.contains('@')) return 'Invalid email format';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: isLoading ? null : _handleRequestReset,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                        child: isLoading
+                            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('Send Reset Code', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      ),
+                    ] else ...[
+                      AuthTextField(
+                        label: 'Verification Code',
                         hint: '000000',
                         controller: _codeController,
+                        enabled: !isLoading,
                         keyboardType: TextInputType.number,
                         prefixIcon: const Icon(Icons.numbers_rounded, color: AppTheme.textMuted, size: 20),
                         validator: (value) {
@@ -181,63 +177,24 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 18),
-                      // New Password Field
-                      AuthTextField(
-                        label: 'New Password',
-                        hint: 'Enter new password',
-                        controller: _passwordController,
-                        obscureText: true,
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 20),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Password is required';
-                          if (value.length < 6) return 'Min 6 characters required';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 18),
-                      // Confirm New Password Field
-                      AuthTextField(
-                        label: 'Confirm New Password',
-                        hint: 'Repeat new password',
-                        controller: _confirmPasswordController,
-                        obscureText: true,
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 20),
-                        validator: (value) {
-                          if (value != _passwordController.text) return 'Passwords do not match';
-                          return null;
-                        },
-                      ),
-                    ],
-
-                    const SizedBox(height: 32),
-                    
-                    // Action Button
-                    ElevatedButton(
-                      onPressed: isLoading ? null : (_codeSent ? _handleResetPassword : _handleRequestReset),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 0,
-                      ),
-                      child: isLoading
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : Text(
-                              _codeSent ? 'Update Password' : 'Send Reset Code',
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                            ),
-                    ),
-
-                    if (_codeSent) ...[
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: isLoading ? null : _handleRequestReset,
-                        child: const Text(
-                          'Didn\'t receive a code? Resend',
-                          style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: isLoading ? null : _handleVerifyCode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
                         ),
+                        child: isLoading
+                            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('Verify Code', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(height: 24),
+                      TextButton(
+                        onPressed: isLoading ? null : () => setState(() => _codeSent = false),
+                        child: const Text("Didn't receive the code? Try again"),
                       ),
                     ],
                   ],

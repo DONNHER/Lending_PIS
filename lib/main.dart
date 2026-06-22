@@ -39,6 +39,8 @@ import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'package:capstone_application/viewmodels/update_interest_viewmodel.dart';
 import 'package:capstone_application/views/login_page.dart';
 import 'package:capstone_application/views/registration_page.dart';
+import 'package:capstone_application/views/forgot_password_page.dart';
+import 'package:capstone_application/views/change_password_page.dart';
 import 'package:capstone_application/views/app_shell.dart';
 import 'package:capstone_application/views/ShareHolder_screens/layouts/app.dart';
 import 'package:capstone_application/views/ShareHolder_screens/notification.dart';
@@ -55,6 +57,7 @@ void main() async {
     await Supabase.initialize(
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(authFlowType: AuthFlowType.pkce),
     );
   }
 
@@ -345,6 +348,9 @@ class RootApp extends StatelessWidget {
         ),
       );
     }
+
+    // 🚀 REDIRECTION REMOVED: Recovery mode redirection is now handled 
+    // within ForgotPasswordPage explicitly instead of at the root app level.
 
     if (!auth.isAuthenticated) {
       return const LoginPage();

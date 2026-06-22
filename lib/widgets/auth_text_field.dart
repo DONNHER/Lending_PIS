@@ -1,11 +1,11 @@
-// lib/widgets/auth_text_field.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../app_theme.dart';
 
 class AuthTextField extends StatefulWidget {
   final String label;
   final String? hint;
-  final TextEditingController controller;
+  final TextEditingController? controller;
   final bool obscureText;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
@@ -17,11 +17,12 @@ class AuthTextField extends StatefulWidget {
   final bool enabled;
   final int? maxLines;
   final int? minLines;
+  final int? maxLength;
 
   const AuthTextField({
     super.key,
     required this.label,
-    required this.controller,
+    this.controller,
     this.hint,
     this.obscureText = false,
     this.prefixIcon,
@@ -34,6 +35,7 @@ class AuthTextField extends StatefulWidget {
     this.enabled = true,
     this.maxLines = 1,
     this.minLines,
+    this.maxLength,
   });
 
   @override
@@ -41,21 +43,27 @@ class AuthTextField extends StatefulWidget {
 }
 
 class _AuthTextFieldState extends State<AuthTextField> {
+  TextEditingController? _internalController;
   late FocusNode _focusNode;
   bool _isFocused = false;
+
+  TextEditingController get _effectiveController => widget.controller ?? (_internalController ??= TextEditingController());
 
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
     _focusNode.addListener(() {
-      setState(() => _isFocused = _focusNode.hasFocus);
+      if (mounted) {
+        setState(() => _isFocused = _focusNode.hasFocus);
+      }
     });
   }
 
   @override
   void dispose() {
     _focusNode.dispose();
+    _internalController?.dispose();
     super.dispose();
   }
 
@@ -63,7 +71,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
   Widget build(BuildContext context) {
     return FormField<String>(
       validator: widget.validator,
-      initialValue: widget.controller.text,
+      initialValue: _effectiveController.text,
       builder: (FormFieldState<String> fieldState) {
         final bool hasError = fieldState.hasError;
 
@@ -96,13 +104,12 @@ class _AuthTextFieldState extends State<AuthTextField> {
                     : [],
               ),
               child: TextField(
-                controller: widget.controller,
+                controller: _effectiveController,
                 focusNode: _focusNode,
                 obscureText: widget.obscureText,
                 keyboardType: widget.keyboardType,
                 textInputAction: widget.textInputAction,
                 onChanged: (value) {
-                  // This triggers the FormField validation immediately
                   fieldState.didChange(value);
                   if (widget.onChanged != null) widget.onChanged!(value);
                 },
@@ -110,12 +117,15 @@ class _AuthTextFieldState extends State<AuthTextField> {
                 enabled: widget.enabled,
                 maxLines: widget.maxLines,
                 minLines: widget.minLines,
+                maxLength: widget.maxLength,
+                maxLengthEnforcement: widget.maxLength != null ? MaxLengthEnforcement.enforced : null,
                 style: const TextStyle(
                   fontSize: 15,
                   color: AppTheme.textDark,
                   fontWeight: FontWeight.w500,
                 ),
                 decoration: InputDecoration(
+                  counterText: "", 
                   labelText: widget.label,
                   hintText: widget.hint,
                   border: InputBorder.none,

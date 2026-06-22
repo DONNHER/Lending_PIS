@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:capstone_application/models/user_model.dart';
@@ -27,12 +28,14 @@ class AuthViewModel extends ChangeNotifier {
   final StorageRepository? _storageRepository;
   final LocalCacheService _cacheService = LocalCacheService();
   final SupabaseClient _supabase = Supabase.instance.client;
+  StreamSubscription<AuthState>? _authSubscription;
 
   AuthStatus _status = AuthStatus.initial;
   UserModel? _currentUser;
   String? _errorMessage;
   String? _pendingMfaEmail;
   bool _isInitialized = false;
+  bool _isPasswordRecoveryMode = false;
 
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
@@ -45,13 +48,68 @@ class AuthViewModel extends ChangeNotifier {
   AuthMFAEnrollResponse? _mfaEnrollResponse;
   List<dynamic> _mfaFactors = [];
 
-  AuthViewModel(this._repository, [this._activityLogRepo, this._storageRepository]);
+  AuthViewModel(this._repository, [this._activityLogRepo, this._storageRepository]) {
+    _initSupabaseListener();
+    _checkInitialUrl();
+  }
+
+  // 🚀 Step 1: URL detection (Optional if using OTP, but kept for compatibility)
+  Future<void> _checkInitialUrl() async {
+    if (kIsWeb) {
+      final uri = Uri.base;
+      debugPrint('DEBUG: [AuthViewModel] --- STARTUP URL CHECK ---');
+      debugPrint('DEBUG: [AuthViewModel] Link: $uri');
+      
+      final code = uri.queryParameters['code'];
+      final type = uri.queryParameters['type'];
+      final isRecoveryFragment = uri.fragment.contains('type=recovery');
+
+      if (code != null || type == 'recovery' || isRecoveryFragment) {
+        debugPrint('DEBUG: [AuthViewModel] User confirmed the link in email: confrimurl');
+        debugPrint('DEBUG: [AuthViewModel] Detection: YES');
+        
+        _isPasswordRecoveryMode = true;
+        notifyListeners();
+
+        if (code != null) {
+          try {
+            debugPrint('DEBUG: [AuthViewModel] Manually exchanging PKCE code for session...');
+            await _supabase.auth.exchangeCodeForSession(code);
+            debugPrint('DEBUG: [AuthViewModel] PKCE code exchange SUCCESS.');
+          } catch (e) {
+            debugPrint('DEBUG: [AuthViewModel] Code exchange redundant or failed: $e');
+          }
+        }
+      }
+    }
+  }
+
+  void _initSupabaseListener() {
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      final Session? session = data.session;
+      debugPrint('DEBUG: [AuthViewModel] --- SUPABASE AUTH EVENT ---');
+      debugPrint('DEBUG: [AuthViewModel] Event: $event');
+      
+      if (event == AuthChangeEvent.signedOut || event == AuthChangeEvent.userDeleted) {
+        if (_currentUser != null && !_isPasswordRecoveryMode) {
+          handleUnauthorized();
+        }
+      } else if (event == AuthChangeEvent.passwordRecovery) {
+        debugPrint('DEBUG: [AuthViewModel] User confirmed recovery flow.');
+        _isPasswordRecoveryMode = true;
+        notifyListeners();
+      }
+    });
+  }
 
   AuthStatus get status => _status;
   UserModel? get currentUser => _currentUser;
   String? get errorMessage => _errorMessage;
   String? get pendingMfaEmail => _pendingMfaEmail;
-  bool get isAuthenticated => _status == AuthStatus.authenticated;
+  bool get isPasswordRecoveryMode => _isPasswordRecoveryMode;
+
+  bool get isAuthenticated => _currentUser != null;
   bool get isLoading => _status == AuthStatus.loading;
   bool get isMfaRequired => _status == AuthStatus.mfaRequired;
   bool get isInitialized => _isInitialized;
@@ -64,65 +122,22 @@ class AuthViewModel extends ChangeNotifier {
   AuthMFAEnrollResponse? get mfaEnrollResponse => _mfaEnrollResponse;
   List<dynamic> get mfaFactors => _mfaFactors;
 
-  AuthorizationService? get authorizationService {
-    if (_currentUser == null) return null;
-    return AuthorizationService(_currentUser!.role);
-  }
-
-  String? get dashboardRoute {
-    if (_currentUser == null) return null;
-    return RoleBasedRouter.getDashboardRoute(_currentUser!.role);
-  }
-
-  bool canAccessRoute(String routeName) {
-    if (_currentUser == null) return false;
-    return RoleBasedRouter.hasAccess(_currentUser!.role, routeName);
-  }
-
-  void togglePasswordVisibility() {
-    _obscurePassword = !_obscurePassword;
-    notifyListeners();
-  }
-
-  void setAgreeToTerms(bool value) {
-    _agreeToTerms = value;
-    notifyListeners();
-  }
-
-  void setRememberMe(bool value) {
-    _rememberMe = value;
-    notifyListeners();
-  }
-
-  Future<String> _getDeviceIp() async {
-    try {
-      if (kIsWeb) return 'Web Client';
-      for (var interface in await NetworkInterface.list()) {
-        for (var addr in interface.addresses) {
-          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
-            return addr.address;
-          }
-        }
-      }
-      return 'Unknown IP';
-    } catch (e) {
-      return 'Error detecting IP';
+  void clearError() {
+    _errorMessage = null;
+    if (_status == AuthStatus.error) {
+      _status = isAuthenticated ? AuthStatus.authenticated : AuthStatus.unauthenticated;
     }
+    notifyListeners();
   }
 
   Future<void> logActivity(String action, String description) async {
-    if (_currentUser != null && _activityLogRepo != null && _status == AuthStatus.authenticated) {
+    if (_currentUser != null && _activityLogRepo != null && isAuthenticated) {
       try {
-        final ip = await _getDeviceIp();
         final log = ActivityLogModel(
-          id: '',
-          userId: _currentUser!.id,
-          action: action,
-          ipAddress: ip,
-          createdAt: DateTime.now(),
-          description: description,
+          id: '', userId: _currentUser!.id, action: action,
+          ipAddress: 'Local Device', createdAt: DateTime.now(), description: description,
         );
-        await _activityLogRepo.logActivity(log);
+        await _activityLogRepo!.logActivity(log);
       } catch (e) {
         debugPrint('Suppressed ActivityLog Error: $e');
       }
@@ -133,13 +148,24 @@ class AuthViewModel extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
     try {
+      if (kIsWeb && Uri.base.queryParameters.containsKey('code')) {
+        await Future.delayed(const Duration(milliseconds: 2000)); 
+      }
+
+      final session = _supabase.auth.currentSession;
+      if (session != null && session.user.appMetadata['recovery'] == true) {
+        _isPasswordRecoveryMode = true;
+      }
+
       final user = await _repository.restoreSession();
       if (user != null) {
         if (user.status != UserStatus.active) {
-          await logout();
-          _errorMessage = 'Your account is ${user.status.name}.';
-          _status = AuthStatus.error;
-          return;
+          if (!_isPasswordRecoveryMode) {
+            await logout();
+            _errorMessage = 'Your account is ${user.status.name}.';
+            _status = AuthStatus.error;
+            return;
+          }
         }
         _currentUser = user;
         _status = AuthStatus.authenticated;
@@ -160,74 +186,27 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final normalizedEmail = email.trim().toLowerCase();
-      final result = await _repository.login(
-        email: normalizedEmail,
-        password: password,
-      );
-
-      if (result != null) {
-        UserModel? user = result['user'] as UserModel?;
-
-        if (user != null && (user.status == UserStatus.rejected || user.status == UserStatus.blocked)) {
+      try {
+        await _supabase.auth.signInWithPassword(email: normalizedEmail, password: password);
+      } on AuthApiException catch (e) {
+        if (e.message.toLowerCase().contains('email not confirmed')) {
+          try {
+            await _supabase.auth.resend(type: OtpType.signup, email: normalizedEmail);
+            _errorMessage = 'Email not confirmed. Check inbox.';
+          } catch (_) {
+            _errorMessage = 'Email not confirmed. Please verify your email.';
+          }
           _status = AuthStatus.error;
-          _errorMessage = 'Your account is ${user.status.name}. Please contact administration.';
           notifyListeners();
           return false;
         }
+      }
 
-        // If account is pending or MFA is required by Laravel
-        if (result['mfa_required'] == true) {
-          _pendingMfaEmail = result['email'] ?? normalizedEmail;
-          _currentUser = user;
-          
-          // Trigger the 6-digit OTP code through Supabase
-          try {
-            debugPrint('DEBUG: [AuthViewModel] Triggering OTP for pending account: $_pendingMfaEmail');
-            await _supabase.auth.signInWithOtp(
-              email: _pendingMfaEmail!,
-              shouldCreateUser: false, // User already exists if they are in Laravel 'pending'
-            );
-            
-            _status = AuthStatus.mfaRequired;
-          } catch (e) {
-            debugPrint('❌ DEBUG: [AuthViewModel] Supabase OTP Trigger Error: $e');
-            // If the user doesn't exist in Supabase yet (sync issue), try signUp which also sends a code
-            try {
-               await _supabase.auth.signUp(email: _pendingMfaEmail!, password: password);
-               _status = AuthStatus.mfaRequired;
-            } catch (signUpError) {
-               _status = AuthStatus.error;
-               _errorMessage = 'Verification Error: ${signUpError.toString()}';
-               notifyListeners();
-               return false;
-            }
-          }
-
-          if (result['supabase_mfa'] == true) {
-            _mfaFactors = await _repository.listMfaFactors();
-          }
-          notifyListeners();
-          return false; 
-        }
-
-        if (user == null) {
-           _status = AuthStatus.error;
-           _errorMessage = 'Login succeeded but user profile was not found.';
-           notifyListeners();
-           return false;
-        }
-
-        if (user.status == UserStatus.inactive) {
-          try {
-            user = await _repository.updateStatus(user.id, UserStatus.active);
-          } catch (e) {
-            debugPrint('Failed to activate user: $e');
-          }
-        }
-        
+      final result = await _repository.login(email: normalizedEmail, password: password);
+      if (result != null) {
+        UserModel? user = result['user'] as UserModel?;
         _currentUser = user;
         _status = AuthStatus.authenticated;
-        await logActivity('LOGIN', 'User logged in successfully');
         notifyListeners();
         return true;
       } else {
@@ -246,50 +225,94 @@ class AuthViewModel extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
-      if (_status == AuthStatus.authenticated && _currentUser != null) {
+      if (_currentUser != null) {
         try {
           await _repository.updateStatus(_currentUser!.id, UserStatus.inactive);
-        } catch (e) {
-          debugPrint('Failed to set status to inactive on logout: $e');
-        }
-        await logActivity('LOGOUT', 'User logged out');
-        await _repository.logout();
-      } else if (_status == AuthStatus.authenticated) {
+        } catch (_) {}
         await _repository.logout();
       }
       await _cacheService.clearAll();
+      await _supabase.auth.signOut();
+    } catch (e) {
+      debugPrint('Logout Error: $e');
     } finally {
       _currentUser = null;
       _status = AuthStatus.unauthenticated;
       _errorMessage = null;
+      _isPasswordRecoveryMode = false;
       notifyListeners();
     }
   }
 
   void handleUnauthorized() {
-    if (_status == AuthStatus.authenticated) {
+    if (_isPasswordRecoveryMode) return;
+
+    if (_status != AuthStatus.unauthenticated) {
       _currentUser = null;
       _status = AuthStatus.unauthenticated;
-      _errorMessage = 'Session expired. Please log in again.';
       _repository.clearLocalSession();
       _cacheService.clearAll();
       notifyListeners();
     }
   }
 
-  Future<AuthMFAEnrollResponse?> startMfaEnrollment() async {
+  Future<bool> register({required String username, required String email, required String password, required String firstName, required String lastName, required UserRole role}) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final result = await _repository.register(username: username.trim(), email: email.trim().toLowerCase(), password: password, firstName: firstName.trim(), lastName: lastName.trim(), role: role);
+      if (result['user'] != null) {
+        _currentUser = result['user'];
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyMfa(String code) async {
+    _status = AuthStatus.loading;
+    notifyListeners();
+    try {
+      final user = await _repository.verifyMfa(email: _pendingMfaEmail!, code: code);
+      if (user != null) {
+        _currentUser = user;
+        _status = AuthStatus.authenticated;
+        _pendingMfaEmail = null;
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _status = AuthStatus.authenticated;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> resendMfaCode(String email) async {
+    return await _repository.resendMfaCode(email);
+  }
+
+  Future<void> startMfaEnrollment() async {
     _status = AuthStatus.loading;
     notifyListeners();
     try {
       _mfaEnrollResponse = await _repository.enrollMfa();
       _status = AuthStatus.mfaEnrollment;
-      notifyListeners();
-      return _mfaEnrollResponse;
     } catch (e) {
-      _status = AuthStatus.error;
       _errorMessage = e.toString();
+      _status = AuthStatus.error;
+    } finally {
       notifyListeners();
-      return null;
     }
   }
 
@@ -305,250 +328,154 @@ class AuthViewModel extends ChangeNotifier {
         code: code,
       );
       _status = AuthStatus.authenticated;
-      await logActivity('MFA_SETUP', 'User successfully set up TOTP MFA');
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = AuthStatus.mfaEnrollment;
+      return false;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<bool> requestPasswordReset(String email) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      debugPrint('DEBUG: [AuthViewModel] Requesting password reset OTP for: $email');
+      await _supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+      _status = AuthStatus.unauthenticated;
       notifyListeners();
       return true;
     } catch (e) {
-      _status = AuthStatus.mfaEnrollment;
-      _errorMessage = 'Invalid TOTP code. Please try again.';
+      _status = AuthStatus.unauthenticated;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return false;
     }
   }
 
-  Future<bool> verifyMfa(String code) async {
-    if (_pendingMfaEmail == null) return false;
+  // 🚀 NEW: verifyRecoveryCode for OTP-based reset
+  Future<bool> verifyRecoveryCode(String email, String code) async {
     _status = AuthStatus.loading;
+    _errorMessage = null;
     notifyListeners();
     try {
-      if (_mfaFactors.isNotEmpty) {
-        final dynamic factor = _mfaFactors.firstWhere((f) => (f as dynamic).status.toString().contains('verified'));
-        final challenge = await _repository.challengeMfa(factor.id);
-        await _repository.verifyMfaChallenge(
-          factorId: factor.id,
-          challengeId: challenge.id,
-          code: code,
-        );
+      debugPrint('DEBUG: [AuthViewModel] Verifying Recovery OTP for $email');
+      final response = await _supabase.auth.verifyOTP(
+        email: email.trim().toLowerCase(),
+        token: code.trim(),
+        type: OtpType.recovery,
+      );
+      
+      if (response.session != null) {
+        debugPrint('DEBUG: [AuthViewModel] Recovery OTP Verified. Session established.');
+        _isPasswordRecoveryMode = true;
         _status = AuthStatus.authenticated;
-        _pendingMfaEmail = null;
         notifyListeners();
         return true;
       }
-
-      try {
-        debugPrint('DEBUG: [AuthViewModel] Verifying Supabase OTP for: $_pendingMfaEmail');
-        
-        AuthResponse res;
-        // Try multiple OTP types to ensure we catch both Magic Link codes and Signup codes
-        try {
-          res = await _supabase.auth.verifyOTP(
-            email: _pendingMfaEmail!,
-            token: code,
-            type: OtpType.magiclink, 
-          );
-        } catch (_) {
-          try {
-             res = await _supabase.auth.verifyOTP(
-               email: _pendingMfaEmail!,
-               token: code,
-               type: OtpType.signup,
-             );
-          } catch (e2) {
-             res = await _supabase.auth.verifyOTP(
-               email: _pendingMfaEmail!,
-               token: code,
-               type: OtpType.email,
-             );
-          }
-        }
-
-        if (res.session != null || res.user != null) {
-          final user = await _repository.verifyMfa(
-            email: _pendingMfaEmail!.trim().toLowerCase(),
-            code: code,
-            remember: _rememberMe,
-          );
-
-          if (user != null) {
-            _currentUser = user;
-            _status = AuthStatus.authenticated;
-            _pendingMfaEmail = null;
-            await logActivity('MFA_VERIFIED', 'MFA verification successful');
-            notifyListeners();
-            return true;
-          }
-        }
-      } catch (e) {
-        debugPrint('❌ DEBUG: [AuthViewModel] OTP verification failed: $e');
-        _status = AuthStatus.mfaRequired;
-        _errorMessage = 'Invalid or expired verification code.';
-        notifyListeners();
-        return false;
-      }
-
-      _status = AuthStatus.mfaRequired;
-      _errorMessage = 'Verification failed.';
-      notifyListeners();
       return false;
     } catch (e) {
-      _status = AuthStatus.error;
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      debugPrint('DEBUG: [AuthViewModel] Recovery OTP Verification Failed: $e');
+      _status = AuthStatus.unauthenticated;
+      _errorMessage = 'Invalid or expired verification code.';
       notifyListeners();
       return false;
     }
   }
 
-  Future<bool> resendMfaCode(String email) async {
+  Future<bool> resetPassword({required String email, required String code, required String newPassword}) async {
     _status = AuthStatus.loading;
     notifyListeners();
     try {
-      await _supabase.auth.signInWithOtp(
-        email: email.trim().toLowerCase(),
-        shouldCreateUser: true,
-      );
+      final success = await _repository.resetPassword(email: email, code: code, newPassword: newPassword);
+      if (success) {
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updatePasswordOnly(String newPassword) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      int retries = 0;
+      while (_supabase.auth.currentSession == null && retries < 5) {
+        await Future.delayed(const Duration(milliseconds: 1000));
+        retries++;
+      }
+
+      if (_supabase.auth.currentSession == null) {
+         throw Exception('Session not found. Please verify your code again.');
+      }
+
+      final email = _supabase.auth.currentSession?.user.email ?? '';
+
+      // 1. Update Supabase
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
       
-      _status = AuthStatus.mfaRequired;
+      // 2. Update Laravel Backend
+      final backendSuccess = await _repository.resetPassword(
+        email: email,
+        code: 'recovery_link', 
+        newPassword: newPassword,
+      );
+
+      if (!backendSuccess) {
+        throw Exception('Password updated in Auth service but failed to sync with backend. Please contact support.');
+      }
+      
+      _isPasswordRecoveryMode = false;
+      _status = AuthStatus.unauthenticated; // Set to unauthenticated so they have to login
+      
       notifyListeners();
       return true;
     } catch (e) {
-      _status = AuthStatus.error;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _status = AuthStatus.authenticated; 
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> changePassword({required String currentPassword, required String newPassword}) async {
+    if (_currentUser == null) return false;
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    try {
+      final success = await _repository.changePassword(currentPassword: currentPassword, newPassword: newPassword);
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _status = AuthStatus.authenticated;
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return false;
     }
   }
 
-  Future<bool> register({
-    required String username,
-    required String email,
-    required String password,
+  Future<bool> updateProfile({
     required String firstName,
     required String lastName,
-    required UserRole role,
+    String? address,
+    String? avatarUrl,
+    String? idImageUrl,
   }) async {
     _status = AuthStatus.loading;
     _errorMessage = null;
     notifyListeners();
     try {
-      final normalizedEmail = email.trim().toLowerCase();
-      
-      // 🚀 1. REGISTER IN SUPABASE AUTH TABLE FIRST
-      // This will trigger the "Confirm Signup" email with the {{ .Token }} you set up
-      try {
-        debugPrint('DEBUG: [AuthViewModel] Attempting Supabase signUp for: $normalizedEmail');
-        await _supabase.auth.signUp(
-          email: normalizedEmail,
-          password: password,
-        );
-        debugPrint('✅ DEBUG: [AuthViewModel] Registered in Supabase Auth table.');
-      } catch (e) {
-        if (e is AuthApiException && e.code == 'user_already_exists') {
-           debugPrint('ℹ️ DEBUG: [AuthViewModel] User is already in this Supabase project.');
-        } else {
-           _status = AuthStatus.error;
-           _errorMessage = 'Supabase Register Error: ${e.toString()}';
-           notifyListeners();
-           return false;
-        }
-      }
-
-      // 🚀 2. SAVE TO LARAVEL DATABASE
-      debugPrint('DEBUG: [AuthViewModel] Saving to Laravel database...');
-      final result = await _repository.register(
-        username: username.trim(),
-        email: normalizedEmail,
-        password: password,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        role: role,
-      );
-
-      // 🚀 3. SET STATE FOR OTP VERIFICATION
-      if (result['mfa_required'] == true) {
-        _pendingMfaEmail = result['email'] ?? normalizedEmail;
-        _status = AuthStatus.mfaRequired;
-        
-        if (result['user'] != null) {
-           _currentUser = result['user'];
-        }
-        
-        debugPrint('✅ DEBUG: [AuthViewModel] Registration successful, waiting for OTP code from Confirm Signup email.');
-        notifyListeners();
-        return true;
-      }
-      
-      if (result['user'] != null) {
-        _currentUser = result['user'];
-        _status = AuthStatus.authenticated;
-        await logActivity('REGISTER', 'User registered successfully');
-        notifyListeners();
-        return true;
-      }
-      
-      return false;
-    } catch (e) {
-      _status = AuthStatus.error;
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<void> pickAvatar() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-      if (image != null) {
-        _avatarBytes = await image.readAsBytes();
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('Error picking avatar: $e');
-    }
-  }
-
-  Future<void> pickIdImage() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-      if (image != null) {
-        _idImageBytes = await image.readAsBytes();
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('Error picking ID image: $e');
-    }
-  }
-
-  Future<bool> updateProfile({
-    required String firstName, 
-    required String lastName,
-    String? address,
-  }) async {
-    if (_currentUser == null) return false;
-    _status = AuthStatus.loading;
-    notifyListeners();
-    try {
-      String? avatarUrl = _currentUser!.avatarUrl;
-      if (_avatarBytes != null && _storageRepository != null) {
-        avatarUrl = await _storageRepository.uploadFile(
-          fileBytes: _avatarBytes!,
-          fileName: 'avatar_${_currentUser!.id}.jpg',
-          folder: 'avatars',
-        );
-        avatarUrl = '$avatarUrl?t=${DateTime.now().millisecondsSinceEpoch}';
-      }
-
-      String? idImageUrl = _currentUser!.idImageUrl;
-      if (_idImageBytes != null && _storageRepository != null) {
-        idImageUrl = await _storageRepository.uploadFile(
-          fileBytes: _idImageBytes!,
-          fileName: 'id_${_currentUser!.id}.jpg',
-          folder: 'image_id_url', 
-        );
-        idImageUrl = '$idImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
-      }
-      
       final updatedUser = await _repository.updateProfile(
         firstName: firstName,
         lastName: lastName,
@@ -556,116 +483,54 @@ class AuthViewModel extends ChangeNotifier {
         avatarUrl: avatarUrl,
         idImageUrl: idImageUrl,
       );
-      
       _currentUser = updatedUser;
-      _avatarBytes = null;
-      _idImageBytes = null;
       _status = AuthStatus.authenticated;
-      await logActivity('PROFILE_UPDATE', 'User updated their profile information');
       notifyListeners();
       return true;
     } catch (e) {
-      _status = AuthStatus.error;
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> changePassword({required String currentPassword, required String newPassword}) async {
-    _status = AuthStatus.loading;
-    notifyListeners();
-    try {
-      final success = await _repository.changePassword(
-        currentPassword: currentPassword,
-        newPassword: newPassword,
-      );
+      _errorMessage = e.toString();
       _status = AuthStatus.authenticated;
-      if (success) {
-        await logActivity('PASSWORD_CHANGE', 'User successfully changed their password');
-      }
-      notifyListeners();
-      return success;
-    } catch (e) {
-      _status = AuthStatus.error;
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return false;
     }
   }
 
-  Future<bool> requestPasswordReset(String email) async {
-    _status = AuthStatus.loading;
-    notifyListeners();
-    try {
-      await _supabase.auth.signInWithOtp(
-        email: email.trim().toLowerCase(),
-        shouldCreateUser: true,
-      );
-      _status = AuthStatus.unauthenticated;
+  Future<void> pickAvatar() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null) {
+      _avatarBytes = await image.readAsBytes();
       notifyListeners();
-      return true;
-    } catch (e) {
-      _status = AuthStatus.error;
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      notifyListeners();
-      return false;
     }
   }
 
-  Future<bool> resetPassword({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) async {
-    _status = AuthStatus.loading;
-    notifyListeners();
-    try {
-      final AuthResponse res = await _supabase.auth.verifyOTP(
-        email: email.trim().toLowerCase(),
-        token: code,
-        type: OtpType.recovery, // Use recovery for password resets
-      );
-
-      if (res.session != null || res.user != null) {
-        final success = await _repository.resetPassword(
-          email: email.trim().toLowerCase(),
-          code: code,
-          newPassword: newPassword,
-        );
-        _status = AuthStatus.unauthenticated;
-        notifyListeners();
-        return success;
-      }
-      
-      _status = AuthStatus.error;
-      _errorMessage = 'Invalid reset code.';
+  Future<void> pickIdImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (image != null) {
+      _idImageBytes = await image.readAsBytes();
       notifyListeners();
-      return false;
-    } catch (e) {
-      _status = AuthStatus.error;
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      notifyListeners();
-      return false;
     }
   }
 
-  void clearError() {
-    if (_status == AuthStatus.error) {
-      _status = _currentUser != null ? AuthStatus.authenticated : AuthStatus.unauthenticated;
-    }
-    _errorMessage = null;
-    notifyListeners();
-  }
+  void togglePasswordVisibility() => notifyListeners(_obscurePassword = !_obscurePassword);
+  void setAgreeToTerms(bool value) => notifyListeners(_agreeToTerms = value);
+  void setRememberMe(bool value) => notifyListeners(_rememberMe = value);
 
   void reset() {
     _status = AuthStatus.initial;
     _currentUser = null;
-    _errorMessage = null;
-    _pendingMfaEmail = null;
-    _isInitialized = false;
-    _mfaEnrollResponse = null;
-    _mfaFactors = [];
+    _isPasswordRecoveryMode = false;
     notifyListeners();
   }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  void notifyListeners([dynamic _]) => super.notifyListeners();
+  AuthorizationService? get authorizationService => _currentUser == null ? null : AuthorizationService(_currentUser!.role);
+  String? get dashboardRoute => _currentUser == null ? null : RoleBasedRouter.getDashboardRoute(_currentUser!.role);
 }

@@ -84,29 +84,26 @@ class AddShareholderViewModel extends ChangeNotifier {
       final username = usernameController.text.trim();
       final password = passwordController.text.trim();
 
-      // Check for existing shareholder in local DB
+      // Check for existing shareholder
       final existingShareholder = await _shareholderRepository.getShareholderByEmail(email);
       if (existingShareholder != null) {
         throw Exception('A shareholder with this email already exists.');
       }
 
-      // 🚀 1. REGISTER IN SUPABASE AUTH (New User)
-      debugPrint('DEBUG: [AddShareholder] Step 1: Registering in Supabase Auth...');
-      final authRes = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-      );
-      
-      final supabaseUserId = authRes.user?.id;
-      if (supabaseUserId == null) {
-        throw Exception('Failed to create Supabase account.');
-      }
+      // 🔍 DEBUG: Verify Admin Session BEFORE starting
+      final currentSupabaseUser = _supabase.auth.currentUser;
+      debugPrint('DEBUG: [AddShareholder] Admin session before starting: ${currentSupabaseUser?.email ?? "NONE"}');
 
-      // 🚀 2. UPLOAD ID IMAGE (Using Admin Authentication)
+      // 🚀 1. UPLOAD ID IMAGE (MUST BE FIRST while Admin is still authenticated)
+      // IMPORTANT: We do this BEFORE registering the new user, because registration signs the Admin out of Supabase.
       if (_idFileBytes != null) {
         try {
-          debugPrint('DEBUG: [AddShareholder] Step 2: Uploading ID image...');
-          final String fileName = 'ID_${supabaseUserId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          debugPrint('DEBUG: [AddShareholder] Step 1: Uploading ID image...');
+          // Since we don't have the user ID yet, we use a clean version of the email + timestamp for unique filename
+          final String safeEmail = email.split('@').first.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+          final String fileExt = _idFileName?.split('.').last ?? 'jpg';
+          final String fileName = 'ID_${safeEmail}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+          
           _idUrl = await _storageRepository.uploadFile(
             fileBytes: _idFileBytes!,
             fileName: fileName,
@@ -114,12 +111,16 @@ class AddShareholderViewModel extends ChangeNotifier {
           );
           debugPrint('✅ DEBUG: [AddShareholder] ID Uploaded. URL: $_idUrl');
         } catch (e) {
-          debugPrint('⚠️ DEBUG: [AddShareholder] Upload failed: $e. Proceeding without URL.');
+          debugPrint('⚠️ DEBUG: [AddShareholder] Upload failed: $e');
+          // If RLS fails here, the Admin isn't logged into Supabase or RLS is too restrictive
+          throw Exception('ID Upload failed. Please ensure you are logged in as Admin and the "image_id_url" bucket allows authenticated uploads.');
         }
       }
 
-      // 🚀 3. REGISTER IN LARAVEL USERS TABLE
-      debugPrint('DEBUG: [AddShareholder] Step 3: Registering in Laravel (Users Table)...');
+      // 🚀 2. REGISTER USER (In Supabase & Laravel)
+      // Note: AuthRepository.register handles the Supabase signUp. 
+      // This WILL clear the Admin's Supabase session and replace it with the new user's (unconfirmed) session.
+      debugPrint('DEBUG: [AddShareholder] Step 2: Registering user...');
       final result = await _authRepository.register(
         email: email,
         password: password,
@@ -135,32 +136,18 @@ class AddShareholderViewModel extends ChangeNotifier {
         throw Exception('Failed to create Laravel user account.');
       }
 
-      // 🚀 4. SEND WELCOME EMAIL (Laravel Backend)
-      // Since the admin creates the account, we send credentials via our custom email service.
-      final welcomeMessage = '''
-Greetings $firstName,
+      // 🚀 3. Initialize Confirmation Flow (Fake Login)
+      try {
+        await _supabase.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
+      } catch (_) {
+        debugPrint('ℹ️ [AddShareholder] Supabase Activation Link process initialized for $email.');
+      }
 
-Welcome to PIL - Account Created!
-
-Username: $username
-Password: $password
-
-You can access the login page here: http://localhost:8000/login 
-
-Registration successful. You can now use your credentials to log in.
-
-Thank you,
-Lending PIS Team
-''';
-
-      await _emailService.sendNotification(
-        email: email,
-        subject: 'Welcome to PIL - Account Created',
-        message: welcomeMessage,
-      );
-
-      // 🚀 5. SAVE TO SHAREHOLDER DETAILS TABLE
-      debugPrint('DEBUG: [AddShareholder] Step 5: Saving shareholder details...');
+      // 🚀 4. Save Shareholder Details
+      debugPrint('DEBUG: [AddShareholder] Step 4: Saving shareholder details...');
       final Map<String, dynamic> shareholderData = {
         'user_id': userModel.id,
         'full_name': '$firstName $lastName',
@@ -179,7 +166,6 @@ Lending PIS Team
       _createdShareholder = await _shareholderRepository.getShareholderByUserId(userModel.id);
       
       return true;
-
     } catch (e) {
       debugPrint('CREATE ACCOUNT ERROR: $e');
       _errorMessage = e.toString().replaceAll('Exception: ', '');

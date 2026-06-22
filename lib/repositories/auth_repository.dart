@@ -9,20 +9,13 @@ class AuthRepository {
 
   AuthRepository(this._api);
 
-  Future<void> _syncSupabaseSession(String? token) async {
-    if (token == null || token.isEmpty) return;
-    try {
-      await _supabase.auth.setSession(token);
-      debugPrint('DEBUG: [AuthRepository] Supabase session synced.');
-    } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] Supabase session sync failed: $e');
-    }
-  }
+  // 🚀 CRITICAL: Removed Supabase session syncing with Laravel tokens.
+  // Laravel tokens (Sanctum) are not valid Supabase session tokens.
+  // Attempting to sync them causes Supabase to invalidate the session and sign out.
 
   Future<AuthMFAEnrollResponse> enrollMfa() async {
     try {
-      final res = await _supabase.auth.mfa.enroll(factorType: FactorType.totp, issuer: 'EngrCanteen');
-      return res;
+      return await _supabase.auth.mfa.enroll(factorType: FactorType.totp, issuer: 'EngrCanteen');
     } catch (e) {
       debugPrint('Mfa Enroll Error: $e');
       rethrow;
@@ -73,22 +66,18 @@ class AuthRepository {
     try {
       final normalizedEmail = email.trim().toLowerCase();
 
-      // 🚀 1. Supabase Auth Registration
+      // 1. Supabase Auth Registration
       try {
-        debugPrint('DEBUG: [AuthRepository] Registering in Supabase Auth: $normalizedEmail');
+        debugPrint('DEBUG: [AuthRepository] signUp for: $normalizedEmail');
         await _supabase.auth.signUp(
           email: normalizedEmail,
           password: password,
         );
       } catch (e) {
-        // If user already exists in Supabase, we treat it as successful for the local sync step
-        if (e is AuthApiException && e.code != 'user_already_exists') {
-          debugPrint('❌ DEBUG: [AuthRepository] Supabase SignUp Failed: $e');
-          rethrow;
-        }
+        if (e is AuthApiException && e.code != 'user_already_exists') rethrow;
       }
 
-      // 🚀 2. Laravel Database Registration (Users Table)
+      // 2. Laravel Database Registration
       final response = await _api.post('/register', body: {
         'username': username,
         'email': normalizedEmail,
@@ -107,7 +96,6 @@ class AuthRepository {
         
         if (token != null) {
           await _api.setToken(token);
-          await _syncSupabaseSession(token);
         }
         
         return {
@@ -141,8 +129,7 @@ class AuthRepository {
 
         if (token != null) {
           await _api.setToken(token);
-          await _syncSupabaseSession(token);
-          debugPrint('DEBUG: [AuthRepository] Token successfully extracted and set in ApiService.');
+          debugPrint('DEBUG: [AuthRepository] Laravel Token successfully set in ApiService.');
         }
 
         return {
@@ -166,7 +153,6 @@ class AuthRepository {
       final response = await _api.post('/resend-mfa', body: {'email': email});
       return response != null && response['success'] == true;
     } catch (e) {
-      debugPrint('DEBUG: Failed to resend Mfa code for: $email. Error: $e');
       return false;
     }
   }
@@ -185,10 +171,7 @@ class AuthRepository {
 
       if (response != null && response['success'] == true) {
         final String? token = response['token'] ?? (response['data'] is Map ? response['data']['token'] : null);
-        if (token != null) {
-          await _api.setToken(token);
-          await _syncSupabaseSession(token);
-        }
+        if (token != null) await _api.setToken(token);
         return UserModel.fromJson(response['user']);
       }
     } catch (e) {
@@ -202,8 +185,6 @@ class AuthRepository {
     try {
       final token = await _api.getToken();
       if (token == null) return null;
-
-      await _syncSupabaseSession(token);
 
       final response = await _api.get('/user');
       if (response != null) {
@@ -227,7 +208,9 @@ class AuthRepository {
 
   Future<void> clearLocalSession() async {
     await _api.clearToken();
-    await _supabase.auth.signOut();
+    try {
+      await _supabase.auth.signOut();
+    } catch (_) {}
   }
 
   Future<UserModel> updateProfile({

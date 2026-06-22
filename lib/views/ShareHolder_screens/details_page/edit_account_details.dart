@@ -84,6 +84,48 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Avatar Selection Section
+              Center(
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+                        border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 4),
+                      ),
+                      child: ClipOval(
+                        child: authViewModel.avatarBytes != null
+                            ? Image.memory(authViewModel.avatarBytes!, fit: BoxFit.cover)
+                            : (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                                ? Image.network(
+                                    user.avatarUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
+                                  )
+                                : const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: () => authViewModel.pickAvatar(),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                          child: const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              
               _buildTextField('First Name', _firstNameController),
               const SizedBox(height: 16),
               _buildTextField('Last Name', _lastNameController),
@@ -242,9 +284,9 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
             Text(message),
             const SizedBox(height: 16),
             const Text('Troubleshooting:', style: TextStyle(fontWeight: FontWeight.bold)),
-            const Text('• Check if bucket IDs "avatars" and "id-images" exist in Supabase.'),
-            const Text('• Ensure the buckets are configured correctly.'),
-            const Text('• Check internet connection.'),
+            const Text('• Check if bucket ID "avatars" exists in Supabase.'),
+            const Text('• Ensure the storage policy allows authenticated uploads.'),
+            const Text('• Check your internet connection.'),
           ],
         ),
         actions: [

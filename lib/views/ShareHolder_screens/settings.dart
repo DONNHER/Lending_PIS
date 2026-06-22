@@ -62,30 +62,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Center(
                 child: Column(
                   children: [
-                    // Profile Picture Section - COMMENTED FOR SUBMISSION
-                    /*
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
-                        border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 3),
+                    // Profile Picture Section - RE-ENABLED
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const EditAccountDetailsScreen()),
                       ),
-                      child: ClipOval(
-                        child: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
-                            ? Image.network(
-                                user.avatarUrl!,
-                                fit: BoxFit.cover,
-                                key: ValueKey(user.avatarUrl),
-                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 50, color: AppTheme.textMuted),
-                              )
-                            : const Icon(Icons.person_rounded, size: 50, color: AppTheme.textMuted),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+                              border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 3),
+                            ),
+                            child: ClipOval(
+                              child: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
+                                  ? Image.network(
+                                      user.avatarUrl!,
+                                      fit: BoxFit.cover,
+                                      key: ValueKey(user.avatarUrl),
+                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 50, color: AppTheme.textMuted),
+                                    )
+                                  : const Icon(Icons.person_rounded, size: 50, color: AppTheme.textMuted),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                              child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    */
                     Text(user.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
                     const SizedBox(height: 4),
                     Row(
@@ -246,7 +263,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               Navigator.pop(context);
               await viewModel.logout();
-              if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
             },
             child: const Text('Logout', style: TextStyle(color: Colors.red)),
           ),
