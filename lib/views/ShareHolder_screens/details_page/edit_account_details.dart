@@ -191,7 +191,10 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                           if (context.mounted) {
                             if (success) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Profile updated successfully')),
+                                const SnackBar(
+                                  content: Text('Profile updated successfully'),
+                                  backgroundColor: Colors.green,
+                                ),
                               );
                               Navigator.pop(context);
                             } else {
@@ -323,7 +326,7 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                 controller: newPasswordController,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'New Password'),
-                validator: (value) => value == null || value.length < 6 ? 'Min 6 characters required' : null,
+                validator: (value) => value == null || value.length < 8 ? 'Min 8 characters required' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -344,7 +347,27 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                   currentPassword: currentPasswordController.text,
                   newPassword: newPasswordController.text,
                 );
-                if (context.mounted && success) Navigator.pop(context);
+                
+                if (context.mounted) {
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Password changed successfully'),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(authViewModel.errorMessage ?? 'Failed to change password'),
+                        backgroundColor: AppTheme.error,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
               }
             },
             child: const Text('Change'),

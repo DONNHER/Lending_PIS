@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -29,6 +30,23 @@ class AuthController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error("Failed to log auth activity: " . $e->getMessage());
+        }
+    }
+
+    private function notifyPasswordChange($user)
+    {
+        try {
+            Notification::create([
+                'user_id' => $user->id,
+                'shareholder_id' => $user->shareholder ? $user->shareholder->id : null,
+                'title' => 'Security Alert: Password Changed',
+                'content' => 'Your account password has been successfully updated. If you did not make this change, please contact support immediately.',
+                'category' => 'security',
+                'type' => 'alert',
+                'is_unread' => true,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Failed to create password change notification: " . $e->getMessage());
         }
     }
 
@@ -175,6 +193,8 @@ class AuthController extends Controller
                 'password' => Hash::make($request->new_password)
             ]);
 
+            $this->notifyPasswordChange($user);
+
             return response()->json(['success' => true, 'message' => 'Password changed successfully']);
         } catch (\Exception $e) {
             Log::error('Password change failed: ' . $e->getMessage());
@@ -211,6 +231,8 @@ class AuthController extends Controller
             $user->password = Hash::make($request->password);
             $user->save();
             
+            $this->notifyPasswordChange($user);
+
             Log::info('Password reset successful for user: ' . $user->id);
             return response()->json(['success' => true, 'message' => 'Password reset successfully']);
         } catch (\Exception $e) {

@@ -62,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Center(
                 child: Column(
                   children: [
-                    // Profile Picture Section - RE-ENABLED
+                    // Profile Picture Section - UPDATED to handle avatar correctly
                     GestureDetector(
                       onTap: () => Navigator.push(
                         context,
@@ -76,18 +76,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                )
+                              ],
                               border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 3),
                             ),
                             child: ClipOval(
-                              child: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
-                                  ? Image.network(
-                                      user.avatarUrl!,
+                              child: authViewModel.avatarBytes != null
+                                  ? Image.memory(
+                                      authViewModel.avatarBytes!,
                                       fit: BoxFit.cover,
-                                      key: ValueKey(user.avatarUrl),
-                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 50, color: AppTheme.textMuted),
                                     )
-                                  : const Icon(Icons.person_rounded, size: 50, color: AppTheme.textMuted),
+                                  : (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
+                                      ? Image.network(
+                                          user.avatarUrl!,
+                                          fit: BoxFit.cover,
+                                          key: ValueKey(user.avatarUrl),
+                                          errorBuilder: (context, error, stackTrace) => const Icon(
+                                            Icons.person_rounded,
+                                            size: 50,
+                                            color: AppTheme.textMuted,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.person_rounded,
+                                          size: 50,
+                                          color: AppTheme.textMuted,
+                                        ),
                             ),
                           ),
                           Positioned(
