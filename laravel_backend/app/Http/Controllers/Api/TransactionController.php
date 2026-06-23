@@ -13,11 +13,15 @@ class TransactionController extends Controller
         $searchable = ['reference_id', 'type', 'method', 'status'];
         $query = Transaction::query();
 
-        if ($request->boolean('trashed_only')) {
-            $query->onlyTrashed();
-        } elseif ($request->boolean('with_trashed')) {
-            $query->withTrashed();
-        }
+        // Removed conditional SoftDeletes logic as 'deleted_at' column does not exist
+        // if ($request->boolean('trashed_only')) {
+        //     $query->onlyTrashed();
+        // } elseif ($request->boolean('with_trashed')) {
+        //     $query->withTrashed();
+        // }
+
+        // Explicitly set 'sort_by' to 'date' to avoid 'created_at' error
+        $request->merge(['sort_by' => $request->get('sort_by', 'date')]);
 
         $query->with('shareholder')->applyControls($request, $searchable);
 

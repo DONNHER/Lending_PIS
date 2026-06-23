@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+// Removed SoftDeletes as the column 'deleted_at' does not exist in the transactions table
 use App\Traits\Loggable;
 use App\Traits\AdvancedDataControls;
 use App\Traits\Versionable;
@@ -15,11 +15,21 @@ use App\Traits\Versionable;
  */
 class Transaction extends Model
 {
-    use Loggable, AdvancedDataControls, SoftDeletes, Versionable;
+    use Loggable, AdvancedDataControls, Versionable;
 
     protected $keyType = 'int';
     public $incrementing = true;
+    
+    /**
+     * Disable standard Eloquent timestamps.
+     * We override the methods to ensure Laravel uses 'date' for sorting
+     * and doesn't look for 'created_at' or 'updated_at'.
+     */
     public $timestamps = false;
+
+    // This ensures AdvancedDataControls scopeApplyControls uses 'date' for default sorting
+    public function getCreatedAtColumn() { return 'date'; }
+    public function getUpdatedAtColumn() { return null; }
 
     protected $fillable = [
         'reference_id',
