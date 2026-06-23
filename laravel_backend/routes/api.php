@@ -88,12 +88,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/activity-logs/count', [ActivityLogController::class, 'count']);
     Route::apiResource('activity-logs', ActivityLogController::class)->only(['index', 'store', 'show']);
 
-    // Lending
+    // Lending & Interest Settings
     Route::get('/stats/total-disbursed', [LoanController::class, 'getTotalDisbursed']);
     Route::get('/stats/total-capital', [LoanController::class, 'getTotalCapital']);
     Route::get('/stats/active-loans-count', [LoanController::class, 'getActiveLoansCount']);
-    Route::get('/settings/interest-rate', [LoanController::class, 'getInterestRate']);
     Route::get('/lending/metrics', [LoanController::class, 'getMetrics']);
+    
+    // Interest Rate Routes
+    Route::get('/settings/interest-rate', [LoanController::class, 'getInterestRate']);
+    Route::post('/settings/interest-rate', [LoanController::class, 'updateInterestRate']);
+    Route::get('/settings/interest-rate/history', [LoanController::class, 'getInterestRateHistory']);
 
     // Loans
     Route::get('/loans/by-request/{requestId}', [LoanController::class, 'showByRequest']);

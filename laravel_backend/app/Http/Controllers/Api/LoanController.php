@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\Shareholder;
 use App\Models\ActivityLog;
 use App\Models\Notification;
+use App\Models\InterestRateHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -428,12 +429,43 @@ class LoanController extends Controller
 
     public function getInterestRate()
     {
-        return response()->json(['success' => true, 'rate' => 0.032]);
+        $latest = InterestRateHistory::orderBy('id', 'desc')->first();
+        return response()->json([
+            'success' => true, 
+            'rate' => $latest ? (float)$latest->new_rate : 0.032
+        ]);
+    }
+
+    public function updateInterestRate(Request $request)
+    {
+        $validated = $request->validate([
+            'old_rate' => 'required|numeric',
+            'new_rate' => 'required|numeric',
+            'reason' => 'required|string',
+            'effective_date' => 'required|date',
+        ]);
+
+        $history = InterestRateHistory::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Interest rate updated successfully',
+            'data' => $history
+        ]);
+    }
+
+    public function getInterestRateHistory()
+    {
+        $history = InterestRateHistory::orderBy('id', 'desc')->get();
+        return response()->json([
+            'success' => true,
+            'data' => $history
+        ]);
     }
 
     public function getActiveLoansCount()
     {
-        $count = Loan::where('status', 'Active')->count();
+        $count = Loan::where('status', 'active')->count();
         return response()->json(['success' => true, 'count' => $count]);
     }
 }
