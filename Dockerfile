@@ -44,4 +44,7 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 # Expose port (Railway provides $PORT)
 EXPOSE 8080
 
-CMD ["sh", "-c", "php artisan migrate --force && php -S 0.0.0.0:${PORT:-8080} -t public"]
+# Start server and run migrations.
+# We use || true to ensure the server starts even if migrations fail,
+# which helps in debugging connectivity issues from within the app.
+CMD ["sh", "-c", "echo 'Starting deployment script...'; php artisan migrate --force; echo 'Migrations finished. Starting PHP server on port ${PORT:-8080}...'; php -S 0.0.0.0:${PORT:-8080} -t public"]
