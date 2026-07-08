@@ -16,7 +16,7 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
-        return view('auth.login');
+        return view('auth.admin-login');
     }
 
     public function login(Request $request)
@@ -46,7 +46,39 @@ class AuthController extends Controller
 
     public function showRegister()
     {
-        return view('auth.register');
+        return view('auth.admin-register');
+    }
+
+    public function register(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'firstname' => 'required|string|max:255',
+            'lastname' => 'required|string|max:255',
+            'role' => 'required|string|in:admin,cashier,shareholder,staff,member',
+        ]);
+
+        // Map roles to model constants if necessary
+        $roleMap = [
+            'cashier' => User::ROLE_STAFF,
+            'shareholder' => User::ROLE_MEMBER,
+            'admin' => User::ROLE_ADMIN,
+        ];
+
+        $role = $roleMap[$request->role] ?? $request->role;
+
+        User::create([
+            'username' => strstr($request->email, '@', true) . rand(100, 999), // Generate a username
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'firstname' => $request->firstname,
+            'lastname' => $request->lastname,
+            'role' => $role,
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        return redirect()->route('dashboard')->with('success', 'User registered successfully.');
     }
 
     public function showForgotPassword()

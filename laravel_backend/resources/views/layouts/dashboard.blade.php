@@ -81,7 +81,7 @@
                         <span class="text-sm">Loans</span>
                     </a>
 
-                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-text-muted hover:bg-gray-50 transition-all">
+                    <a href="{{ Auth::user()->isAdmin() ? route('register') : '#' }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all {{ request()->routeIs('register') ? 'bg-primary/10 text-primary font-semibold' : 'text-text-muted hover:bg-gray-50' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 01-9-3.47m0-5.037A4.002 4.002 0 0112 4.354" />
                         </svg>

@@ -9,10 +9,20 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register']);
-
 Route::get('/password/reset', [AuthController::class, 'showForgotPassword'])->name('password.request');
+
+// Protected Routes
+Route::middleware('auth')->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // Admin Only: Registration and User Management
+    Route::middleware('admin')->group(function () {
+        Route::get('/admin/register', [AuthController::class, 'showRegister'])->name('register');
+        Route::post('/admin/register', [AuthController::class, 'register']);
+        // Add other admin-only web routes here
+    });
+});
 
 // Debug route to check if server is alive
 Route::get('/debug-status', function () {
