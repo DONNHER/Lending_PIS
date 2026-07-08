@@ -14,23 +14,23 @@ Route::post('/register', [AuthController::class, 'register']);
 
 Route::get('/password/reset', [AuthController::class, 'showForgotPassword'])->name('password.request');
 
-// Debug route to check if server is alive and DB connection
+// Debug route to check if server is alive
 Route::get('/debug-status', function () {
-    $results = [
+    return response()->json([
         'server' => 'OK',
         'php_version' => PHP_VERSION,
         'environment' => app()->environment(),
-        'database' => 'Testing...',
-    ];
+        'time' => now()->toDateTimeString(),
+    ]);
+});
 
+Route::get('/debug-db', function () {
     try {
         \DB::connection()->getPdo();
-        $results['database'] = 'Connected successfully!';
+        return response()->json(['database' => 'Connected successfully!']);
     } catch (\Exception $e) {
-        $results['database'] = 'Connection failed: ' . $e->getMessage();
+        return response()->json(['database' => 'Connection failed: ' . $e->getMessage()], 500);
     }
-
-    return response()->json($results);
 });
 
 // Protected Routes
