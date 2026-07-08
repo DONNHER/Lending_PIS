@@ -1,9 +1,7 @@
-FROM php:8.4-fpm-alpine
+FROM php:8.3-cli-alpine
 
-# Install system dependencies, PostgreSQL dev libraries, and tools
+# Install system dependencies
 RUN apk add --no-cache \
-    nginx \
-    supervisor \
     curl \
     libpng-dev \
     libxml2-dev \
@@ -12,7 +10,9 @@ RUN apk add --no-cache \
     libzip-dev \
     git \
     postgresql-dev \
-    icu-dev
+    icu-dev \
+    linux-headers \
+    libpq
 
 # Install PHP extensions
 RUN docker-php-ext-configure intl
@@ -24,27 +24,21 @@ WORKDIR /var/www/html
 # Copy the Laravel backend files
 COPY laravel_backend/ .
 
-# Remove local .env to ensure Railway variables are used
-RUN rm -f .env
+# Ensure storage and bootstrap/cache directories exist and have proper permissions
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+RUN chmod -R 777 storage bootstrap/cache
 
-# IMPORTANT: Remove any local 'vendor' folder that might have been copied.
-# This prevents "Could not scan for classes" errors caused by local Windows symlinks.
+# IMPORTANT: Remove local vendor folder to ensure fresh install inside Linux
 RUN rm -rf vendor
 
 # Install Composer dependencies
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Install dependencies (freshly, inside the Linux container)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+
-
-# Ensure proper Laravel storage permissions
-RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Expose port (Railway provides $PORT)
 EXPOSE 8080
 
-# Start server and run migrations.
-# We use || true to ensure the server starts even if migrations fail,
-# which helps in debugging connectivity issues from within the app.
-CMD ["sh", "-c", "echo 'Starting deployment script...'; php artisan migrate --force; echo 'Migrations finished. Starting PHP server on port ${PORT:-8080}...'; php -S 0.0.0.0:${PORT:-8080} -t public"]
+# Start server.
+# We run migrations first, then start the PHP built-in server using server.php as the router.
+# We use 'exec' to ensure PHP receives signals and Railway can monitor it.
+CMD php artisan migrate --force && echo "Starting Web Server on port $PORT..." && exec php -S 0.0.0.0:$PORT server.php
