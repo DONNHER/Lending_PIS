@@ -41,11 +41,7 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Copy the debug script
-COPY scripts/railway-debug.sh /usr/local/bin/railway-debug
-RUN chmod +x /usr/local/bin/railway-debug
-
 # Expose port (Railway provides $PORT)
 EXPOSE 8080
 
-CMD ["railway-debug"]
+CMD ["sh", "-c", "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
