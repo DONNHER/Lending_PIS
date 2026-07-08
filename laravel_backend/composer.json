@@ -35,6 +35,12 @@
             ]
         }
     },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ]
+    },
     "minimum-stability": "stable",
     "prefer-stable": true
 }
