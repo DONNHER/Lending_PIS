@@ -99,6 +99,10 @@ class LoanController extends Controller
             $query->where('shareholder_id', $request->shareholder_id);
         }
 
+        if ($request->filled('comaker_id')) {
+            $query->whereJsonContains('loan_comakers', $request->comaker_id);
+        }
+
         return response()->json(LoanRequest::getPaginatedResponse($query, $request));
     }
 

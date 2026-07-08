@@ -38,7 +38,7 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose port 80 for web traffic
+# Expose port for web traffic (Railway/Render provide $PORT)
 EXPOSE 80
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
+CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-80}"]
