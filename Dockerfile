@@ -44,4 +44,4 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 # Expose port (Railway provides $PORT)
 EXPOSE 8080
 
-CMD ["sh", "-c", "php artisan migrate --force && php artisan config:cache && php -S 0.0.0.0:${PORT:-8080} -t public"]
+CMD ["sh", "-c", "php artisan migrate --force && php -S 0.0.0.0:${PORT:-8080} -t public"]
