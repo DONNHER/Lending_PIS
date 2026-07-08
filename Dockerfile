@@ -24,6 +24,9 @@ WORKDIR /var/www/html
 # Copy the Laravel backend files
 COPY laravel_backend/ .
 
+# Remove local .env to ensure Railway variables are used
+RUN rm -f .env
+
 # IMPORTANT: Remove any local 'vendor' folder that might have been copied.
 # This prevents "Could not scan for classes" errors caused by local Windows symlinks.
 RUN rm -rf vendor
@@ -38,7 +41,11 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose port for web traffic (Railway/Render provide $PORT)
-EXPOSE 80
+# Copy the debug script
+COPY scripts/railway-debug.sh /usr/local/bin/railway-debug
+RUN chmod +x /usr/local/bin/railway-debug
 
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-80}"]
+# Expose port (Railway provides $PORT)
+EXPOSE 8080
+
+CMD ["railway-debug"]

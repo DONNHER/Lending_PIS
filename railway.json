@@ -5,10 +5,8 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-80}",
+    "startCommand": "railway-debug",
     "restartPolicyType": "ON_FAILURE",
-    "healthCheckPath": "/api/health",
-    "healthCheckTimeout": 100,
     "numReplicas": 1
   }
 }
