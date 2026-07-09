@@ -4,7 +4,7 @@
 @section('header_title', 'Shareholder Profile')
 
 @section('content')
-<div class="max-w-6xl mx-auto space-y-8">
+<div class="max-w-6xl mx-auto space-y-8" x-data="{ editModal: false }">
     <div class="bg-white rounded-3xl border border-[#F0F1F5] shadow-sm overflow-hidden">
         <div class="p-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center gap-6">
             <div class="w-24 h-24 bg-primary/10 rounded-3xl flex items-center justify-center text-primary text-3xl font-bold">
@@ -19,8 +19,51 @@
                 </div>
             </div>
             <div class="flex gap-3">
-                <button class="px-6 py-2.5 bg-gray-100 text-text-dark text-xs font-bold rounded-xl hover:bg-gray-200 transition-all">Edit Profile</button>
+                <button @click="editModal = true" class="px-6 py-2.5 bg-gray-100 text-text-dark text-xs font-bold rounded-xl hover:bg-gray-200 transition-all">Edit Profile</button>
                 <a href="{{ route('admin.shareholders.add-capital', $shareholder) }}" class="px-6 py-2.5 bg-primary text-white text-xs font-bold rounded-xl shadow-lg hover:opacity-90 transition-all">Add Capital</a>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div x-show="editModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div class="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+                <h3 class="text-xl font-bold text-text-dark mb-6">Edit Shareholder Profile</h3>
+                <form action="{{ route('admin.shareholders.update', $shareholder) }}" method="POST" class="space-y-4">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="version" value="{{ $shareholder->version }}">
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-text-muted uppercase">First Name</label>
+                            <input type="text" name="firstname" value="{{ $shareholder->firstname }}" required class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-text-muted uppercase">Last Name</label>
+                            <input type="text" name="lastname" value="{{ $shareholder->lastname }}" required class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-text-muted uppercase">Email Address</label>
+                        <input type="email" name="email" value="{{ $shareholder->email }}" required class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-text-muted uppercase">Phone Number</label>
+                        <input type="text" name="contact_number" value="{{ $shareholder->contact_number }}" class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-text-muted uppercase">Home Address</label>
+                        <textarea name="address" class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm h-20">{{ $shareholder->address }}</textarea>
+                    </div>
+
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" @click="editModal = false" class="flex-1 bg-gray-100 text-text-muted font-bold py-3 rounded-xl">Cancel</button>
+                        <button type="submit" class="flex-1 bg-primary text-white font-bold py-3 rounded-xl shadow-lg">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
 

@@ -15,29 +15,32 @@ class LogAccess
 
         $response = $next($request);
 
-        $duration = round((microtime(true) - $start) * 1000, 2); // duration in ms
+        $duration = round((microtime(true) - $start) * 1000, 2);
 
-        // 🚀 OPTIMIZATION: Do not log GET requests (viewing/fetching) to prevent database bloat.
-        // Only log mutations (POST, PUT, PATCH, DELETE) or non-GET access if necessary.
-        if (Auth::check() 
-            && !$request->isMethod('GET') 
-            && !str_contains($request->path(), 'activity-logs') 
-            && !str_contains($request->path(), 'dashboard')) {
+        // Access Logs: Page visits and feature usage
+        if (Auth::check() && !str_contains($request->path(), 'activity-logs')) {
             
-            ActivityLog::create([
-                'user_id' => Auth::id(),
-                'action' => 'Access',
-                'log_type' => ActivityLog::TYPE_ACCESS,
-                'description' => "Action: " . $request->path() . " (" . $request->method() . ")",
-                'ip_address' => $request->ip(),
-                'device_info' => $request->userAgent(),
-                'old_values' => [
-                    'duration_ms' => $duration,
-                    'method' => $request->method(),
-                    'path' => $request->path(),
-                    'status' => $response->getStatusCode()
-                ]
-            ]);
+            $isGet = $request->isMethod('GET');
+
+            // Only log GET requests if they are actual page visits (not AJAX/JSON)
+            // or log all mutations (POST, PUT, DELETE)
+            if (!$isGet || ($isGet && !$request->expectsJson())) {
+
+                ActivityLog::create([
+                    'user_id' => Auth::id(),
+                    'action' => $isGet ? 'Page Visit' : 'Feature Usage',
+                    'log_type' => ActivityLog::TYPE_ACCESS,
+                    'description' => "Accessed " . ($request->path() ?: 'home') . " via " . $request->method(),
+                    'ip_address' => $request->ip(),
+                    'device_info' => $request->userAgent(),
+                    'old_values' => [
+                        'duration_ms' => $duration,
+                        'method' => $request->method(),
+                        'path' => $request->path(),
+                        'status' => $response->getStatusCode()
+                    ]
+                ]);
+            }
         }
 
         return $response;

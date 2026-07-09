@@ -46,7 +46,9 @@ Route::middleware('auth')->group(function () {
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/stream', [NotificationController::class, 'stream'])->name('notifications.stream');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
 
     // Admin Only: Management
@@ -56,12 +58,29 @@ Route::middleware('auth')->group(function () {
 
         // Users
         Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
+        Route::post('/admin/users/import', [UserController::class, 'import'])->name('admin.users.import');
+        Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+        Route::post('/admin/users/bulk', [UserController::class, 'bulkAction'])->name('admin.users.bulk');
         Route::patch('/admin/users/{user}/status', [UserController::class, 'updateStatus'])->name('admin.users.status');
+        Route::post('/admin/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('admin.users.impersonate');
+        Route::post('/admin/users/{user}/force-logout', [UserController::class, 'forceLogout'])->name('admin.users.force-logout');
+        Route::get('/admin/users/{user}/history', [UserController::class, 'history'])->name('admin.users.history');
+        Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+        Route::post('/admin/users/{id}/restore', [UserController::class, 'restore'])->name('admin.users.restore');
+
+        // Impersonation Leave (Global)
+        Route::post('/admin/users/stop-impersonating', [UserController::class, 'stopImpersonating'])->name('admin.users.stop-impersonating');
 
         // Shareholders
         Route::get('/admin/shareholders', [ShareholderController::class, 'index'])->name('admin.shareholders.index');
+        Route::post('/admin/shareholders/bulk', [ShareholderController::class, 'bulkAction'])->name('admin.shareholders.bulk');
+        Route::get('/admin/shareholders/export', [ShareholderController::class, 'export'])->name('admin.shareholders.export');
+        Route::post('/admin/shareholders/import', [ShareholderController::class, 'import'])->name('admin.shareholders.import');
         Route::get('/admin/shareholders/create', [ShareholderController::class, 'create'])->name('admin.shareholders.create');
         Route::get('/admin/shareholders/{shareholder}', [ShareholderController::class, 'show'])->name('admin.shareholders.show');
+        Route::put('/admin/shareholders/{shareholder}', [ShareholderController::class, 'update'])->name('admin.shareholders.update');
+        Route::delete('/admin/shareholders/{shareholder}', [ShareholderController::class, 'destroy'])->name('admin.shareholders.destroy');
+        Route::post('/admin/shareholders/{id}/restore', [ShareholderController::class, 'restore'])->name('admin.shareholders.restore');
         Route::get('/admin/shareholders/{shareholder}/add-capital', [ShareholderController::class, 'addCapital'])->name('admin.shareholders.add-capital');
         Route::post('/admin/shareholders/{shareholder}/add-capital', [ShareholderController::class, 'storeCapital'])->name('admin.shareholders.add-capital.store');
 
@@ -79,17 +98,26 @@ Route::middleware('auth')->group(function () {
 
         // Transactions
         Route::get('/admin/transactions', [TransactionController::class, 'index'])->name('admin.transactions.index');
+        Route::get('/admin/transactions/export', [TransactionController::class, 'export'])->name('admin.transactions.export');
 
         // Activity Logs
         Route::get('/admin/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs.index');
         Route::get('/admin/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('admin.activity-logs.show');
 
+        // Reports
+        Route::get('/admin/reports', [ReportController::class, 'index'])->name('admin.reports.index');
+        Route::get('/admin/reports/generate', [ReportController::class, 'generate'])->name('admin.reports.generate');
+        Route::post('/admin/reports/favorite', [ReportController::class, 'saveFavorite'])->name('admin.reports.favorite');
+        Route::delete('/admin/reports/favorite/{report}', [ReportController::class, 'deleteFavorite'])->name('admin.reports.favorite.delete');
+
         // Backups
         Route::get('/admin/backups', [BackupController::class, 'index'])->name('admin.backups.index');
         Route::post('/admin/backups/run', [BackupController::class, 'run'])->name('admin.backups.run');
+        Route::get('/admin/backups/download/{filename}', [BackupController::class, 'download'])->name('admin.backups.download');
 
         // Settings
         Route::get('/admin/settings', [SettingsController::class, 'index'])->name('admin.settings.index');
+        Route::post('/admin/settings/general', [SettingsController::class, 'updateGeneral'])->name('admin.settings.general');
         Route::post('/admin/settings/interest', [SettingsController::class, 'updateInterest'])->name('admin.settings.interest');
     });
 });

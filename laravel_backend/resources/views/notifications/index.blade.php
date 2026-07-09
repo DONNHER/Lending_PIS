@@ -31,13 +31,22 @@
                     </div>
                     <p class="text-xs text-text-muted leading-relaxed line-clamp-2">{{ $n->content }}</p>
                 </div>
-                @if($n->is_unread)
-                    <form action="{{ route('notifications.read', $n) }}" method="POST">
+                <div class="flex flex-col items-center gap-2">
+                    @if($n->is_unread)
+                        <form action="{{ route('notifications.read', $n) }}" method="POST">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="w-2 h-2 bg-primary rounded-full mt-2" title="Mark as read"></button>
+                        </form>
+                    @endif
+                    <form action="{{ route('notifications.destroy', $n) }}" method="POST" onsubmit="return confirm('Delete this notification?')">
                         @csrf
-                        @method('PATCH')
-                        <button type="submit" class="w-2 h-2 bg-primary rounded-full mt-2" title="Mark as read"></button>
+                        @method('DELETE')
+                        <button type="submit" class="text-text-muted hover:text-error transition-colors p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                     </form>
-                @endif
+                </div>
             </div>
         @empty
             <div class="p-12 text-center text-text-muted italic text-sm">No notifications found</div>

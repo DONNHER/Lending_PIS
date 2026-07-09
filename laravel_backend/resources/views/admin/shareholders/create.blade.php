@@ -15,24 +15,27 @@
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-2">
-                    <label class="text-sm font-bold text-text-dark">First Name</label>
-                    <input type="text" name="firstname" required class="w-full bg-[#F7F8FA] border-none rounded-xl p-4 text-sm focus:ring-1 focus:ring-primary">
+                    <label class="text-sm font-bold text-text-dark">First Name <span class="text-error">*</span></label>
+                    <input type="text" name="firstname" value="{{ old('firstname') }}" required class="w-full bg-[#F7F8FA] border-none rounded-xl p-4 text-sm focus:ring-1 focus:ring-primary @error('firstname') ring-1 ring-error @enderror">
+                    @error('firstname') <p class="text-[10px] text-error font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div class="space-y-2">
-                    <label class="text-sm font-bold text-text-dark">Last Name</label>
-                    <input type="text" name="lastname" required class="w-full bg-[#F7F8FA] border-none rounded-xl p-4 text-sm focus:ring-1 focus:ring-primary">
+                    <label class="text-sm font-bold text-text-dark">Last Name <span class="text-error">*</span></label>
+                    <input type="text" name="lastname" value="{{ old('lastname') }}" required class="w-full bg-[#F7F8FA] border-none rounded-xl p-4 text-sm focus:ring-1 focus:ring-primary @error('lastname') ring-1 ring-error @enderror">
+                    @error('lastname') <p class="text-[10px] text-error font-bold">{{ $message }}</p> @enderror
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label class="text-sm font-bold text-text-dark">Email Address</label>
-                <input type="email" name="email" required class="w-full bg-[#F7F8FA] border-none rounded-xl p-4 text-sm focus:ring-1 focus:ring-primary">
+                <label class="text-sm font-bold text-text-dark">Email Address <span class="text-error">*</span></label>
+                <input type="email" name="email" value="{{ old('email') }}" required class="w-full bg-[#F7F8FA] border-none rounded-xl p-4 text-sm focus:ring-1 focus:ring-primary @error('email') ring-1 ring-error @enderror">
+                @error('email') <p class="text-[10px] text-error font-bold">{{ $message }}</p> @enderror
             </div>
 
             <div class="space-y-2">
-                <label class="text-sm font-bold text-text-dark">Temporary Password</label>
-                <input type="password" name="password" required class="w-full bg-[#F7F8FA] border-none rounded-xl p-4 text-sm focus:ring-1 focus:ring-primary">
-                <p class="text-[10px] text-text-muted">Minimum 8 characters. The user should change this upon login.</p>
+                <label class="text-sm font-bold text-text-dark">Temporary Password <span class="text-error">*</span></label>
+                <input type="password" name="password" required class="w-full bg-[#F7F8FA] border-none rounded-xl p-4 text-sm focus:ring-1 focus:ring-primary @error('password') ring-1 ring-error @enderror">
+                @error('password') <p class="text-[10px] text-error font-bold">{{ $message }}</p> @else <p class="text-[10px] text-text-muted">Minimum 8 characters. The user should change this upon login.</p> @enderror
             </div>
 
             <div class="space-y-2">
