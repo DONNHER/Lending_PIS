@@ -1,10 +1,9 @@
-FROM php:8.4-cli-alpine
+FROM php:8.4-fpm-alpine
 
-# Set Composer to allow superuser (required for Docker root)
-ENV COMPOSER_ALLOW_SUPERUSER=1
-
-# Install system dependencies
+# Install system dependencies, PostgreSQL dev libraries, and tools
 RUN apk add --no-cache \
+    nginx \
+    supervisor \
     curl \
     libpng-dev \
     libxml2-dev \
@@ -13,12 +12,10 @@ RUN apk add --no-cache \
     libzip-dev \
     git \
     postgresql-dev \
-    icu-dev \
-    linux-headers \
-    libpq-dev \
-    oniguruma-dev
+    icu-dev
 
 # Install PHP extensions
+RUN docker-php-ext-configure intl
 RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip intl
 
 # Set working directory
@@ -27,22 +24,21 @@ WORKDIR /var/www/html
 # Copy the Laravel backend files
 COPY laravel_backend/ .
 
-# Ensure standard Laravel folders exist and are writable
-RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
-RUN chmod -R 777 storage bootstrap/cache
-
-# Remove local vendor to ensure fresh install
+# IMPORTANT: Remove any local 'vendor' folder that might have been copied.
+# This prevents "Could not scan for classes" errors caused by local Windows symlinks.
 RUN rm -rf vendor
 
-# Install Composer
+# Install Composer dependencies
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Install dependencies
-# We use --ignore-platform-reqs to bypass strict version checks if the lock file is slightly ahead
-RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
+# Install dependencies (freshly, inside the Linux container)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+
 
-# Expose port (Railway provides $PORT)
-EXPOSE 8080
+# Ensure proper Laravel storage permissions
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Start server
-CMD php artisan migrate --force && echo "Starting Web Server on port $PORT..." && exec php -S 0.0.0.0:$PORT server.php
+# Expose port 80 for web traffic
+EXPOSE 80
+
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]

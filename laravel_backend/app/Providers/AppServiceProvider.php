@@ -13,6 +13,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        view()->composer('layouts.dashboard', function ($view) {
+            if (auth()->check()) {
+                $unreadNotificationsCount = \App\Models\Notification::where('user_id', auth()->id())
+                    ->where('is_unread', true)
+                    ->count();
+                $view->with('unreadNotificationsCount', $unreadNotificationsCount);
+            }
+        });
     }
 }
