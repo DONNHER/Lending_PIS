@@ -13,9 +13,12 @@ use App\Http\Controllers\Web\ProfileController;
 use App\Http\Controllers\Web\NotificationController;
 use App\Http\Controllers\Web\UserController;
 use App\Http\Controllers\Web\BackupController;
+use App\Http\Controllers\Web\ShareholderPortalController;
+use App\Http\Controllers\Web\ReportController;
 
 // Auth Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::get('/admin-login', [AuthController::class, 'showLogin'])->name('admin.login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/login/verify', [AuthController::class, 'showMfa'])->name('login.mfa');
 Route::post('/login/verify', [AuthController::class, 'verifyMfa'])->name('login.mfa.verify');
