@@ -6,13 +6,13 @@
 <div class="min-h-screen flex items-center justify-center p-6">
     <div class="w-full max-w-[440px] space-y-8">
         <div class="text-center">
-            <div class="inline-flex p-4 bg-primary/10 rounded-3xl text-primary mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" style="width: 32px; height: 32px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div class="inline-flex p-5 bg-primary rounded-[24px] text-white mb-6 shadow-xl shadow-primary/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
             </div>
-            <h1 class="text-2xl font-[900] text-text-dark">Lending PIS</h1>
-            <p class="text-text-muted text-sm mt-2">Welcome back! Please enter your details.</p>
+            <h1 class="text-3xl font-black text-text-dark tracking-tight">Lending PIS</h1>
+            <p class="text-text-muted text-sm mt-2 font-medium">Management & Information System</p>
         </div>
 
         <div class="bg-white p-8 rounded-[32px] border border-[#EEE5DD] shadow-sm">

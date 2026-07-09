@@ -6,8 +6,13 @@
 <div class="min-h-screen flex items-center justify-center p-6">
     <div class="w-full max-w-[500px] space-y-8">
         <div class="text-center">
-            <h1 class="text-2xl font-[900] text-text-dark">Create Account</h1>
-            <p class="text-text-muted text-sm mt-2">Register a new system user with specific roles.</p>
+            <div class="inline-flex p-4 bg-primary rounded-[20px] text-white mb-4 shadow-lg shadow-primary/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-black text-text-dark tracking-tight">Create Account</h1>
+            <p class="text-text-muted text-sm mt-1 font-medium">Register a new system user</p>
         </div>
 
         <div class="bg-white p-8 rounded-[32px] border border-[#EEE5DD] shadow-sm">
