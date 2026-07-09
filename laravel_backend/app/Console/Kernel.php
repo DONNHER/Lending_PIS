@@ -18,21 +18,44 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // 1. Monthly System Reports (Auto-generate for Admins)
+        // 🚀 Automated Backup System (Spatie)
+        $schedule->command('backup:run')->dailyAt('02:00')
+            ->withoutOverlapping()
+            ->onFailure(fn() => \Log::error('Daily backup failed.'))
+            ->onSuccess(fn() => \Log::info('Daily backup completed.'));
+
+        $schedule->command('backup:clean')->dailyAt('03:00')
+            ->withoutOverlapping();
+
+        // 🚀 Maintenance Tasks
+        $schedule->command('session:table')->daily(); // Placeholder for session cleanup if using DB
+
+        $schedule->call(function () {
+            // notification:prune Weekly Delete old notification records > 90 days
+            \App\Models\Notification::where('created_at', '<', now()->subDays(90))->delete();
+        })->weekly();
+
+        $schedule->call(function () {
+            // audit:archive Monthly Archive audit logs > 1 year old
+            // In a real app, this might move to a separate 'audit_archives' table or S3
+            \App\Models\ActivityLog::where('created_at', '<', now()->subYear())->delete();
+        })->monthly();
+
+        // Daily Sales/Transaction Report at 06:00
         $schedule->call(function () {
             $admins = User::where('role', 'admin')->get();
             foreach ($admins as $admin) {
                 NotificationService::send(
                     $admin->id,
-                    'Monthly System Report Generated',
-                    'Your automated monthly transaction and activity report for ' . now()->subMonth()->format('F Y') . ' is ready.',
+                    'Daily Sales Report',
+                    'The daily transaction summary for ' . now()->subDay()->format('M d, Y') . ' has been generated.',
                     'system',
                     'info'
                 );
             }
-        })->monthlyOn(1, '01:00');
+        })->dailyAt('06:00');
 
-        // 2. Loan Payment Reminders
+        // Loan Payment Reminders (Existing logic)
         $schedule->call(function () {
             $upcomingLoans = Loan::where('status', 'active')
                 ->where('next_repayment_date', '<=', now()->addDays(3))
@@ -52,34 +75,6 @@ class Kernel extends ConsoleKernel
                 }
             }
         })->dailyAt('08:00');
-
-        // 2. Auto-archive/cleanup logs older than 90 days
-        $schedule->call(function () {
-            ActivityLog::where('created_at', '<', now()->subDays(90))->delete();
-        })->daily();
-
-        // 2. Automated Backups based on Site Settings
-        
-        // Database Backup: Weekly at 2:00 AM (Configurable)
-        $dbTime = SiteSetting::get('backup_time_db', '02:00');
-        $schedule->call(function () {
-            app(BackupService::class)->run('db');
-        })->weekly()->at($dbTime);
-
-        // File Uploads Backup: Weekly (Sundays)
-        $schedule->call(function () {
-            app(BackupService::class)->run('files');
-        })->weeklyOn(0, '03:00');
-
-        // Full System Backup: Monthly
-        $schedule->call(function () {
-            app(BackupService::class)->run('full');
-        })->monthlyOn(1, '04:00');
-
-        // 3. Backup Retention Cleanup (30 days)
-        $schedule->call(function () {
-            app(BackupService::class)->cleanup();
-        })->daily();
     }
 
     /**

@@ -25,12 +25,15 @@ use App\Http\Controllers\Api\UserController;
 Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-Route::post('/verify-mfa', [AuthController::class, 'verifyMfa']);
-Route::post('/resend-mfa', [AuthController::class, 'resendMfa']);
+
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/verify-mfa', [AuthController::class, 'verifyMfa']);
+    Route::post('/resend-mfa', [AuthController::class, 'resendMfa']);
+});
 
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {

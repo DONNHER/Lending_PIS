@@ -205,7 +205,29 @@ class AuthController extends Controller
 
     public function forgotPassword(Request $request)
     {
-        return response()->json(['success' => true, 'message' => 'Reset instructions sent to your email.']);
+        $request->validate(['email' => 'required|email']);
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'No, this email is not registered in our system.'], 404);
+        }
+
+        try {
+            $code = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            $user->update([
+                'mfa_code' => $code,
+                'mfa_expires_at' => now()->addMinutes(15)
+            ]);
+
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PasswordResetMail($user, $code));
+
+            $this->logAuth($user, 'Password Reset Request', $request);
+
+            return response()->json(['success' => true, 'message' => 'Yes, a reset link has been sent to your email.']);
+        } catch (\Exception $e) {
+            Log::error('Mail sending failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to send reset link.'], 500);
+        }
     }
 
     public function resetPassword(Request $request)

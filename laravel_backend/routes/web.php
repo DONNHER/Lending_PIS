@@ -103,7 +103,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/transactions', [TransactionController::class, 'index'])->name('admin.transactions.index');
         Route::get('/admin/transactions/export', [TransactionController::class, 'export'])->name('admin.transactions.export');
 
-        // Activity Logs
+        // Audit Logs
+        Route::get('/admin/audit-logs', [\App\Http\Controllers\Web\AuditLogController::class, 'index'])->name('admin.audit-logs.index');
+        Route::get('/admin/audit-logs/{auditLog}', [\App\Http\Controllers\Web\AuditLogController::class, 'show'])->name('admin.audit-logs.show');
+
+        // Activity Logs (Existing)
         Route::get('/admin/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs.index');
         Route::get('/admin/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('admin.activity-logs.show');
 
