@@ -12,14 +12,20 @@ RUN apk add --no-cache \
     libzip-dev \
     git \
     postgresql-dev \
-    icu-dev
+    icu-dev \
+    freetype-dev \
+    libjpeg-turbo-dev
 
 # Install PHP extensions
 RUN docker-php-ext-configure intl
-RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip intl
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg
+RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip intl gd
 
 # Set working directory
 WORKDIR /var/www/html
+
+# Set Composer environment variable to allow running as root
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Copy the Laravel backend files
 COPY laravel_backend/ .
