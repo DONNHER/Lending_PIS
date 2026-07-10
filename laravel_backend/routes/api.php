@@ -69,7 +69,13 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         Route::get('/admin/users/count', [UserController::class, 'count']);
-        Route::apiResource('admin/users', UserController::class)->names('admin.users');
+        Route::apiResource('admin/users', UserController::class)->names([
+            'index' => 'admin.users.index',
+            'store' => 'admin.users.store',
+            'show' => 'admin.users.show',
+            'update' => 'admin.users.update',
+            'destroy' => 'admin.users.destroy',
+        ]);
         Route::get('/admin/users/{id}/login-history', [UserController::class, 'loginHistory']);
         
         // 🚀 Status & Address Updates

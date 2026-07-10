@@ -19,8 +19,8 @@ php artisan migrate --force
 
 # 5. Optimization
 php artisan config:cache
-php artisan route:cache
 php artisan view:cache
+php artisan route:cache
 
 # 6. Start the server
 echo "Starting Laravel server on port $PORT..."
