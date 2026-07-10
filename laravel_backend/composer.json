@@ -9,10 +9,7 @@
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^10.48",
         "laravel/sanctum": "^3.3",
-        "laravel/tinker": "^2.8",
-        "maatwebsite/excel": "^3.1",
-        "spatie/laravel-backup": "^8.8",
-        "owen-it/laravel-auditing": "^13.6"
+        "laravel/tinker": "^2.8"
     },
     "autoload": {
         "psr-4": {
