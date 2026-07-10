@@ -7,6 +7,8 @@ use Throwable;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class Handler extends ExceptionHandler
 {
@@ -24,28 +26,25 @@ class Handler extends ExceptionHandler
     {
         $this->reportable(function (Throwable $e) {
             try {
-                // Only try to log to DB if we can connect
-                \DB::connection()->getPdo();
-
-                ActivityLog::create([
-                    'user_id' => Auth::id(),
-                    'action' => 'System Error',
-                    'log_type' => ActivityLog::TYPE_ERROR,
-                    'description' => $e->getMessage(),
-                    'old_values' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => substr($e->getTraceAsString(), 0, 1000)
-                    ],
-                    'ip_address' => Request::ip(),
-                    'device_info' => Request::userAgent(),
-                ]);
-            } catch (\Exception $dbEx) {
-                // Fallback to standard logging if DB is down
-                \Log::error('Secondary error while logging to ActivityLog: ' . $dbEx->getMessage());
-                \Log::error('Original error: ' . $e->getMessage(), [
-                    'exception' => $e
-                ]);
+                // Check if we are in a state where DB is available
+                if (class_exists('Illuminate\Support\Facades\DB')) {
+                    ActivityLog::create([
+                        'user_id' => Auth::id(),
+                        'action' => 'System Error',
+                        'log_type' => ActivityLog::TYPE_ERROR,
+                        'description' => $e->getMessage(),
+                        'old_values' => [
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                            'trace' => substr($e->getTraceAsString(), 0, 1000)
+                        ],
+                        'ip_address' => Request::ip(),
+                        'device_info' => Request::userAgent(),
+                    ]);
+                }
+            } catch (Throwable $dbEx) {
+                // Fallback to standard logging if DB is down or logic fails
+                Log::error('Secondary error while logging to ActivityLog: ' . $dbEx->getMessage());
             }
         });
     }
