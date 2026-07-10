@@ -12,9 +12,11 @@ RUN apk add --no-cache \
     libzip-dev \
     git \
     postgresql-dev \
+    postgresql-client \
     icu-dev \
     freetype-dev \
-    libjpeg-turbo-dev
+    libjpeg-turbo-dev \
+    libpq
 
 # Install PHP extensions
 RUN docker-php-ext-configure intl
