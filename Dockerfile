@@ -37,8 +37,10 @@ RUN rm -rf vendor
 # Install Composer dependencies
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Install dependencies (freshly, inside the Linux container)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+
+# Increase Composer timeout and attempt install with retries
+ENV COMPOSER_PROCESS_TIMEOUT=2000
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+ || \
+    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+
 
 # Ensure proper Laravel storage permissions
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
