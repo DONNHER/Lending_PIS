@@ -1,6 +1,6 @@
-FROM php:8.2-fpm-alpine
+FROM php:8.4-fpm-alpine
 
-# Install system dependencies, PostgreSQL dev libraries, and tools
+# Install system dependencies
 RUN apk add --no-cache \
     nginx \
     supervisor \
@@ -19,41 +19,29 @@ RUN apk add --no-cache \
     libpq
 
 # Install PHP extensions
-RUN docker-php-ext-configure intl
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip intl gd exif pcntl
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Set Composer environment variable to allow running as root
+# Set Composer environment
 ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_PROCESS_TIMEOUT=2000
 
-# Copy the Laravel backend files
+# Copy files
 COPY laravel_backend/ .
-
-# IMPORTANT: Remove any local 'vendor' folder that might have been copied.
-# This prevents "Could not scan for classes" errors caused by local Windows symlinks.
 RUN rm -rf vendor
 
-# Install Composer dependencies
+# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+
 
-# Increase Composer timeout and attempt install with retries
-ENV COMPOSER_PROCESS_TIMEOUT=2000
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+ || \
-    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-req=php+
-
-# Ensure proper Laravel storage permissions
+# Permissions
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod +x deploy.sh
 
-# Make the deploy script executable
-RUN chmod +x /var/www/html/deploy.sh
-
-# Railway uses a dynamic port, so we don't strictly need EXPOSE,
-# but keeping it for documentation (Railway will override this).
 EXPOSE 80
 
-# Execute the deployment script
 CMD ["/var/www/html/deploy.sh"]
