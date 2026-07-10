@@ -70,11 +70,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/admin/users/count', [UserController::class, 'count']);
         Route::apiResource('admin/users', UserController::class)->names([
-            'index' => 'admin.users.index',
-            'store' => 'admin.users.store',
-            'show' => 'admin.users.show',
-            'update' => 'admin.users.update',
-            'destroy' => 'admin.users.destroy',
+            'index' => 'api.admin.users.index',
+            'store' => 'api.admin.users.store',
+            'show' => 'api.admin.users.show',
+            'update' => 'api.admin.users.update',
+            'destroy' => 'api.admin.users.destroy',
         ]);
         Route::get('/admin/users/{id}/login-history', [UserController::class, 'loginHistory']);
         
