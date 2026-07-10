@@ -1,34 +1,34 @@
 #!/bin/sh
-set -e # Exit on error
-set -x # Print commands for debugging
+# Do NOT use set -e yet so we can see all error messages
+set -x
 
-# Ensure storage and bootstrap/cache are writable
-# We do this at runtime to be sure
+echo "--- Deployment Starting ---"
+
+# 1. Check if APP_KEY is set
+if [ -z "$APP_KEY" ]; then
+    echo "FATAL ERROR: APP_KEY is not set in Railway Variables."
+    echo "Please add APP_KEY to your Railway project settings."
+    # We don't exit here so we can see other errors, but Laravel WILL fail.
+fi
+
+# 2. Fix Permissions
+echo "Setting permissions..."
 chmod -R 775 storage bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
 
-# Create .env if it doesn't exist (Railway usually provides vars via environment)
-if [ ! -f .env ]; then
-    echo "Creating .env from environment variables..."
-    touch .env
-fi
+# 3. Try to run Artisan and capture ANY error
+echo "Testing Artisan connection..."
+php artisan --version 2>&1 || echo "Artisan failed to boot. Check your environment variables."
 
-# Link storage
-php artisan storage:link --force
+# 4. Storage Link (often where it crashes if .env is missing)
+echo "Linking storage..."
+php artisan storage:link --force 2>&1
 
-# Run migrations (force for production)
+# 5. Run Migrations
 echo "Running migrations..."
-php artisan migrate --force
+php artisan migrate --force 2>&1
 
-# Clear and Cache configuration
-# Note: If you have issues, you can comment these out to debug
-echo "Caching configuration..."
-php artisan config:clear
-php artisan route:clear
-php artisan config:cache
-php artisan route:cache
-
-# Start the PHP server
-# Using 'exec' ensures PHP becomes PID 1, which helps Railway monitor the process
-echo "Starting server on port $PORT"
-exec php -S 0.0.0.0:$PORT -t public
+# 6. Start the server using the dynamic Railway port
+echo "Starting Laravel server on port $PORT..."
+# Using php artisan serve is usually fine, but let's ensure it doesn't background
+exec php artisan serve --host=0.0.0.0 --port=$PORT
