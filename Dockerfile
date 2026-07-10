@@ -38,7 +38,12 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose port 80 for web traffic
+# Make the deploy script executable
+RUN chmod +x /var/www/html/deploy.sh
+
+# Railway uses a dynamic port, so we don't strictly need EXPOSE,
+# but keeping it for documentation (Railway will override this).
 EXPOSE 80
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
+# Execute the deployment script
+CMD ["/var/www/html/deploy.sh"]
