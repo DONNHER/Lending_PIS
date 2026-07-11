@@ -17,6 +17,7 @@ class UpdateInterestViewModel extends ChangeNotifier {
   List<dynamic> get history => _history;
 
   Future<void> loadData() async {
+    if (_isLoading) return;
     _isLoading = true;
     notifyListeners();
     try {

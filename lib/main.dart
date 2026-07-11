@@ -333,8 +333,46 @@ class RootApp extends StatelessWidget {
       return const LoginPage();
     }
 
-    return auth.currentUser?.role == UserRole.shareholder 
-        ? const AppLayout() 
-        : const AppShell();
+    if (auth.currentUser?.role == UserRole.shareholder) {
+      return const AppLayout();
+    }
+
+    // For Admin/Cashier, show a global loader if the dashboard (main entry) 
+    // hasn't finished its initial background fetch yet.
+    return Consumer<DashboardViewModel>(
+      builder: (context, dashboard, child) {
+        if (!dashboard.isInitialized) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFFDF8F5),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: Color(0xFFC06C4D)),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Synchronizing your dashboard...',
+                    style: TextStyle(
+                      color: Color(0xFF32211A),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Fetching real-time records from the database',
+                    style: TextStyle(
+                      color: Colors.brown.withOpacity(0.6),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return const AppShell();
+      },
+    );
   }
 }
