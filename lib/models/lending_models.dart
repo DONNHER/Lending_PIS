@@ -124,7 +124,6 @@ class LoanRequestModel {
     if (json['comakers'] is List) {
       comakers = (json['comakers'] as List).map((e) => LoanComaker.fromJson(e)).toList();
     } else if (json['comaker_decisions'] is Map) {
-      // Fallback for old structure if needed
       (json['comaker_decisions'] as Map).forEach((key, value) {
         comakers.add(LoanComaker(
           shareholderId: key.toString(),
@@ -134,11 +133,31 @@ class LoanRequestModel {
       });
     }
 
+    String name = json['shareholder_name'] ?? '';
+    if (name.isEmpty && json['shareholder'] != null) {
+      final sh = json['shareholder'];
+      final firstName = sh['first_name'] ?? sh['firstname'] ?? '';
+      final lastName = sh['last_name'] ?? sh['lastname'] ?? '';
+      name = '$firstName $lastName'.trim();
+    }
+    if (name.isEmpty) name = 'Unknown Shareholder';
+
+    // Handle multiple possible keys for amount
+    double amount = 0.0;
+    final amountVal = json['requested_amount'] ?? json['amount'];
+    if (amountVal != null) {
+      if (amountVal is num) {
+        amount = amountVal.toDouble();
+      } else if (amountVal is String) {
+        amount = double.tryParse(amountVal) ?? 0.0;
+      }
+    }
+
     return LoanRequestModel(
       id: json['id']?.toString() ?? '',
       shareholderId: json['shareholder_id']?.toString() ?? '',
-      shareholderName: json['shareholder_name'] ?? 'Unknown',
-      requestedAmount: (json['amount'] ?? 0.0).toDouble(),
+      shareholderName: name,
+      requestedAmount: amount,
       months: json['months'] ?? 0,
       purpose: json['purpose'] ?? '',
       status: _parseLoanStatus(json['status']?.toString()),

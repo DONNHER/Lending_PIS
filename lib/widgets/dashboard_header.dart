@@ -69,7 +69,7 @@ class DashboardHeader extends StatelessWidget {
         TextField(
           onChanged: onSearch,
           decoration: InputDecoration(
-            hintText: 'Search shareholders...',
+            hintText: 'Search shareholders by name or email...',
             prefixIcon: const Icon(Icons.search, color: Color(0xFFC06C4D)),
             filled: true,
             fillColor: Colors.white,
@@ -89,55 +89,54 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
         if (searchResults.isNotEmpty)
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            constraints: const BoxConstraints(maxHeight: 250),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              itemCount: searchResults.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final result = searchResults[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: const Color(0xFFC06C4D).withOpacity(0.1),
-                    child: Text(
-                      result.firstName[0],
-                      style: const TextStyle(
-                        color: Color(0xFFC06C4D),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+          Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.transparent,
+            child: Container(
+              margin: const EdgeInsets.only(top: 8),
+              constraints: const BoxConstraints(maxHeight: 300),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: ListView.separated(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: searchResults.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final result = searchResults[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: const Color(0xFFC06C4D).withOpacity(0.1),
+                      child: Text(
+                        result.firstName.isNotEmpty ? result.firstName[0] : '?',
+                        style: const TextStyle(
+                          color: Color(0xFFC06C4D),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                  ),
-                  title: Text(
-                    result.fullName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                    title: Text(
+                      result.fullName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppTheme.textDark,
+                      ),
                     ),
-                  ),
-                  subtitle: Text(
-                    result.email,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  onTap: () => onResultTap(result),
-                );
-              },
+                    subtitle: Text(
+                      result.email,
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    ),
+                    onTap: () => onResultTap(result),
+                  );
+                },
+              ),
             ),
           ),
       ],

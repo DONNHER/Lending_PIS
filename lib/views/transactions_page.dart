@@ -82,18 +82,83 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   Widget _buildActionBar(TransactionViewModel viewModel) {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      child: Column(
         children: [
-          const Text(
-            'Transactions',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+          Row(
+            children: [
+              const Text(
+                'Transactions',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: viewModel.refresh,
+                icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMuted),
+                tooltip: 'Refresh',
+              ),
+            ],
           ),
-          const Spacer(),
-          IconButton(
-            onPressed: viewModel.refresh,
-            icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMuted),
-            tooltip: 'Refresh',
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildFilterDropdown(
+                label: 'Type',
+                value: viewModel.typeFilter,
+                items: ['All', 'Disbursement', 'Payment', 'Contribution'],
+                onChanged: (val) {
+                  if (val != null) viewModel.setTypeFilter(val);
+                },
+              ),
+              const SizedBox(width: 12),
+              _buildFilterDropdown(
+                label: 'Status',
+                value: viewModel.statusFilter,
+                items: ['All', 'Successful', 'Pending', 'Failed'],
+                onChanged: (val) {
+                  if (val != null) viewModel.setStatusFilter(val);
+                },
+              ),
+              const SizedBox(width: 12),
+              _buildFilterDropdown(
+                label: 'Sort By',
+                value: viewModel.sortOrder,
+                items: ['Newest', 'Oldest', 'Highest Amount', 'Lowest Amount'],
+                onChanged: (val) {
+                  if (val != null) viewModel.setSortOrder(val);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$label: ', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+          DropdownButton<String>(
+            value: value,
+            underline: const SizedBox(),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+            items: items.map((String v) => DropdownMenuItem<String>(value: v, child: Text(v))).toList(),
+            onChanged: onChanged,
           ),
         ],
       ),

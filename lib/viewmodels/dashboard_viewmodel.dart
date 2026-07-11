@@ -158,12 +158,20 @@ class DashboardViewModel extends ChangeNotifier {
     }
 
     try {
-      final results = await _shareholderRepository.getPaginatedShareholders(
-        search: query,
-        perPage: 5,
-      );
+      // 🚀 Search locally first since we already have the full list from initialization
+      final allShareholders = await _shareholderRepository.getShareholders();
+      
+      final lowerQuery = query.toLowerCase();
       _searchResults.clear();
-      _searchResults.addAll(results['shareholders']);
+      _searchResults.addAll(
+        allShareholders.where((s) => 
+          s.firstName.toLowerCase().contains(lowerQuery) || 
+          s.lastName.toLowerCase().contains(lowerQuery) ||
+          s.email.toLowerCase().contains(lowerQuery)
+        ).take(10).toList()
+      );
+      
+      debugPrint('DEBUG: Dashboard search for "$query" found ${_searchResults.length} results');
     } catch (e) {
       debugPrint('Error searching shareholders: $e');
     }

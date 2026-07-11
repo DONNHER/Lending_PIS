@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import '../viewmodels/dashboard_viewmodel.dart';
+import '../viewmodels/loan_request_viewmodel.dart';
+import '../viewmodels/shareholder_viewmodel.dart';
+import '../viewmodels/transaction_viewmodel.dart';
+import '../viewmodels/activity_log_viewmodel.dart';
+import '../viewmodels/update_interest_viewmodel.dart';
 import '../widgets/auth_text_field.dart';
 import 'registration_page.dart';
 import 'forgot_password_page.dart';
@@ -78,6 +84,22 @@ class _AdminLoginContentState extends State<_AdminLoginContent>
     );
 
     if (success && mounted) {
+      // 🚀 BOOTSTRAP SYNC: Load all management data before leaving the login page
+      try {
+        await Future.wait([
+          context.read<DashboardViewModel>().initDashboard(),
+          context.read<LoanRequestViewModel>().fetchLoanRequests(),
+          context.read<ShareholderViewModel>().fetchShareholders(),
+          context.read<TransactionViewModel>().fetchTransactions(),
+          context.read<ActivityLogViewModel>().fetchLogs(),
+          context.read<UpdateInterestViewModel>().loadData(),
+        ]);
+      } catch (e) {
+        debugPrint('Pre-loading warning: $e');
+      }
+
+      if (!mounted) return;
+
       final dashboardRoute = viewModel.dashboardRoute;
       if (dashboardRoute != null) {
         Navigator.of(context)
@@ -447,14 +469,27 @@ class _SignInButton extends StatelessWidget {
         ),
         child: Center(
           child: isLoading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
+              ? const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Synchronizing Portal...',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 )
               : const Row(
                   mainAxisSize: MainAxisSize.min,
