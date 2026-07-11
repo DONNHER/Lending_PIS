@@ -11,11 +11,15 @@ class ActivityLogRepository {
     String? type,
   }) async {
     try {
-      await _apiService.post('/activity-logs', body: {
-        'action': action,
-        'details': details,
-        'type': type ?? 'info',
-      });
+      await _apiService.post(
+        '/activity-logs', 
+        body: {
+          'action': action,
+          'details': details,
+          'type': type ?? 'info',
+        },
+        triggerUnauthorized: false,
+      );
     } catch (e) {
       // Ignore logging errors to prevent blocking main actions
     }

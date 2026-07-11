@@ -46,26 +46,30 @@ class ApiService {
     return endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
   }
 
-  Future<dynamic> get(String endpoint, {Map<String, String>? queryParams}) async {
+  Future<dynamic> get(String endpoint, {Map<String, String>? queryParams, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final uri = Uri.parse('$baseUrl/${_cleanEndpoint(endpoint)}').replace(queryParameters: queryParams);
-    final response = await http.get(uri, headers: _headers(token));
-    return _handleResponse(response, 'GET', uri.toString());
+    final headers = _headers(token);
+    debugPrint('DEBUG: [ApiService] Request GET $uri with token: ${token?.substring(0, 10)}...');
+    final response = await http.get(uri, headers: headers);
+    return _handleResponse(response, 'GET', uri.toString(), triggerUnauthorized: triggerUnauthorized);
   }
 
-  Future<dynamic> post(String endpoint, {Map<String, dynamic>? body}) async {
+  Future<dynamic> post(String endpoint, {Map<String, dynamic>? body, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
+    final headers = _headers(token);
+    debugPrint('DEBUG: [ApiService] Request POST $url with token: ${token?.substring(0, 10)}...');
     
     final response = await http.post(
       Uri.parse(url),
-      headers: _headers(token),
+      headers: headers,
       body: body != null ? jsonEncode(body) : null,
     );
-    return _handleResponse(response, 'POST', url);
+    return _handleResponse(response, 'POST', url, triggerUnauthorized: triggerUnauthorized);
   }
 
-  Future<dynamic> put(String endpoint, {Map<String, dynamic>? body}) async {
+  Future<dynamic> put(String endpoint, {Map<String, dynamic>? body, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
     
@@ -74,10 +78,10 @@ class ApiService {
       headers: _headers(token),
       body: jsonEncode({...?body, '_method': 'PUT'}),
     );
-    return _handleResponse(response, 'PUT', url);
+    return _handleResponse(response, 'PUT', url, triggerUnauthorized: triggerUnauthorized);
   }
 
-  Future<dynamic> delete(String endpoint, {Map<String, dynamic>? body}) async {
+  Future<dynamic> delete(String endpoint, {Map<String, dynamic>? body, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
 
@@ -87,17 +91,17 @@ class ApiService {
         headers: _headers(token),
         body: jsonEncode({...body, '_method': 'DELETE'}),
       );
-      return _handleResponse(response, 'DELETE', url);
+      return _handleResponse(response, 'DELETE', url, triggerUnauthorized: triggerUnauthorized);
     }
 
     final response = await http.delete(
       Uri.parse(url),
       headers: _headers(token),
     );
-    return _handleResponse(response, 'DELETE', url);
+    return _handleResponse(response, 'DELETE', url, triggerUnauthorized: triggerUnauthorized);
   }
 
-  Future<dynamic> _handleResponse(http.Response response, String method, String url) async {
+  Future<dynamic> _handleResponse(http.Response response, String method, String url, {bool triggerUnauthorized = true}) async {
     // Log basic info for every response
     debugPrint('DEBUG: [ApiService] Response received for $method $url');
     debugPrint('DEBUG: [ApiService] Status Code: ${response.statusCode}');
@@ -119,7 +123,7 @@ class ApiService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return decoded;
       } else {
-        if (response.statusCode == 401) {
+        if (response.statusCode == 401 && triggerUnauthorized) {
           onUnauthorized?.call();
         }
 

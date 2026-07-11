@@ -128,25 +128,33 @@ class AuthViewModel extends ChangeNotifier {
       final response = await _authRepository.login(email, password);
       
       if (response['mfa_required'] == true) {
-        // Trigger Supabase OTP instead of Laravel SMTP
         await _supabase.auth.signInWithOtp(email: email);
-        
         _isMfaRequired = true;
         _pendingMfaEmail = email;
         return false;
       }
 
-      if (response['token'] != null) {
+      if (response['token'] != null && response['user'] != null) {
+        // 1. Set the user locally immediately
         _currentUser = UserModel.fromJson(response['user']);
-        await _activityLogRepository.logActivity(
-          action: 'Login',
-          details: 'User ${_currentUser!.email} logged in',
-        );
+        
+        // 2. Log activity but don't let it block login if it fails
+        try {
+          await _activityLogRepository.logActivity(
+            action: 'Login',
+            details: 'User ${_currentUser!.email} logged in',
+          );
+        } catch (e) {
+          debugPrint('DEBUG: [AuthViewModel] Activity logging failed but login proceeding: $e');
+        }
+
+        notifyListeners();
         return true;
       }
       return false;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      debugPrint('DEBUG: [AuthViewModel] Login Error: $_errorMessage');
       return false;
     } finally {
       _isLoading = false;
