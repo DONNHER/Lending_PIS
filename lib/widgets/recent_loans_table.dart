@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../app_theme.dart';
-import '../models/lending_models.dart';
+import '../models/transaction_model.dart';
 
 class RecentLoansTable extends StatelessWidget {
   final List<TransactionModel> transactions;
@@ -119,9 +119,10 @@ class RecentLoansTable extends StatelessWidget {
   Widget _buildRow(TransactionModel tx) {
     final statusColor = _getStatusColor(tx.status);
     final statusBg = statusColor.withOpacity(0.1);
-    final displayId = tx.referenceId.length > 7 
-        ? '${tx.referenceId.substring(0, 7)}...' 
-        : tx.referenceId;
+    final refId = tx.referenceId ?? tx.id;
+    final displayId = refId.length > 7 
+        ? '${refId.substring(0, 7)}...' 
+        : refId;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),

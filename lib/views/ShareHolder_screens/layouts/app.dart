@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../app_theme.dart';
-import '../../../models/nav_item_model.dart';
-import '../../../models/user_model.dart';
-import '../../../viewmodels/auth_viewmodel.dart';
-import '../../../viewmodels/notification_viewmodel.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/models/nav_item_model.dart';
+import 'package:capstone_application/models/user_model.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
 import '../dashboard.dart';
 import '../transaction.dart';
 import '../settings.dart';
@@ -147,7 +147,7 @@ class AppLayoutState extends State<AppLayout> {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withOpacity(0.08),
+                          color: AppTheme.primary.withValues(alpha: 0.08),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -218,7 +218,7 @@ class _CompactBottomNav extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, -4),
           ),
@@ -246,7 +246,7 @@ class _CompactBottomNav extends StatelessWidget {
                             horizontal: 14, vertical: 5),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppTheme.primary.withOpacity(0.12)
+                              ? AppTheme.primary.withValues(alpha: 0.12)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                         ),

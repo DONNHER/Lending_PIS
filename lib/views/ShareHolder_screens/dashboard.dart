@@ -3,12 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart'; 
 import 'dart:async';
 import '../../app_theme.dart';
-import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/share_capital_viewmodel.dart';
+import 'package:capstone_application/viewmodels/share_capital_viewmodel.dart';
 import 'managements/loan_application.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/loan_request_approval.dart';
-import 'layouts/app.dart';
 
 class ShareCapitalScreen extends StatelessWidget {
   const ShareCapitalScreen({super.key});
@@ -100,7 +98,7 @@ class ShareCapitalScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Column(
@@ -223,7 +221,7 @@ class ShareCapitalScreen extends StatelessWidget {
             border: Border.all(color: const Color(0xFFE5E7EB)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -280,7 +278,7 @@ class ShareCapitalScreen extends StatelessWidget {
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected ? [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))
           ] : null,
         ),
         child: Text(
@@ -474,7 +472,7 @@ class _AdsCarouselState extends State<_AdsCarousel> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     )
@@ -490,7 +488,7 @@ class _AdsCarouselState extends State<_AdsCarousel> {
                         child: Icon(
                           _getIcon(ad['icon']!),
                           size: 100,
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                         ),
                       ),
                       Padding(
@@ -521,13 +519,13 @@ class _AdsCarouselState extends State<_AdsCarousel> {
                                   const SizedBox(height: 4),
                                   Text(
                                     ad['desc']!,
-                                    style: TextStyle(fontSize: 13, color: Colors.black.withOpacity(0.6), height: 1.2),
+                                    style: TextStyle(fontSize: 13, color: Colors.black.withValues(alpha: 0.6), height: 1.2),
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 16),
-                            Icon(_getIcon(ad['icon']!), size: 48, color: const Color(0xFFC06C4D).withOpacity(0.8)),
+                            Icon(_getIcon(ad['icon']!), size: 48, color: const Color(0xFFC06C4D).withValues(alpha: 0.8)),
                           ],
                         ),
                       ),
@@ -549,7 +547,7 @@ class _AdsCarouselState extends State<_AdsCarousel> {
               height: 6,
               width: isSelected ? 24 : 6,
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFFC06C4D) : Colors.grey.withOpacity(0.3),
+                color: isSelected ? const Color(0xFFC06C4D) : Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(3),
               ),
             );

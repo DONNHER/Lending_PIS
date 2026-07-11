@@ -7,9 +7,6 @@ import 'package:capstone_application/services/api_service.dart';
 import 'package:capstone_application/services/local_cache_service.dart';
 import 'package:capstone_application/services/email_service.dart';
 import 'package:capstone_application/repositories/auth_repository.dart';
-import 'package:capstone_application/repositories/consignee_repository.dart';
-import 'package:capstone_application/repositories/consignment_repository.dart';
-import 'package:capstone_application/repositories/product_repository.dart';
 import 'package:capstone_application/repositories/storage_repository.dart';
 import 'package:capstone_application/repositories/lending_repository.dart';
 import 'package:capstone_application/repositories/share_capital_repository.dart';
@@ -17,19 +14,11 @@ import 'package:capstone_application/repositories/shareholder_repository.dart';
 import 'package:capstone_application/repositories/activity_log_repository.dart';
 import 'package:capstone_application/repositories/transaction_repository.dart';
 import 'package:capstone_application/repositories/notification_repository.dart';
-import 'package:capstone_application/repositories/daily_inventory_repository.dart';
-import 'package:capstone_application/repositories/grocery_repository.dart';
-import 'package:capstone_application/repositories/consignment_products_repository.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/viewmodels/add_shareholder_viewmodel.dart';
-import 'package:capstone_application/viewmodels/consignee_detail_viewmodel.dart';
-import 'package:capstone_application/viewmodels/consignee_viewmodel.dart';
-import 'package:capstone_application/viewmodels/consignment_products_viewmodels.dart';
 import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
 import 'package:capstone_application/viewmodels/share_capital_viewmodel.dart';
 import 'package:capstone_application/viewmodels/shareholder_transaction_viewmodel.dart';
-import 'package:capstone_application/viewmodels/consignment_detail_viewmodel.dart';
-import 'package:capstone_application/viewmodels/grocery_viewmodel.dart';
 import 'package:capstone_application/viewmodels/dashboard_viewmodel.dart';
 import 'package:capstone_application/viewmodels/loan_request_viewmodel.dart';
 import 'package:capstone_application/viewmodels/shareholder_viewmodel.dart';
@@ -38,10 +27,14 @@ import 'package:capstone_application/viewmodels/activity_log_viewmodel.dart';
 import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'package:capstone_application/viewmodels/update_interest_viewmodel.dart';
 import 'package:capstone_application/viewmodels/loan_details_viewmodel.dart';
+import 'package:capstone_application/repositories/consignment_products_repository.dart';
+import 'package:capstone_application/repositories/daily_inventory_repository.dart';
+import 'package:capstone_application/viewmodels/consignment_products_viewmodels.dart';
+import 'package:capstone_application/viewmodels/consignment_detail_viewmodel.dart';
+import 'package:capstone_application/viewmodels/consignee_detail_viewmodel.dart';
+import 'package:capstone_application/viewmodels/consignee_viewmodel.dart';
 import 'package:capstone_application/views/login_page.dart';
 import 'package:capstone_application/views/registration_page.dart';
-import 'package:capstone_application/views/forgot_password_page.dart';
-import 'package:capstone_application/views/change_password_page.dart';
 import 'package:capstone_application/views/app_shell.dart';
 import 'package:capstone_application/views/ShareHolder_screens/layouts/app.dart';
 import 'package:capstone_application/views/ShareHolder_screens/notification.dart';
@@ -57,7 +50,7 @@ void main() async {
   if (supabaseUrl != null && supabaseAnonKey != null) {
     await Supabase.initialize(
       url: supabaseUrl,
-      anonKey: supabaseAnonKey,
+      publishableKey: supabaseAnonKey,
       authOptions: const FlutterAuthClientOptions(authFlowType: AuthFlowType.pkce),
     );
   }
@@ -92,19 +85,15 @@ class CanteenApp extends StatelessWidget {
       providers: [
         // ─── Repositories ──────
         Provider(create: (_) => AuthRepository(apiService)),
-        Provider(create: (_) => ConsigneeRepository(apiService)),
-        Provider(create: (_) => ConsignmentRepository(apiService)),
         Provider(create: (_) => StorageRepository()),
-        Provider(create: (_) => ConsignmentProductsRepository(apiService)),
-        Provider(create: (_) => ProductRepository(apiService)),
-        Provider(create: (_) => DailyInventoryRepository(apiService)),
-        Provider(create: (_) => GroceryRepository(apiService)),
         Provider(create: (_) => ActivityLogRepository(apiService)),
         Provider(create: (_) => LendingRepository(apiService)),
         Provider(create: (_) => ShareCapitalRepository(apiService)),
         Provider(create: (_) => ShareholderRepository(apiService)),
         Provider(create: (_) => TransactionRepository(apiService)),
         Provider(create: (_) => NotificationRepository(apiService)),
+        Provider(create: (_) => ConsignmentProductsRepository(apiService)),
+        Provider(create: (_) => DailyInventoryRepository(apiService)),
 
         // ─── ViewModels ────────────────────────────────────────────
         ChangeNotifierProvider(
@@ -132,23 +121,6 @@ class CanteenApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(
-          create: (context) => ConsigneeViewModel(
-            repository: context.read<ConsigneeRepository>(),
-            storageRepository: context.read<StorageRepository>(),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => ConsignmentProductsViewModel(
-            context.read<ConsignmentProductsRepository>(),
-            context.read<ProductRepository>(),
-            context.read<ConsigneeRepository>(),
-            context.read<StorageRepository>(),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => GroceryViewModel(context.read<GroceryRepository>()),
-        ),
-        ChangeNotifierProvider(
           create: (context) => AddShareholderViewModel(
             shareholderRepository: context.read<ShareholderRepository>(),
             storageRepository: context.read<StorageRepository>(),
@@ -162,7 +134,6 @@ class CanteenApp extends StatelessWidget {
           create: (context) => DashboardViewModel(
             context.read<LendingRepository>(),
             context.read<ShareholderRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && 
@@ -222,7 +193,6 @@ class CanteenApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthViewModel, ActivityLogViewModel>(
           create: (context) => ActivityLogViewModel(
             context.read<ActivityLogRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && 
@@ -258,6 +228,16 @@ class CanteenApp extends StatelessWidget {
           ),
         ),
 
+        ChangeNotifierProvider(create: (_) => ConsignmentProductsViewModel()),
+        ChangeNotifierProvider(
+          create: (context) => ConsignmentDetailViewModel(
+            context.read<ConsignmentProductsRepository>(),
+            context.read<DailyInventoryRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(create: (_) => ConsigneeDetailViewModel()),
+        ChangeNotifierProvider(create: (_) => ConsigneeViewModel()),
+
         // ─── Shareholder Personal ViewModels (Only for Shareholder role) ─────
         ChangeNotifierProxyProvider<AuthViewModel, ShareCapitalViewModel>(
           create: (context) => ShareCapitalViewModel(
@@ -279,12 +259,10 @@ class CanteenApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthViewModel, NotificationViewModel>(
           create: (context) => NotificationViewModel(
             context.read<NotificationRepository>(),
-            context.read<ShareholderRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && auth.currentUser?.role == UserRole.shareholder) {
-              model?.fetchData(userId: auth.currentUser!.id);
+              model?.loadNotifications(userId: auth.currentUser!.id);
             } else if (!auth.isAuthenticated) {
               model?.reset();
             }
@@ -297,7 +275,6 @@ class CanteenApp extends StatelessWidget {
             context.read<TransactionRepository>(),
             context.read<ShareholderRepository>(),
             context.read<LendingRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && auth.currentUser?.role == UserRole.shareholder) {
@@ -307,19 +284,6 @@ class CanteenApp extends StatelessWidget {
             }
             return model!;
           },
-        ),
-        
-        ChangeNotifierProvider(
-          create: (context) => ConsigneeDetailViewModel(
-            consigneeRepository: context.read<ConsigneeRepository>(),
-            consignmentRepository: context.read<ConsignmentRepository>(),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => ConsignmentDetailViewModel(
-            context.read<ConsignmentProductsRepository>(),
-            context.read<DailyInventoryRepository>(),
-          ),
         ),
       ],
       child: const RootApp(),
@@ -336,7 +300,7 @@ class RootApp extends StatelessWidget {
 
     return MaterialApp(
       navigatorKey: AuthViewModel.navigatorKey, // Set the global navigator key
-      title: 'Engr Canteen',
+      title: 'Lending System',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: _getHome(auth),
@@ -344,7 +308,6 @@ class RootApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegistrationPage(),
         '/dashboard': (context) => const AppShell(),
-        '/pos': (context) => const AppShell(),
         '/users': (context) => const AppShell(),
         '/shareholder-dashboard': (context) => const AppLayout(),
         '/notifications': (context) => const NotificationScreen(),

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_theme.dart';
-import '../models/lending_models.dart';
 import '../repositories/lending_repository.dart';
 import '../viewmodels/dashboard_viewmodel.dart';
 import '../viewmodels/navigation_viewmodel.dart';
 import '../widgets/kpi_card.dart';
 import '../widgets/lending_bar_chart.dart';
-import '../widgets/user_growth_chart.dart';
 import '../widgets/recent_loans_table.dart';
 import '../widgets/dashboard_header.dart';
 import 'loan_evaluation_page.dart';
@@ -106,9 +104,6 @@ class _DashboardBodyState extends State<_DashboardBody> {
                   SliverToBoxAdapter(child: _buildSectionTitle('Revenue & Collection Trend')),
                   SliverToBoxAdapter(child: _buildChartSection(viewModel)),
 
-                  // SliverToBoxAdapter(child: _buildSectionTitle('System Activity & User Growth')),
-                  // SliverToBoxAdapter(child: _buildUserGrowthSection(viewModel)),
-                  
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     sliver: SliverToBoxAdapter(
@@ -224,37 +219,6 @@ class _DashboardBodyState extends State<_DashboardBody> {
     );
   }
 
-  Widget _buildUserGrowthSection(DashboardViewModel viewModel) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'User Registration Trends',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textDark),
-            ),
-            const SizedBox(height: 20),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: viewModel.isLoading && viewModel.userTrend.isEmpty
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1), strokeWidth: 3))
-                  : UserGrowthChart(data: viewModel.userTrend),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildRecentLoansSection(BuildContext context, DashboardViewModel viewModel) {
     if (viewModel.isLoading && viewModel.recentTransactions.isEmpty) {
       return Container(
@@ -272,32 +236,36 @@ class _DashboardBodyState extends State<_DashboardBody> {
       transactions: viewModel.recentTransactions,
       onTap: (tx) async {
         final repo = context.read<LendingRepository>();
-        if (tx.type == 'Loan Disbursement' && tx.referenceId.isNotEmpty) {
+        final String? refId = tx.referenceId;
+        final String? shareholderId = tx.shareholderId;
+
+        if (tx.type == 'Loan Disbursement' && refId != null && refId.isNotEmpty) {
           if (!context.mounted) return;
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => LoanDetailsPage(
-                loanId: tx.referenceId,
-                shareholderId: tx.shareholderId ?? '',
+                loanId: refId,
+                shareholderId: shareholderId ?? '',
               ),
             ),
           );
           return;
         }
-        if (tx.type == 'Loan Payment' && tx.referenceId.isNotEmpty) {
+        if (tx.type == 'Loan Payment' && refId != null && refId.isNotEmpty) {
           if (!context.mounted) return;
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => LoanPaymentPage(loanId: tx.referenceId),
+              builder: (context) => LoanPaymentPage(loanId: refId),
             ),
           );
           return;
         }
-        final fullRequest = tx.referenceId.isNotEmpty
-            ? await repo.getLoanRequestById(tx.referenceId)
-            : await repo.getLoanRequestById(tx.id);
+        
+        final String targetId = (refId != null && refId.isNotEmpty) ? refId : tx.id;
+        final fullRequest = await repo.getLoanRequestById(targetId);
+            
         if (fullRequest != null && context.mounted) {
           Navigator.push(
             context,
@@ -318,7 +286,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
     );
   }
 
-  Widget _buildFilterTab(DashboardViewModel viewModel, ChartFilter filter, String label) {
+  Widget _buildFilterTab(DashboardViewModel viewModel, dynamic filter, String label) {
     final isSelected = viewModel.selectedFilter == filter;
     return GestureDetector(
       onTap: () => viewModel.setChartFilter(filter),

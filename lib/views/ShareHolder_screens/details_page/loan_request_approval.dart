@@ -107,7 +107,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     return FutureBuilder<Map<String, dynamic>>(
       future: _loanDataFuture,
       builder: (context, snapshot) {
-        final loan = snapshot.data?['loan'] as LoanRequestModel?;
+        final dynamic loan = snapshot.data?['loan'];
         final borrower = snapshot.data?['borrower'] as ShareholderModel?;
 
         return Scaffold(
@@ -130,7 +130,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  Widget _buildBody(AsyncSnapshot<Map<String, dynamic>> snapshot, LoanRequestModel? loan, ShareholderModel? borrower) {
+  Widget _buildBody(AsyncSnapshot<Map<String, dynamic>> snapshot, dynamic loan, ShareholderModel? borrower) {
     if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData && !_isSubmitting) {
       return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
     }
@@ -158,7 +158,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
                 _buildSectionTitle("Borrower Details"),
                 _buildProfileCard(
                     borrower?.fullName ?? loan.shareholderName,
-                    "ID: ${loan.shareholderId.substring(0, 8)}"
+                    "ID: ${loan.shareholderId.substring(0, loan.shareholderId.length > 8 ? 8 : loan.shareholderId.length)}"
                 ),
 
                 const SizedBox(height: 24),
@@ -186,7 +186,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  Widget _buildRequestHeader(double amount, LoanRequestModel loan) {
+  Widget _buildRequestHeader(double amount, dynamic loan) {
     return Container(
       width: double.infinity,
       color: Colors.white,
@@ -204,22 +204,22 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  Widget _buildStatusTag(LoanRequestModel loan) {
+  Widget _buildStatusTag(dynamic loan) {
     String label = "PENDING REVIEW";
     Color color = Colors.blue;
 
-    if (loan.status == LoanStatus.approved) {
+    if (loan.status == ComakerStatus.approved) {
       label = "APPROVED";
       color = Colors.green;
-    } else if (loan.status == LoanStatus.rejected || loan.status == LoanStatus.cancelled) {
-      label = loan.status == LoanStatus.cancelled ? "CANCELLED" : "REJECTED";
+    } else if (loan.status == ComakerStatus.rejected || loan.status == ComakerStatus.cancelled) {
+      label = loan.status == ComakerStatus.cancelled ? "CANCELLED" : "REJECTED";
       color = accentRed;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(label,
@@ -245,7 +245,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: primaryGreen.withOpacity(0.2),
+            backgroundColor: primaryGreen.withValues(alpha: 0.2),
             radius: 24,
             child: const Icon(Icons.person, color: Colors.black87),
           ),
@@ -293,7 +293,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  Widget _buildBottomActionButtons(LoanRequestModel? loan) {
+  Widget _buildBottomActionButtons(dynamic loan) {
     if (loan == null) return const SizedBox.shrink();
 
     if (_isSubmitting) {
@@ -315,7 +315,8 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     }
 
     final shareholderId = context.read<NotificationViewModel>().shareholderId;
-    final status = loan.comakerDecisions[shareholderId];
+    final Map<String, dynamic> decisions = loan.comakerDecisions;
+    final status = decisions[shareholderId ?? ''];
 
     if (status != null && status != ComakerStatus.pending) {
       return Container(

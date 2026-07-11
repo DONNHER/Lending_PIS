@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
 import '../models/consignment_daily_inventory.dart';
-import '../repositories/consignment_products_repository.dart';
+import '../models/consignment_model.dart';
 
 class InventoryDetailPage extends StatelessWidget {
   final ConsignmentWithDetails consignment;
@@ -18,10 +18,10 @@ class InventoryDetailPage extends StatelessWidget {
     final inv = inventory;
     final p = consignment.product;
     final c = consignment.consignment;
-    final revenue = inv.quantitySold * p.sellingPrice;
+    final revenue = inv.sold * p.sellingPrice;
     final commission = revenue * c.commissionRate;
     final payout = revenue - commission;
-    final soldRatio = inv.quantityReceived == 0 ? 0.0 : inv.quantitySold / inv.quantityReceived;
+    final soldRatio = inv.received == 0 ? 0.0 : inv.sold / inv.received;
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -75,11 +75,11 @@ class InventoryDetailPage extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        _bigStat('Received', '${inv.quantityReceived}', Icons.inbox_rounded, AppTheme.primary),
+                        _bigStat('Received', '${inv.received}', Icons.inbox_rounded, AppTheme.primary),
                         const SizedBox(width: 10),
-                        _bigStat('Sold', '${inv.quantitySold}', Icons.sell_rounded, AppTheme.success),
+                        _bigStat('Sold', '${inv.sold}', Icons.sell_rounded, AppTheme.success),
                         const SizedBox(width: 10),
-                        _bigStat('Returned', '${inv.quantityRemaining}', Icons.keyboard_return_rounded, AppTheme.textMuted),
+                        _bigStat('Returned', '${inv.returned}', Icons.keyboard_return_rounded, AppTheme.textMuted),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -103,7 +103,7 @@ class InventoryDetailPage extends StatelessWidget {
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                 child: Column(
                   children: [
-                    _financeRow('Total Revenue', '₱${revenue.toStringAsFixed(2)}', AppTheme.success, '${inv.quantitySold} × ₱${p.sellingPrice.toStringAsFixed(2)}'),
+                    _financeRow('Total Revenue', '₱${revenue.toStringAsFixed(2)}', AppTheme.success, '${inv.sold} × ₱${p.sellingPrice.toStringAsFixed(2)}'),
                     const Divider(height: 20),
                     _financeRow('Canteen Commission', '₱${commission.toStringAsFixed(2)}', AppTheme.primary, '${(c.commissionRate * 100).toStringAsFixed(0)}% of revenue'),
                     const Divider(height: 20),

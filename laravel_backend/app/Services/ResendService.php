@@ -27,7 +27,7 @@ class ResendService
 
         // Use onboarding email if none provided or for testing
         $fromAddress = env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev');
-        $fromName = env('MAIL_FROM_NAME', 'Engr Canteen');
+        $fromName = env('MAIL_FROM_NAME', 'Lending System');
         $from = $from ?? "$fromName <$fromAddress>";
         
         $payload = [

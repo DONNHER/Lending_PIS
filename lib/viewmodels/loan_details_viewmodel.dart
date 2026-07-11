@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../models/lending_models.dart';
-import '../models/shareholder_model.dart';
-import '../repositories/lending_repository.dart';
-import '../repositories/transaction_repository.dart';
-import '../repositories/shareholder_repository.dart';
+import 'package:capstone_application/models/lending_models.dart';
+import 'package:capstone_application/models/shareholder_model.dart';
+import 'package:capstone_application/models/transaction_model.dart';
+import 'package:capstone_application/repositories/lending_repository.dart';
+import 'package:capstone_application/repositories/transaction_repository.dart';
+import 'package:capstone_application/repositories/shareholder_repository.dart';
 
 class LoanDetailsViewModel extends ChangeNotifier {
   final LendingRepository _lendingRepository;

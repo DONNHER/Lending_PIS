@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../app_theme.dart';
-import '../repositories/shareholder_repository.dart';
-import '../repositories/transaction_repository.dart';
-import '../viewmodels/add_share_capital_viewmodel.dart';
-import '../models/shareholder_model.dart';
-import 'ShareHolder_screens/details_page/repayment_details.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/repositories/shareholder_repository.dart';
+import 'package:capstone_application/repositories/transaction_repository.dart';
+import 'package:capstone_application/viewmodels/add_share_capital_viewmodel.dart';
+import 'package:capstone_application/models/shareholder_model.dart' as sm;
+import 'package:capstone_application/views/ShareHolder_screens/details_page/repayment_details.dart';
 
 class AddShareCapitalPage extends StatelessWidget {
-  final ShareholderModel shareholder;
+  final sm.ShareholderModel shareholder;
 
   const AddShareCapitalPage({super.key, required this.shareholder});
 
@@ -56,13 +56,11 @@ class _AddShareCapitalBody extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Left Side: Share Capital Form Card
                   Expanded(
                     flex: 2,
                     child: _buildFormCard(context, viewModel),
                   ),
                   const SizedBox(width: 24),
-                  // Right Side: Share Capital & Investment Portfolio Details Card
                   Expanded(
                     flex: 1,
                     child: _buildSummaryCard(viewModel, currencyFormat),
@@ -79,6 +77,7 @@ class _AddShareCapitalBody extends StatelessWidget {
   }
 
   Widget _buildFormCard(BuildContext context, AddShareCapitalViewModel viewModel) {
+    final sh = viewModel.shareholder;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -94,7 +93,7 @@ class _AddShareCapitalBody extends StatelessWidget {
             readOnly: true,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textDark),
             decoration: _inputDecoration(
-              hint: viewModel.shareholder.fullName,
+              hint: sh.fullName,
               fillColor: const Color(0xFFF9FAFB),
               suffixIcon: Icons.verified_user_outlined,
             ),
@@ -145,7 +144,7 @@ class _AddShareCapitalBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Current registered capital holding: ${NumberFormat.currency(symbol: '₱ ', decimalDigits: 2).format(viewModel.shareholder.totalShareCapital)}',
+                  'Current registered capital holding: ${NumberFormat.currency(symbol: '₱ ', decimalDigits: 2).format(sh.shareCapital)}',
                   style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                 ),
               ],
@@ -162,8 +161,9 @@ class _AddShareCapitalBody extends StatelessWidget {
   }
 
   Widget _buildSummaryCard(AddShareCapitalViewModel viewModel, NumberFormat currencyFormat) {
+    final sh = viewModel.shareholder;
     final double addedAmount = double.tryParse(viewModel.amountController.text) ?? 0.0;
-    final double updatedTotalCapital = viewModel.shareholder.totalShareCapital + addedAmount;
+    final double updatedTotalCapital = sh.shareCapital + addedAmount;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -179,10 +179,10 @@ class _AddShareCapitalBody extends StatelessWidget {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
           ),
           const SizedBox(height: 32),
-          _summaryItem('Account Holder', viewModel.shareholder.fullName),
-          _summaryItem('Current Share Capital', currencyFormat.format(viewModel.shareholder.totalShareCapital)),
+          _summaryItem('Account Holder', sh.fullName),
+          _summaryItem('Current Share Capital', currencyFormat.format(sh.shareCapital)),
           _summaryItem('Pending Deposit Addition', currencyFormat.format(addedAmount)),
-          _summaryItem('Credit Rating Tier', '${viewModel.shareholder.creditScore} Index'),
+          _summaryItem('Credit Rating Tier', '${sh.creditScore} Index'),
           const Divider(color: Colors.white24, height: 32),
           const Text('Projected Total Capital', style: TextStyle(color: Colors.grey, fontSize: 12)),
           const SizedBox(height: 4),
@@ -242,14 +242,12 @@ class _AddShareCapitalBody extends StatelessWidget {
                   const SnackBar(content: Text('Capital deposit executed successfully')),
                 );
                 
-                // 🚀 Redirect to the Transaction Detail (Receipt) page
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
                     builder: (context) => RepaymentDetailsScreen(transaction: transaction),
                   ),
                 ).then((_) {
-                  // After they close the receipt, return 'true' to the profile page to refresh
                   if (context.mounted) Navigator.pop(context, true);
                 });
               }

@@ -22,6 +22,7 @@ php artisan config:cache
 php artisan view:cache
 php artisan route:cache || echo "Route caching failed, skipping..."
 
-# 6. Start the server
-echo "Starting Laravel server on port $PORT..."
-exec php artisan serve --host=0.0.0.0 --port=$PORT
+# 6. Optimized for Nginx + PHP-FPM
+echo "Deployment tasks completed. Nginx and PHP-FPM will handle requests."
+# exec php artisan serve --host=0.0.0.0 --port=$PORT # REMOVED for Nginx/FPM setup
+

@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../app_theme.dart';
-import '../models/consignment_daily_inventory.dart';
-import '../repositories/consignment_products_repository.dart';
-import '../viewmodels/consignment_detail_viewmodel.dart';
-import '../viewmodels/consignment_products_viewmodels.dart';
-import '../widgets/daily_inventory_card.dart';
+import 'package:capstone_application/models/consignment_model.dart';
+import 'package:capstone_application/models/consignment_daily_inventory.dart';
+import 'package:capstone_application/viewmodels/consignment_detail_viewmodel.dart';
+import 'package:capstone_application/viewmodels/consignment_products_viewmodels.dart';
+import 'package:capstone_application/widgets/daily_inventory_card.dart';
+import 'package:capstone_application/app_theme.dart';
 import 'inventory_form_page.dart';
 import 'inventory_detail_page.dart';
 
 class ConsignmentDetailPage extends StatefulWidget {
-  // ✅ FIX: Accept only the consignment ID, not the full object.
-  //    The old page stored `widget.consignment` (a snapshot) and never
-  //    re-read it, so edits/status-toggles made from this page were never
-  //    reflected in the UI.  We resolve the live object from the
-  //    ConsignmentProductsViewModel on every build instead.
-  final int consignmentId;
+  final String consignmentId;
 
   const ConsignmentDetailPage({super.key, required this.consignmentId});
 
@@ -37,8 +32,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
       if (c == null) return;
 
       final vm = context.read<ConsignmentDetailViewModel>();
-      // ✅ FIX: seed before loadDetails so _consignment is never null
-      //    during the build that follows the load.
       vm.seedConsignment(c);
       vm.loadDetails(c.consignment.id);
     });
@@ -50,7 +43,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
     super.dispose();
   }
 
-  // ✅ Always resolve from the live list so status/price changes are reflected.
   ConsignmentWithDetails? _resolveConsignment(ConsignmentProductsViewModel vm) {
     try {
       return vm.allConsignments.firstWhere(
@@ -60,8 +52,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
       return null;
     }
   }
-
-  // ─── Navigation ──────────────────────────────────────────────────────
 
   void _addInventory(ConsignmentWithDetails c) async {
     final result = await Navigator.push<bool>(
@@ -129,11 +119,8 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
     );
   }
 
-  // ─── Build ───────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    // Live data from the list ViewModel
     final listVm = context.watch<ConsignmentProductsViewModel>();
     final c = _resolveConsignment(listVm);
 
@@ -144,7 +131,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
       );
     }
 
-    // Detail ViewModel for inventories
     final detailVm = context.watch<ConsignmentDetailViewModel>();
     final inventories = detailVm.inventories;
     final isActive = c.product.isActive;
@@ -153,7 +139,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
       backgroundColor: AppTheme.surface,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
-          // ── Sliver App Bar ──────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
@@ -182,7 +167,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
             ],
           ),
 
-          // ── Stat pills ──────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -214,7 +198,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
             ),
           ),
 
-          // ── Summary pills (from detail VM) ──────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -245,7 +228,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
             ),
           ),
 
-          // ── Barcode + consignee chip ────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -280,7 +262,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
             ),
           ),
 
-          // ── Tab bar ─────────────────────────────────────────────────
           SliverPersistentHeader(
             pinned: true,
             delegate: _StickyTabBarDelegate(
@@ -305,11 +286,9 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
           ),
         ],
 
-        // ── Tab bodies ─────────────────────────────────────────────
         body: TabBarView(
           controller: _tabController,
           children: [
-            // ── Daily Logs tab ─────────────────────────────────────
             _DailyLogsTab(
               c: c,
               detailVm: detailVm,
@@ -320,7 +299,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
               onDelete: (inv) => _deleteInventory(c, inv),
             ),
 
-            // ── Summary tab ────────────────────────────────────────
             _SummaryTab(c: c, vm: detailVm),
           ],
         ),
@@ -328,8 +306,6 @@ class _ConsignmentDetailPageState extends State<ConsignmentDetailPage>
     );
   }
 }
-
-// ─── Daily Logs Tab ───────────────────────────────────────────────────────────
 
 class _DailyLogsTab extends StatelessWidget {
   final ConsignmentWithDetails c;
@@ -356,7 +332,7 @@ class _DailyLogsTab extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (detailVm.state == DetailState.error) {
+    if (detailVm.state == ConsignmentDetailState.error) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -423,8 +399,6 @@ class _DailyLogsTab extends StatelessWidget {
     );
   }
 }
-
-// ─── Summary Tab ─────────────────────────────────────────────────────────────
 
 class _SummaryTab extends StatelessWidget {
   final ConsignmentWithDetails c;
@@ -518,8 +492,6 @@ class _SummaryRow {
       this.bold = false});
 }
 
-// ─── Header Background ────────────────────────────────────────────────────────
-
 class _HeaderBackground extends StatelessWidget {
   final String productName;
   final String consigneeName;
@@ -551,7 +523,6 @@ class _HeaderBackground extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              // Status badge
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -628,8 +599,6 @@ class _HeaderBackground extends StatelessWidget {
   }
 }
 
-// ─── Stat Pill ────────────────────────────────────────────────────────────────
-
 class _StatPill extends StatelessWidget {
   final String label;
   final String value;
@@ -688,8 +657,6 @@ class _StatPill extends StatelessWidget {
   }
 }
 
-// ─── Status Toggle Button ─────────────────────────────────────────────────────
-
 class _StatusToggleButton extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
@@ -716,8 +683,6 @@ class _StatusToggleButton extends StatelessWidget {
     );
   }
 }
-
-// ─── Add Button ───────────────────────────────────────────────────────────────
 
 class _AddButton extends StatelessWidget {
   final String label;
@@ -752,8 +717,6 @@ class _AddButton extends StatelessWidget {
   }
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
-
 class _EmptyState extends StatelessWidget {
   final String message;
   const _EmptyState({required this.message});
@@ -774,8 +737,6 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
-// ─── Sticky Tab Bar Delegate ──────────────────────────────────────────────────
 
 class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;

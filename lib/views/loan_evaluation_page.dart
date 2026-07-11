@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../app_theme.dart';
-import '../models/lending_models.dart';
-import '../repositories/lending_repository.dart';
-import '../repositories/shareholder_repository.dart';
-import '../viewmodels/loan_evaluation_viewmodel.dart';
-import '../services/email_service.dart';
-import 'loan_approval_page.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/models/lending_models.dart';
+import 'package:capstone_application/repositories/lending_repository.dart';
+import 'package:capstone_application/repositories/shareholder_repository.dart';
+import 'package:capstone_application/viewmodels/loan_evaluation_viewmodel.dart';
+import 'package:capstone_application/views/loan_approval_page.dart';
 
 class LoanEvaluationPage extends StatelessWidget {
   final LoanRequestModel request;
@@ -20,7 +19,6 @@ class LoanEvaluationPage extends StatelessWidget {
       create: (context) => LoanEvaluationViewModel(
         context.read<LendingRepository>(),
         context.read<ShareholderRepository>(),
-        context.read<EmailService>(),
         request,
       ),
       child: const _LoanEvaluationBody(),
@@ -284,11 +282,13 @@ class _LoanEvaluationBody extends StatelessWidget {
             ComakerStatus.approved => 'Approved',
             ComakerStatus.rejected => 'Rejected',
             ComakerStatus.pending => 'Pending',
+            _ => cm.status.name,
           };
           final color = switch (cm.status) {
             ComakerStatus.approved => Colors.green,
             ComakerStatus.rejected => Colors.red,
             ComakerStatus.pending => Colors.orange,
+            _ => Colors.grey,
           };
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -300,7 +300,7 @@ class _LoanEvaluationBody extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
+                    color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -334,7 +334,7 @@ class _LoanEvaluationBody extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: viewModel.riskColor.withOpacity(0.1),
+              color: viewModel.riskColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(

@@ -7,7 +7,6 @@ import 'package:capstone_application/repositories/shareholder_repository.dart';
 import 'package:capstone_application/viewmodels/add_loan_viewmodel.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/widgets/shareholder_search_selector.dart';
-import 'package:capstone_application/models/shareholder_model.dart';
 
 class AddLoanPage extends StatelessWidget {
   const AddLoanPage({super.key});
@@ -61,7 +60,7 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                color: AppTheme.error.withOpacity(0.1),
+                color: AppTheme.error.withValues(alpha: 0.1),
                 child: Row(
                   children: [
                     const Icon(Icons.info_outline, color: AppTheme.error, size: 20),
@@ -319,7 +318,7 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
                 if (success && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loan request submitted successfully')));
                   Navigator.pop(context);
-                } else if (viewModel.errorMessage != null) {
+                } else if (viewModel.errorMessage != null && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.errorMessage!), backgroundColor: AppTheme.error));
                 }
               },

@@ -121,7 +121,7 @@ class _AppShellState extends State<AppShell> {
           ),
           const SizedBox(width: 9),
           const Text(
-            'Engr Canteen',
+            'Lending System',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 16,
@@ -197,7 +197,7 @@ class _AppShellState extends State<AppShell> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            auth.currentUser?.fullName ?? 'Engr Canteen',
+                            auth.currentUser?.fullName ?? 'Lending System',
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,

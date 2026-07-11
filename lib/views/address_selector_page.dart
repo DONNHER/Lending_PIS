@@ -253,10 +253,10 @@ class _AddressSelectorPageState extends State<AddressSelectorPage> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
+          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
       enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
+          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
     );
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
 import '../models/product_model.dart';
-import 'shared_widgets.dart';
 
 class ConsignmentProductTile extends StatelessWidget {
   final ProductModel product;
@@ -119,7 +118,7 @@ class ConsignmentProductTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                StatusBadge(active: p.isActive),
+                _StatusBadge(active: p.isActive),
               ],
             ),
             const SizedBox(width: 10),
@@ -128,21 +127,21 @@ class ConsignmentProductTile extends StatelessWidget {
             Column(
               children: [
                 if (onToggle != null)
-                  IconButtonSmall(
+                  _IconButtonSmall(
                     icon: Icons.contrast_rounded,
                     color: AppTheme.secondary,
                     onTap: onToggle!,
                   ),
                 if (onToggle != null) const SizedBox(height: 4),
                 if (onEdit != null)
-                  IconButtonSmall(
+                  _IconButtonSmall(
                     icon: Icons.edit_rounded,
                     color: AppTheme.primary,
                     onTap: onEdit!,
                   ),
                 if (onEdit != null) const SizedBox(height: 4),
                 if (onDelete != null)
-                  IconButtonSmall(
+                  _IconButtonSmall(
                     icon: Icons.delete_outline_rounded,
                     color: AppTheme.error,
                     onTap: onDelete!,
@@ -151,6 +150,58 @@ class ConsignmentProductTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final bool active;
+  const _StatusBadge({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: (active ? AppTheme.success : Colors.grey).withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        active ? 'ACTIVE' : 'INACTIVE',
+        style: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+          color: active ? AppTheme.success : Colors.grey.shade600,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _IconButtonSmall extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _IconButtonSmall({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: color, size: 16),
       ),
     );
   }

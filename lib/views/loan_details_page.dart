@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../models/lending_models.dart';
-import '../viewmodels/loan_details_viewmodel.dart';
-import 'loan_payment_page.dart';
-import 'shareholder_detail_page.dart';
+import 'package:capstone_application/models/lending_models.dart';
+import 'package:capstone_application/viewmodels/loan_details_viewmodel.dart';
+import 'package:capstone_application/views/loan_payment_page.dart';
+import 'package:capstone_application/views/shareholder_detail_page.dart';
 
 class LoanDetailsPage extends StatefulWidget {
   final String loanId;
@@ -24,7 +24,6 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
   @override
   void initState() {
     super.initState();
-    // 🚀 Use global ViewModel with initialization guard
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<LoanDetailsViewModel>().fetchLoanDetails(widget.loanId);
     });
@@ -32,15 +31,13 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryBrown = const Color(0xFFC06C4D);
-    final background = const Color(0xFFFDF8F5);
-    final textDark = const Color(0xFF1F2937);
+    const primaryBrown = Color(0xFFC06C4D);
+    const background = Color(0xFFFDF8F5);
+    const textDark = Color(0xFF1F2937);
     final currencyFormat = NumberFormat.currency(symbol: '₱ ', decimalDigits: 2);
 
     return Consumer<LoanDetailsViewModel>(
       builder: (context, viewModel, _) {
-        debugPrint('DEBUG [LoanDetailsPage]: isLoading: ${viewModel.isLoading}, loan: ${viewModel.loan?.id}, error: ${viewModel.errorMessage}');
-
         if (viewModel.isLoading && !viewModel.isInitialized) {
           return const Scaffold(
             backgroundColor: Color(0xFFFDF8F5),
@@ -131,9 +128,9 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(request?.shareholderName ?? 'Unknown Borrower',
-                              style: TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
+                              style: const TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
                           Text('Loan ID: ${loan.id}',
-                              style: TextStyle(color: primaryBrown, fontSize: 13, fontWeight: FontWeight.w600)),
+                              style: const TextStyle(color: primaryBrown, fontSize: 13, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ],
@@ -175,7 +172,7 @@ class _DetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryBrown = const Color(0xFFC06C4D);
+    const primaryBrown = Color(0xFFC06C4D);
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -191,7 +188,7 @@ class _DetailsCard extends StatelessWidget {
           _InfoRow('Principal Amount', currencyFormat.format(loan.principalAmount)),
           _InfoRow('Interest Rate', '${(loan.interestRate * 100).toStringAsFixed(1)}%'),
           _InfoRow('Loan Tenure', '${loan.tenureMonths} Months'),
-          _InfoRow('Disbursement Date', DateFormat('yyyy-MM-dd').format(loan.disbursedAt)),
+          _InfoRow('Disbursement Date', loan.disbursedAt != null ? DateFormat('yyyy-MM-dd').format(loan.disbursedAt!) : 'N/A'),
           if (loan.nextRepaymentDate != null)
             _InfoRow('Next Payment Due', DateFormat('yyyy-MM-dd').format(loan.nextRepaymentDate!), valueColor: primaryBrown),
           _InfoRow('Processing Fee', currencyFormat.format(loan.processingFee)),
@@ -285,7 +282,6 @@ class _Sidebar extends StatelessWidget {
             );
 
             if (refreshed == true && context.mounted) {
-              debugPrint('DEBUG [LoanDetailsPage]: Payment confirmed. Refreshing details for $loanId');
               await viewModel.fetchLoanDetails(loanId, forceRefresh: true);
             }
           }),

@@ -16,7 +16,8 @@ RUN apk add --no-cache \
     icu-dev \
     freetype-dev \
     libjpeg-turbo-dev \
-    libpq
+    libpq \
+    gettext
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
@@ -31,17 +32,26 @@ ENV COMPOSER_PROCESS_TIMEOUT=2000
 
 # Copy files
 COPY laravel_backend/ .
-RUN rm -rf vendor
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+
+# Configuration Files
+COPY scripts/railway/nginx.conf /etc/nginx/http.d/default.conf.template
+COPY scripts/railway/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Permissions
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 RUN chmod +x deploy.sh
 
+# Entrypoint script to handle PORT env var for Nginx
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'envsubst "\$PORT" < /etc/nginx/http.d/default.conf.template > /etc/nginx/http.d/default.conf' >> /entrypoint.sh && \
+    echo 'exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
 EXPOSE 80
 
-CMD ["/var/www/html/deploy.sh"]
+ENTRYPOINT ["/entrypoint.sh"]

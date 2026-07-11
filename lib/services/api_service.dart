@@ -16,7 +16,6 @@ class ApiService {
   ApiService({required this.baseUrl});
 
   Future<void> setToken(String token) async {
-    debugPrint('DEBUG: [ApiService] setToken called. Token starts with: ${token.substring(0, token.length > 10 ? 10 : token.length)}...');
     _token = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
@@ -30,7 +29,6 @@ class ApiService {
   }
 
   Future<void> clearToken() async {
-    debugPrint('DEBUG: [ApiService] clearToken called');
     _token = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
@@ -51,7 +49,6 @@ class ApiService {
   Future<dynamic> get(String endpoint, {Map<String, String>? queryParams}) async {
     final token = await getToken();
     final uri = Uri.parse('$baseUrl/${_cleanEndpoint(endpoint)}').replace(queryParameters: queryParams);
-    debugPrint('DEBUG: [ApiService] GET $uri (Token present: ${token != null})');
     final response = await http.get(uri, headers: _headers(token));
     return _handleResponse(response, 'GET', uri.toString());
   }
@@ -60,11 +57,6 @@ class ApiService {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
     
-    // Log body but hide passwords
-    final logBody = Map<String, dynamic>.from(body ?? {});
-    if (logBody.containsKey('password')) logBody['password'] = '********';
-    debugPrint('DEBUG: [ApiService] POST $url | Body: $logBody | Token present: ${token != null}');
-
     final response = await http.post(
       Uri.parse(url),
       headers: _headers(token),
@@ -77,9 +69,6 @@ class ApiService {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
     
-    debugPrint('DEBUG: [ApiService] PUT (spoofed POST) $url | Body: $body | Token present: ${token != null}');
-    
-    // Using POST with _method spoofing is often more reliable for Laravel controllers
     final response = await http.post(
       Uri.parse(url),
       headers: _headers(token),
@@ -91,14 +80,12 @@ class ApiService {
   Future<dynamic> delete(String endpoint, {Map<String, dynamic>? body}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
-    debugPrint('DEBUG: [ApiService] DELETE $url | Body: $body | Token present: ${token != null}');
 
     if (body != null) {
-      // Consistent with PUT, use POST spoofing for DELETE with body
       final response = await http.post(
         Uri.parse(url),
         headers: _headers(token),
-        body: jsonEncode({...?body, '_method': 'DELETE'}),
+        body: jsonEncode({...body, '_method': 'DELETE'}),
       );
       return _handleResponse(response, 'DELETE', url);
     }
@@ -111,17 +98,19 @@ class ApiService {
   }
 
   Future<dynamic> _handleResponse(http.Response response, String method, String url) async {
-    debugPrint('DEBUG: [ApiService] Response from $method $url: Status ${response.statusCode}');
-    
+    // Log basic info for every response
+    debugPrint('DEBUG: [ApiService] Response received for $method $url');
+    debugPrint('DEBUG: [ApiService] Status Code: ${response.statusCode}');
+    debugPrint('DEBUG: [ApiService] Content-Type: ${response.headers['content-type']}');
+    debugPrint('DEBUG: [ApiService] Raw Body: ${response.body}');
+
     if (response.body.isEmpty) return null;
 
     final contentType = response.headers['content-type'] ?? '';
     
-    // Check if the response is actually JSON before trying to decode
     if (!contentType.contains('application/json') && !response.body.startsWith('{') && !response.body.startsWith('[')) {
-      debugPrint('DEBUG: [ApiService] ERROR: Received HTML/Text instead of JSON. Status: ${response.statusCode}');
-      debugPrint('DEBUG: [ApiService] ERROR BODY: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
-      throw Exception('Server returned an error (${response.statusCode}). Please check server logs.');
+      debugPrint('DEBUG: [ApiService] WARNING: Non-JSON response detected');
+      throw Exception('Server returned an error (${response.statusCode}).');
     }
     
     try {
@@ -131,7 +120,6 @@ class ApiService {
         return decoded;
       } else {
         if (response.statusCode == 401) {
-          debugPrint('DEBUG: [ApiService] 401 Unauthorized detected at $url.');
           onUnauthorized?.call();
         }
 
@@ -140,19 +128,11 @@ class ApiService {
           errorMessage = decoded['message'];
         }
         
-        if (response.statusCode == 422 && decoded is Map && decoded['errors'] != null) {
-          final Map<String, dynamic> errors = decoded['errors'];
-          final allErrors = errors.values.expand((e) => e as List).join(' ');
-          if (allErrors.isNotEmpty) {
-            errorMessage = allErrors;
-          }
-        }
-        
         throw Exception(errorMessage);
       }
     } catch (e) {
       if (e is Exception) rethrow;
-      debugPrint('DEBUG: [ApiService] JSON Parsing Error: $e');
+      debugPrint('DEBUG: [ApiService] JSON Parse Error: $e');
       throw Exception('Failed to parse server response.');
     }
   }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../../../app_theme.dart';
-import '../../../../viewmodels/loan_details_viewmodel.dart';
-import '../../../../models/lending_models.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/viewmodels/loan_details_viewmodel.dart';
+import 'package:capstone_application/models/lending_models.dart';
 
 class ActiveLoanDetailsScreen extends StatefulWidget {
   final String loanId;
@@ -23,7 +23,6 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    // 🚀 Use global ViewModel with initialization guard
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<LoanDetailsViewModel>().fetchLoanDetails(widget.loanId);
     });
@@ -85,8 +84,8 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
   }
 
   Widget _buildContentView(LoanDetailsViewModel viewModel) {
-    final loan = viewModel.loan;
-    final request = viewModel.request;
+    final dynamic loan = viewModel.loan;
+    final dynamic request = viewModel.request;
     final currencyFormat = NumberFormat.currency(symbol: '₱', decimalDigits: 2);
 
     return RefreshIndicator(
@@ -124,9 +123,9 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
     );
   }
 
-  Widget _buildAestheticStatusHeader(LoanModel loan, NumberFormat format) {
-    final amount = loan.monthlyAmortization;
-    final dueDate = loan.nextRepaymentDate;
+  Widget _buildAestheticStatusHeader(dynamic loan, NumberFormat format) {
+    final double amount = loan.monthlyAmortization;
+    final DateTime? dueDate = loan.nextRepaymentDate;
     String dueLabel = "No upcoming payment";
     Color statusColor = Colors.orange;
 
@@ -151,7 +150,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: borderGrey),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Column(
@@ -165,7 +164,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(30),
             ),
             child: Row(
@@ -183,7 +182,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
     );
   }
 
-  Widget _buildRequestOnlyHeader(LoanRequestModel request, NumberFormat format) {
+  Widget _buildRequestOnlyHeader(dynamic request, NumberFormat format) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -198,7 +197,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
               style: TextStyle(color: textGrey, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
           const SizedBox(height: 12),
           Text(request.status.name.toUpperCase(),
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _getStatusColor(request.status))),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _getComakerStatusColor(request.status))),
           const SizedBox(height: 8),
           Text("Requested: ${format.format(request.requestedAmount)}",
               style: const TextStyle(color: textGrey, fontSize: 14, fontWeight: FontWeight.w500)),
@@ -207,11 +206,11 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
     );
   }
 
-  Widget _buildAestheticPaymentProgress(LoanModel loan, NumberFormat format) {
-    final total = loan.totalRepayable;
-    final remaining = loan.remainingBalance;
-    final paid = total - remaining;
-    final progress = total > 0 ? (paid / total) : 0.0;
+  Widget _buildAestheticPaymentProgress(dynamic loan, NumberFormat format) {
+    final double total = loan.totalRepayable;
+    final double remaining = loan.remainingBalance;
+    final double paid = total - remaining;
+    final double progress = total > 0 ? (paid / total) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -243,7 +242,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
                   height: 12,
                   width: constraints.maxWidth * progress,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [primaryGreen, primaryGreen.withOpacity(0.7)]),
+                    gradient: LinearGradient(colors: [primaryGreen, primaryGreen.withValues(alpha: 0.7)]),
                     borderRadius: BorderRadius.circular(6),
                   ),
                 );
@@ -273,7 +272,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
     );
   }
 
-  Widget _buildBreakdownCard(LoanModel? loan, LoanRequestModel? request, NumberFormat format) {
+  Widget _buildBreakdownCard(dynamic loan, dynamic request, NumberFormat format) {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -329,9 +328,9 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
     );
   }
 
-  Widget _buildPaymentHistoryList(List<TransactionModel> history, NumberFormat format) {
+  Widget _buildPaymentHistoryList(List<dynamic> history, NumberFormat format) {
     return Column(
-      children: history.map((tx) {
+      children: history.map((dynamic tx) {
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -344,7 +343,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: primaryGreen.withOpacity(0.1), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: primaryGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
                 child: const Icon(Icons.check_circle_outline_rounded, color: primaryGreen, size: 20),
               ),
               const SizedBox(width: 16),
@@ -367,12 +366,12 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
     );
   }
 
-  Color _getStatusColor(LoanStatus status) {
+  Color _getComakerStatusColor(ComakerStatus status) {
     switch (status) {
-      case LoanStatus.approved: return Colors.blue;
-      case LoanStatus.released: return primaryGreen;
-      case LoanStatus.rejected: return Colors.red;
-      case LoanStatus.fullyPaid: return Colors.purple;
+      case ComakerStatus.approved: return Colors.blue;
+      case ComakerStatus.released: return primaryGreen;
+      case ComakerStatus.rejected: return Colors.red;
+      case ComakerStatus.cancelled: return Colors.grey;
       default: return Colors.orange;
     }
   }

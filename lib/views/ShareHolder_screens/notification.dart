@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/notification_viewmodel.dart';
-import '../../models/notification_model.dart';
-import '../../models/lending_models.dart';
-import '../../app_theme.dart';
-import '../../repositories/transaction_repository.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
+import 'package:capstone_application/models/notification_model.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/repositories/transaction_repository.dart';
+import 'package:capstone_application/models/transaction_model.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/loan_request_approval.dart';
 import 'details_page/repayment_details.dart';
@@ -31,7 +31,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       final auth = context.read<AuthViewModel>();
       final viewModel = context.read<NotificationViewModel>();
       if (auth.currentUser != null) {
-        viewModel.fetchData(userId: auth.currentUser!.id);
+        viewModel.loadNotifications(userId: auth.currentUser!.id);
       }
     });
   }
@@ -58,7 +58,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 child: Text(
                   "Mark all as read", 
                   style: TextStyle(
-                    color: hasUnread ? AppTheme.primary : AppTheme.textMuted.withOpacity(0.5), 
+                    color: hasUnread ? AppTheme.primary : AppTheme.textMuted.withValues(alpha: 0.5), 
                     fontWeight: FontWeight.w700, 
                     fontSize: 13
                   )
@@ -77,7 +77,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       body: Consumer2<NotificationViewModel, AuthViewModel>(
         builder: (context, viewModel, auth, _) {
           if (auth.currentUser != null && viewModel.shareholderId == null && !viewModel.isLoading) {
-            Future.microtask(() => viewModel.fetchData(userId: auth.currentUser!.id));
+            Future.microtask(() => viewModel.loadNotifications(userId: auth.currentUser!.id));
           }
 
           if (viewModel.isLoading && viewModel.notifications.isEmpty) {
@@ -90,7 +90,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
           if (viewModel.notifications.isEmpty) {
             return RefreshIndicator(
-              onRefresh: () => viewModel.fetchData(forceRefresh: true),
+              onRefresh: () => viewModel.loadNotifications(userId: auth.currentUser!.id, forceRefresh: true),
               child: Stack(
                 children: [
                   ListView(),
@@ -101,7 +101,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => viewModel.fetchData(forceRefresh: true),
+            onRefresh: () => viewModel.loadNotifications(userId: auth.currentUser!.id, forceRefresh: true),
             color: AppTheme.primary,
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -140,7 +140,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ElevatedButton(
               onPressed: () {
                 if (auth.currentUser != null) {
-                  viewModel.fetchData(userId: auth.currentUser!.id, forceRefresh: true);
+                  viewModel.loadNotifications(userId: auth.currentUser!.id, forceRefresh: true);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -218,17 +218,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: n.isUnread ? Colors.white : const Color(0xFFF3F4F6).withOpacity(0.5),
+        color: n.isUnread ? Colors.white : const Color(0xFFF3F4F6).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: n.isUnread 
-              ? AppTheme.primary.withOpacity(0.2) 
+              ? AppTheme.primary.withValues(alpha: 0.2) 
               : Colors.transparent
         ),
         boxShadow: n.isUnread
             ? [
                 BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.08),
+                  color: AppTheme.primary.withValues(alpha: 0.08),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 )
@@ -253,7 +253,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: n.isUnread ? iconColor.withOpacity(0.12) : Colors.grey.withOpacity(0.08),
+                    color: n.isUnread ? iconColor.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -292,7 +292,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       Text(
                         n.content,
                         style: TextStyle(
-                          color: n.isUnread ? AppTheme.textDark.withOpacity(0.8) : AppTheme.textMuted.withOpacity(0.7),
+                          color: n.isUnread ? AppTheme.textDark.withValues(alpha: 0.8) : AppTheme.textMuted.withValues(alpha: 0.7),
                           fontSize: 13,
                           height: 1.4,
                         ),
@@ -426,7 +426,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         }
       }
       
-      if (mounted) {
+      if (context.mounted) {
         Navigator.pop(context); // Close loader
         if (tx != null) {
           final TransactionModel finalTx = tx; // Fix nullable assignment
@@ -436,7 +436,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         Navigator.pop(context);
         _showError(context, "Failed to load transaction: $e");
       }

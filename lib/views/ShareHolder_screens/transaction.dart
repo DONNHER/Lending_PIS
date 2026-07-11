@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../app_theme.dart';
-import '../../viewmodels/shareholder_transaction_viewmodel.dart';
-import '../../viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/viewmodels/shareholder_transaction_viewmodel.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/repayment_details.dart';
 import 'details_page/loan_request_approval.dart';
@@ -96,7 +96,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => viewModel.fetchData(forceRefresh: true),
+              onPressed: () {
+                final auth = context.read<AuthViewModel>();
+                if (auth.currentUser != null) {
+                  viewModel.fetchData(userId: auth.currentUser!.id, forceRefresh: true);
+                }
+              },
               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
               child: const Text("Retry"),
             )
@@ -141,7 +146,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 color: isSelected ? AppTheme.primary : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: isSelected ? AppTheme.primary : borderGrey),
-                boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))] : [],
               ),
               child: Text(
                 filter,
@@ -197,7 +202,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected ? [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))
           ] : null,
         ),
         child: Text(
@@ -230,7 +235,13 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final dateFormat = DateFormat('MMM dd, yyyy');
 
     return RefreshIndicator(
-      onRefresh: () => viewModel.fetchData(forceRefresh: true),
+      onRefresh: () {
+        final auth = context.read<AuthViewModel>();
+        if (auth.currentUser != null) {
+          return viewModel.fetchData(userId: auth.currentUser!.id, forceRefresh: true);
+        }
+        return Future.value();
+      },
       color: AppTheme.primary,
       child: ListView.builder(
         padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
@@ -262,7 +273,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: borderGrey),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 10, offset: const Offset(0, 4)),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 10, offset: const Offset(0, 4)),
               ],
             ),
             child: InkWell(
@@ -270,7 +281,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 if (type.contains('payment') || type.contains('repayment') || type.contains('capital')) {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => RepaymentDetailsScreen(transaction: item)));
                 } else if (type.contains('loan')) {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ActiveLoanDetailsScreen(loanId: item.referenceId)));
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => ActiveLoanDetailsScreen(loanId: item.referenceId ?? '')));
                 }
               },
               borderRadius: BorderRadius.circular(16),
@@ -280,7 +291,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
                       child: Icon(icon, color: iconColor, size: 20),
                     ),
                     const SizedBox(width: 16),
@@ -301,7 +312,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: _getStatusColor(item.status).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                          decoration: BoxDecoration(color: _getStatusColor(item.status).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                           child: Text(item.status.toUpperCase(), style: TextStyle(color: _getStatusColor(item.status), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                         ),
                       ],
@@ -321,7 +332,13 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final dateFormat = DateFormat('MMM dd, yyyy');
 
     return RefreshIndicator(
-      onRefresh: () => viewModel.fetchData(forceRefresh: true),
+      onRefresh: () {
+        final auth = context.read<AuthViewModel>();
+        if (auth.currentUser != null) {
+          return viewModel.fetchData(userId: auth.currentUser!.id, forceRefresh: true);
+        }
+        return Future.value();
+      },
       color: AppTheme.primary,
       child: ListView.builder(
         padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
@@ -345,7 +362,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
                       child: const Icon(Icons.assignment_outlined, color: AppTheme.primary, size: 20),
                     ),
                     const SizedBox(width: 16),
@@ -371,7 +388,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: _getStatusColor(item.status.name).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                          decoration: BoxDecoration(color: _getStatusColor(item.status.name).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                           child: Text(item.status.name.toUpperCase(), style: TextStyle(color: _getStatusColor(item.status.name), fontSize: 9, fontWeight: FontWeight.w900)),
                         ),
                       ],

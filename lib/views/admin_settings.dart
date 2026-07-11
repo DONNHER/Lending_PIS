@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../viewmodels/auth_viewmodel.dart';
-import '../models/user_model.dart';
-import '../app_theme.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/models/user_model.dart';
+import 'package:capstone_application/app_theme.dart';
 import 'admin_edit_account_details.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
@@ -241,7 +241,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Terms and Conditions'),
-        content: const SingleChildScrollView(child: Text('Welcome to Engr Canteen Lending. By using this application, you agree to comply with and be bound by the following terms and conditions of use...')),
+        content: const SingleChildScrollView(child: Text('Welcome to Lending System. By using this application, you agree to comply with and be bound by the following terms and conditions of use...')),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
       ),
     );

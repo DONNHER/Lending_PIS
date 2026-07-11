@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/app_theme.dart';
-import '../../address_selector_page.dart';
+import 'package:capstone_application/views/address_selector_page.dart';
 
 class EditAccountDetailsScreen extends StatefulWidget {
   const EditAccountDetailsScreen({super.key});
@@ -51,7 +51,7 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authViewModel = context.watch<AuthViewModel>();
+    final AuthViewModel authViewModel = context.watch<AuthViewModel>();
     final user = authViewModel.currentUser;
     final hasAvatar = authViewModel.avatarBytes != null || 
                      (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty && !authViewModel.removeAvatarRequested);
@@ -84,8 +84,8 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
-                        border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 4),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5))],
+                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 4),
                       ),
                       child: ClipOval(
                         child: authViewModel.avatarBytes != null
@@ -148,7 +148,7 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                    border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,10 +312,10 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
           decoration: InputDecoration(
             hintText: hint,
             filled: true,
-            fillColor: enabled ? Colors.white : Colors.grey.withOpacity(0.05),
+            fillColor: enabled ? Colors.white : Colors.grey.withValues(alpha: 0.05),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
           ),
           validator: isRequired ? (value) => value == null || value.isEmpty ? 'Field required' : null : null,
         ),

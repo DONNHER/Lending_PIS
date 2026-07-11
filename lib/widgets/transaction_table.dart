@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../app_theme.dart';
-import '../models/lending_models.dart';
+import '../models/transaction_model.dart';
 
 class TransactionTable extends StatelessWidget {
   final List<TransactionModel> transactions;
@@ -124,7 +124,7 @@ class TransactionTable extends StatelessWidget {
           // Actions
           Expanded(
             flex: 1,
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),

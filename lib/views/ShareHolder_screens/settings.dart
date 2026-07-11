@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/auth_viewmodel.dart';
-import '../../models/user_model.dart';
-import '../../app_theme.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/models/user_model.dart';
+import 'package:capstone_application/app_theme.dart';
 import 'details_page/credit_score.dart';
 import 'details_page/edit_account_details.dart';
 
@@ -78,12 +78,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 )
                               ],
-                              border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 3),
+                              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 3),
                             ),
                             child: ClipOval(
                               child: authViewModel.avatarBytes != null
@@ -215,9 +215,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
+        color: Colors.blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.blue.withOpacity(0.5)),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.5)),
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
@@ -237,7 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color color = status == UserStatus.active ? Colors.green : (status == UserStatus.inactive ? Colors.orange : Colors.red);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withOpacity(0.5))),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withValues(alpha: 0.5))),
       child: Text(status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)),
     );
   }
@@ -252,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))]),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]),
           child: Column(children: items),
         ),
       ],
@@ -264,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Terms and Conditions'),
-        content: const SingleChildScrollView(child: Text('Welcome to Engr Canteen Lending. By using this application, you agree to comply with and be bound by the following terms and conditions of use...')),
+        content: const SingleChildScrollView(child: Text('Welcome to Lending System. By using this application, you agree to comply with and be bound by the following terms and conditions of use...')),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
       ),
     );
@@ -301,7 +301,7 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: AppTheme.primary, size: 20)),
+      leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: AppTheme.primary, size: 20)),
       title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textDark)),
       trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 22),
       onTap: onTap,

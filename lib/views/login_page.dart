@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
-import 'package:capstone_application/widgets/auth_text_field.dart';
-import 'package:capstone_application/views/registration_page.dart';
-import 'package:capstone_application/views/forgot_password_page.dart';
-import 'package:capstone_application/views/mfa_page.dart';
+import '../widgets/auth_text_field.dart';
+import 'registration_page.dart';
+import 'forgot_password_page.dart';
+import 'mfa_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});

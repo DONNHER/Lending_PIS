@@ -1,0 +1,15 @@
+.git
+.idea
+.dart_tool
+build
+laravel_backend/vendor
+laravel_backend/node_modules
+laravel_backend/storage/*.key
+laravel_backend/.env
+ios
+android
+linux
+macos
+windows
+*.log
+*.patch
