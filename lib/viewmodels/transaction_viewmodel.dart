@@ -26,7 +26,9 @@ class TransactionViewModel extends ChangeNotifier {
   int get totalRows => _totalRows;
   int get rowsPerPage => _rowsPerPage;
 
-  Future<void> fetchTransactions({int? page, int? perPage}) async {
+  Future<void> fetchTransactions({int? page, int? perPage, bool forceRefresh = false}) async {
+    if (_isInitialized && !forceRefresh && page == null && perPage == null) return;
+    
     if (page != null) _currentPage = page;
     if (perPage != null) _rowsPerPage = perPage;
 
@@ -63,5 +65,5 @@ class TransactionViewModel extends ChangeNotifier {
     fetchTransactions();
   }
 
-  void refresh() => fetchTransactions();
+  void refresh() => fetchTransactions(forceRefresh: true);
 }

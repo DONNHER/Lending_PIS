@@ -25,7 +25,9 @@ class ActivityLogViewModel extends ChangeNotifier {
   int get totalRows => _totalRows;
   int get rowsPerPage => _rowsPerPage;
 
-  Future<void> fetchLogs({int? page, int? perPage}) async {
+  Future<void> fetchLogs({int? page, int? perPage, bool forceRefresh = false}) async {
+    if (_isInitialized && !forceRefresh && page == null && perPage == null) return;
+
     if (page != null) _currentPage = page;
     if (perPage != null) _rowsPerPage = perPage;
 
@@ -58,5 +60,5 @@ class ActivityLogViewModel extends ChangeNotifier {
     fetchLogs();
   }
 
-  void refresh() => fetchLogs();
+  void refresh() => fetchLogs(forceRefresh: true);
 }

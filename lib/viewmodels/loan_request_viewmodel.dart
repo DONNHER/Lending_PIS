@@ -27,7 +27,9 @@ class LoanRequestViewModel extends ChangeNotifier {
   int get totalRows => _totalRows;
   int get rowsPerPage => _rowsPerPage;
 
-  Future<void> fetchLoanRequests({int? page, int? perPage}) async {
+  Future<void> fetchLoanRequests({int? page, int? perPage, bool forceRefresh = false}) async {
+    if (_isInitialized && !forceRefresh && page == null && perPage == null) return;
+
     if (page != null) _currentPage = page;
     if (perPage != null) _rowsPerPage = perPage;
 
@@ -64,5 +66,5 @@ class LoanRequestViewModel extends ChangeNotifier {
     fetchLoanRequests();
   }
 
-  void refresh() => fetchLoanRequests();
+  void refresh() => fetchLoanRequests(forceRefresh: true);
 }

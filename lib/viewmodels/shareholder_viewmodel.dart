@@ -27,7 +27,9 @@ class ShareholderViewModel extends ChangeNotifier {
   int get totalRows => _totalRows;
   int get rowsPerPage => _rowsPerPage;
 
-  Future<void> fetchShareholders({int? page, int? perPage}) async {
+  Future<void> fetchShareholders({int? page, int? perPage, bool forceRefresh = false}) async {
+    if (_isInitialized && !forceRefresh && page == null && perPage == null) return;
+
     if (page != null) _currentPage = page;
     if (perPage != null) _rowsPerPage = perPage;
 
@@ -71,5 +73,5 @@ class ShareholderViewModel extends ChangeNotifier {
     fetchShareholders();
   }
 
-  void refresh() => fetchShareholders();
+  void refresh() => fetchShareholders(forceRefresh: true);
 }
