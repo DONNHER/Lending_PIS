@@ -140,32 +140,30 @@ class _DashboardBodyState extends State<_DashboardBody> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: LayoutBuilder(builder: (context, constraints) {
-        return Row(
-          children: List<Widget>.from(
-            viewModel.kpiCards.map((kpi) {
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: KpiCard(
-                    data: kpi,
-                    onTap: kpi.label == 'Total Users' 
-                      ? () {
-                          final nav = context.read<NavigationViewModel>();
-                          final items = nav.getFilteredNavItems();
-                          final index = items.indexWhere((item) => item.route == '/users');
-                          if (index != -1) {
-                            nav.navigateTo(index);
-                          }
-                        }
-                      : null,
-                  ),
-                ),
-              );
-            }),
-          ),
-        );
-      }),
+      child: Row(
+        children: viewModel.kpiCards.map((kpi) {
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: kpi == viewModel.kpiCards.last ? 0 : 8,
+              ),
+              child: KpiCard(
+                data: kpi,
+                onTap: kpi.label == 'Users' 
+                  ? () {
+                      final nav = context.read<NavigationViewModel>();
+                      final items = nav.getFilteredNavItems();
+                      final index = items.indexWhere((item) => item.route == '/users');
+                      if (index != -1) {
+                        nav.navigateTo(index);
+                      }
+                    }
+                  : null,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -209,7 +207,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
             const SizedBox(height: 20),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 230),
-              child: viewModel.isLoading && viewModel.chartData.isEmpty
+              child: viewModel.isChartLoading && viewModel.chartData.isEmpty
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D), strokeWidth: 3))
                   : LendingBarChart(data: viewModel.chartData),
             ),

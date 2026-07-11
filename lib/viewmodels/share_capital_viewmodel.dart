@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:capstone_application/repositories/shareholder_repository.dart';
 import 'package:capstone_application/repositories/transaction_repository.dart';
 import 'package:capstone_application/repositories/lending_repository.dart';
-import 'package:capstone_application/services/local_cache_service.dart';
 import 'package:capstone_application/models/lending_models.dart';
+import 'package:capstone_application/models/shareholder_model.dart';
 
 class ShareCapitalViewModel extends ChangeNotifier {
   final ShareholderRepository _shareholderRepository;
@@ -18,13 +18,13 @@ class ShareCapitalViewModel extends ChangeNotifier {
   LoanModel? _activeLoan;
   List<LoanRequestModel> _loanRequests = [];
   String _loanRequestFilter = 'borrower';
+  ShareholderModel? _currentShareholder;
 
   ShareCapitalViewModel(
     this._shareholderRepository,
     TransactionRepository transactionRepository,
-    this._lendingRepository, {
-    required LocalCacheService cacheService,
-  });
+    this._lendingRepository,
+  );
 
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
@@ -36,33 +36,48 @@ class ShareCapitalViewModel extends ChangeNotifier {
   String get loanRequestFilter => _loanRequestFilter;
 
   void setUserId(String id) {
-    _userId = id;
-    _isInitialized = false;
-    notifyListeners();
+    if (_userId != id) {
+      _userId = id;
+      _isInitialized = false;
+      _currentShareholder = null;
+      fetchData();
+    }
   }
 
   Future<void> fetchData({bool forceRefresh = false}) async {
     if (_userId == null) return;
-    if (_isInitialized && !forceRefresh) return;
+    if (_isInitialized && !forceRefresh && !_isLoading) return;
 
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final shareholder = await _shareholderRepository.getShareholderById(_userId!);
-      if (shareholder != null) {
-        _shareholderFirstName = shareholder.firstName;
-        _totalCapital = shareholder.shareCapital;
+      // 1. Resolve Shareholder Profile
+      if (_currentShareholder == null || forceRefresh) {
+        _currentShareholder = await _shareholderRepository.getShareholderByUserId(_userId!);
       }
 
-      // Fetch active loan
-      final requests = await _lendingRepository.getLoanRequests();
-      _loanRequests = requests.where((r) => r.shareholderId == _userId).toList();
+      if (_currentShareholder != null) {
+        _shareholderFirstName = _currentShareholder!.firstName;
+        _totalCapital = _currentShareholder!.shareCapital;
+        
+        final shareholderId = _currentShareholder!.id;
+
+        // 2. Fetch loan requests based on role
+        // This is non-blocking as it awaits the future
+        if (_loanRequestFilter == 'borrower') {
+          _loanRequests = await _lendingRepository.getLoanRequestsByShareholderId(shareholderId);
+        } else {
+          _loanRequests = await _lendingRepository.getLoanRequestsByComakerId(shareholderId);
+        }
+      } else {
+        throw Exception("Shareholder profile not found.");
+      }
 
       _isInitialized = true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -70,8 +85,10 @@ class ShareCapitalViewModel extends ChangeNotifier {
   }
 
   void setLoanRequestFilter(String filter) {
-    _loanRequestFilter = filter;
-    fetchData(forceRefresh: true);
+    if (_loanRequestFilter != filter) {
+      _loanRequestFilter = filter;
+      fetchData(forceRefresh: true);
+    }
   }
 
   void reset() {
@@ -81,6 +98,7 @@ class ShareCapitalViewModel extends ChangeNotifier {
     _totalCapital = 0.0;
     _activeLoan = null;
     _loanRequests = [];
+    _currentShareholder = null;
     notifyListeners();
   }
 }

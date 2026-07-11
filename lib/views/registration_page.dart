@@ -5,6 +5,7 @@ import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import '../widgets/auth_text_field.dart';
 import 'mfa_page.dart';
+import 'address_selector_page.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -22,8 +23,10 @@ class _RegistrationPageState extends State<RegistrationPage>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
 
-  UserRole _selectedRole = UserRole.cashier;
+  UserRole _selectedRole = UserRole.admin;
   int _currentStep = 0;
 
   late final AnimationController _animCtrl;
@@ -46,6 +49,8 @@ class _RegistrationPageState extends State<RegistrationPage>
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
     _animCtrl.dispose();
     super.dispose();
   }
@@ -67,6 +72,8 @@ class _RegistrationPageState extends State<RegistrationPage>
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
       role: _selectedRole,
+      address: _addressController.text.trim(),
+      phone: _phoneController.text.trim(),
     );
 
     if (success && mounted) {
@@ -172,6 +179,16 @@ class _RegistrationPageState extends State<RegistrationPage>
         return;
       }
     }
+    else if (_currentStep == 2) {
+      if (_addressController.text.trim().isEmpty) {
+        _showSnackbar('Address is required', isError: true);
+        return;
+      }
+      if (_phoneController.text.trim().isEmpty) {
+        _showSnackbar('Phone number is required', isError: true);
+        return;
+      }
+    }
 
     _animCtrl.forward(from: 0);
     setState(() => _currentStep++);
@@ -180,6 +197,18 @@ class _RegistrationPageState extends State<RegistrationPage>
   void _previousStep() {
     _animCtrl.forward(from: 0);
     setState(() => _currentStep--);
+  }
+
+  Future<void> _selectAddress() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddressSelectorPage()),
+    );
+    if (result != null) {
+      setState(() {
+        _addressController.text = result;
+      });
+    }
   }
 
   @override
@@ -273,11 +302,12 @@ class _RegistrationPageState extends State<RegistrationPage>
   Widget _buildStepContent(AuthViewModel viewModel) {
     if (_currentStep == 0) return _buildPersonalInfoStep();
     if (_currentStep == 1) return _buildAccountInfoStep(viewModel);
+    if (_currentStep == 2) return _buildAddressInfoStep();
     return _buildReviewStep(viewModel);
   }
 
   Widget _buildProgressIndicator() {
-    const steps = ['Personal', 'Account', 'Review'];
+    const steps = ['Personal', 'Account', 'Address', 'Review'];
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -460,14 +490,78 @@ class _RegistrationPageState extends State<RegistrationPage>
     );
   }
 
+  Widget _buildAddressInfoStep() {
+    return _StepCard(
+      icon: Icons.location_on_outlined,
+      title: 'Address & Contact',
+      subtitle: 'Where can we reach you?',
+      children: [
+        const Text(
+          'Complete Address *',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textDark,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _selectAddress,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.map_outlined, size: 20, color: AppTheme.textMuted),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _addressController.text.trim().isEmpty
+                        ? 'Select complete address'
+                        : _addressController.text,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _addressController.text.trim().isEmpty
+                          ? AppTheme.textMuted
+                          : AppTheme.textDark,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textMuted),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        AuthTextField(
+          label: 'Phone Number *',
+          hint: 'e.g. 09123456789',
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.done,
+          prefixIcon: const Icon(Icons.phone_outlined,
+              color: AppTheme.textMuted, size: 20),
+        ),
+      ],
+    );
+  }
+
   Widget _buildRoleSelector() {
+    // Only show Admin role for this registration flow
+    final roles = [UserRole.admin];
     return Row(
-      children: UserRole.values.map((role) {
+      children: roles.map((role) {
         final isSelected = _selectedRole == role;
         return Expanded(
           child: Padding(
-            padding: EdgeInsets.only(
-                right: role == UserRole.values.last ? 0 : 8),
+            padding: const EdgeInsets.only(right: 0),
             child: GestureDetector(
               onTap: () => setState(() => _selectedRole = role),
               child: AnimatedContainer(
@@ -563,6 +657,16 @@ class _RegistrationPageState extends State<RegistrationPage>
             ),
           ],
         ),
+        const SizedBox(height: 14),
+        _StepCard(
+          icon: Icons.location_on_outlined,
+          title: 'Address',
+          subtitle: 'Contact details',
+          children: [
+            _ReviewItem(label: 'Address', value: _addressController.text),
+            _ReviewItem(label: 'Phone', value: _phoneController.text),
+          ],
+        ),
         const SizedBox(height: 18),
         Container(
           padding: const EdgeInsets.all(14),
@@ -652,7 +756,7 @@ class _RegistrationPageState extends State<RegistrationPage>
         ],
         Expanded(
           flex: 2,
-          child: _currentStep < 2
+          child: _currentStep < 3
               ? ElevatedButton(
                   onPressed: _nextStep,
                   style: ElevatedButton.styleFrom(

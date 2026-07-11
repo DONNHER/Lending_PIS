@@ -70,9 +70,10 @@ class DashboardHeader extends StatelessWidget {
           onChanged: onSearch,
           decoration: InputDecoration(
             hintText: 'Search shareholders...',
-            prefixIcon: const Icon(Icons.search),
+            prefixIcon: const Icon(Icons.search, color: Color(0xFFC06C4D)),
             filled: true,
             fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -81,30 +82,59 @@ class DashboardHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFC06C4D), width: 2),
+            ),
           ),
         ),
         if (searchResults.isNotEmpty)
           Container(
-            margin: const EdgeInsets.only(top: 4),
+            margin: const EdgeInsets.only(top: 8),
+            constraints: const BoxConstraints(maxHeight: 250),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
                 ),
               ],
+              border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-            child: ListView.builder(
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
               shrinkWrap: true,
               itemCount: searchResults.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final result = searchResults[index];
                 return ListTile(
-                  title: Text(result.fullName),
-                  subtitle: Text(result.id),
+                  leading: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: const Color(0xFFC06C4D).withOpacity(0.1),
+                    child: Text(
+                      result.firstName[0],
+                      style: const TextStyle(
+                        color: Color(0xFFC06C4D),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    result.fullName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Text(
+                    result.email,
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   onTap: () => onResultTap(result),
                 );
               },

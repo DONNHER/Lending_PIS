@@ -17,6 +17,7 @@ class Transaction extends Model
 {
     use Loggable, AdvancedDataControls, Versionable;
 
+    protected $table = 'transactions';
     protected $keyType = 'int';
     public $incrementing = true;
     

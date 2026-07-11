@@ -26,6 +26,14 @@ class LendingChartData {
     required this.totalDisbursed,
     this.shareCapital = 0.0,
   });
+
+  factory LendingChartData.fromJson(Map<String, dynamic> json) {
+    return LendingChartData(
+      period: json['period'] ?? '',
+      totalDisbursed: (json['total_disbursed'] ?? 0.0).toDouble(),
+      shareCapital: (json['share_capital'] ?? 0.0).toDouble(),
+    );
+  }
 }
 
 class LoanComaker {

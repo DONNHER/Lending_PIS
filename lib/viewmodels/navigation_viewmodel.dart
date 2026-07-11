@@ -39,9 +39,9 @@ class NavigationViewModel extends ChangeNotifier {
       allowedRoles: [UserRole.admin],
     ),
     const NavItemModel(
-      label: 'Settings',
-      icon: Icons.settings_outlined,
-      activeIcon: Icons.settings_rounded,
+      label: 'Interest',
+      icon: Icons.percent_rounded,
+      activeIcon: Icons.percent_rounded,
       route: '/update-interest',
       allowedRoles: [UserRole.admin],
     ),

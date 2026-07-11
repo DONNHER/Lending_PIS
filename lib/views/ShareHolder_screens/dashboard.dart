@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import '../../app_theme.dart';
 import 'package:capstone_application/viewmodels/share_capital_viewmodel.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'managements/loan_application.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/loan_request_approval.dart';
@@ -16,52 +17,63 @@ class ShareCapitalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ShareCapitalViewModel>(
-      builder: (context, viewModel, child) {
-        if (viewModel.isLoading && !viewModel.isInitialized) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
-          );
+    return Consumer<AuthViewModel>(
+      builder: (context, auth, _) {
+        // Ensure VM is synced with current user
+        final viewModel = context.read<ShareCapitalViewModel>();
+        if (auth.currentUser != null) {
+           viewModel.setUserId(auth.currentUser!.id);
         }
 
-        if (viewModel.errorMessage != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('Error: ${viewModel.errorMessage}'),
-                ElevatedButton(
-                  onPressed: () => viewModel.fetchData(forceRefresh: true),
-                  child: const Text('Retry'),
-                )
-              ],
-            ),
-          );
-        }
+        return Consumer<ShareCapitalViewModel>(
+          builder: (context, viewModel, child) {
+            // Initial load only
+            if (viewModel.isLoading && !viewModel.isInitialized) {
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
+              );
+            }
 
-        return RefreshIndicator(
-          onRefresh: () => viewModel.fetchData(forceRefresh: true),
-          color: const Color(0xFFC06C4D),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(context, viewModel),
-                const SizedBox(height: 24),
-                _buildMainCapitalCard(context, viewModel),
-                
-                const SizedBox(height: 32),
-                const _AdsCarousel(),
-                const SizedBox(height: 32),
+            if (viewModel.errorMessage != null && !viewModel.isInitialized) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Error: ${viewModel.errorMessage}'),
+                    ElevatedButton(
+                      onPressed: () => viewModel.fetchData(forceRefresh: true),
+                      child: const Text('Retry'),
+                    )
+                  ],
+                ),
+              );
+            }
 
-                _buildLoanRequestsSection(context, viewModel),
-              ],
-            ),
-          ),
+            return RefreshIndicator(
+              onRefresh: () => viewModel.fetchData(forceRefresh: true),
+              color: const Color(0xFFC06C4D),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context, viewModel),
+                    const SizedBox(height: 24),
+                    _buildMainCapitalCard(context, viewModel),
+                    
+                    const SizedBox(height: 32),
+                    const _AdsCarousel(),
+                    const SizedBox(height: 32),
+
+                    _buildLoanRequestsSection(context, viewModel),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

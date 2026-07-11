@@ -7,23 +7,23 @@ import 'registration_page.dart';
 import 'forgot_password_page.dart';
 import 'mfa_page.dart';
 
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
+class AdminLoginPage extends StatelessWidget {
+  const AdminLoginPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const _LoginContent();
+    return const _AdminLoginContent();
   }
 }
 
-class _LoginContent extends StatefulWidget {
-  const _LoginContent();
+class _AdminLoginContent extends StatefulWidget {
+  const _AdminLoginContent();
 
   @override
-  State<_LoginContent> createState() => _LoginContentState();
+  State<_AdminLoginContent> createState() => _AdminLoginContentState();
 }
 
-class _LoginContentState extends State<_LoginContent>
+class _AdminLoginContentState extends State<_AdminLoginContent>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -71,30 +71,20 @@ class _LoginContentState extends State<_LoginContent>
     // Unfocus to prevent DOM sync errors on Web
     FocusScope.of(context).unfocus();
 
-    debugPrint('DEBUG: [LoginPage] Login button clicked for: ${_emailController.text}');
-
     final viewModel = context.read<AuthViewModel>();
     final success = await viewModel.login(
       _emailController.text,
       _passwordController.text,
     );
 
-    debugPrint('DEBUG: [LoginPage] Login success status: $success');
-
     if (success && mounted) {
-      final user = viewModel.currentUser;
-      debugPrint('DEBUG: [LoginPage] Authenticated user: ${user?.email}, Status: ${user?.status}, Role: ${user?.role}');
-      
       final dashboardRoute = viewModel.dashboardRoute;
-      debugPrint('DEBUG: [LoginPage] Navigating to: $dashboardRoute');
-
       if (dashboardRoute != null) {
         Navigator.of(context)
             .pushNamedAndRemoveUntil(dashboardRoute, (route) => false);
       }
     } else if (mounted) {
       if (viewModel.isMfaRequired) {
-        debugPrint('DEBUG: [LoginPage] MFA Required detected. Pending email: ${viewModel.pendingMfaEmail}');
         final mfaEmail = viewModel.pendingMfaEmail;
         if (mfaEmail != null) {
           Navigator.of(context).push(
@@ -104,7 +94,6 @@ class _LoginContentState extends State<_LoginContent>
           );
         }
       } else if (viewModel.errorMessage != null) {
-        debugPrint('DEBUG: [LoginPage] Login failed with error: ${viewModel.errorMessage}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -132,7 +121,6 @@ class _LoginContentState extends State<_LoginContent>
       backgroundColor: const Color(0xFFFFF8F3),
       body: Stack(
         children: [
-          // ── Decorative background blobs ──────────────────────────────
           Positioned(
             top: -60,
             right: -60,
@@ -157,8 +145,6 @@ class _LoginContentState extends State<_LoginContent>
               ),
             ),
           ),
-
-          // ── Main content ─────────────────────────────────────────────
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -179,15 +165,10 @@ class _LoginContentState extends State<_LoginContent>
                                   CrossAxisAlignment.stretch,
                               children: [
                                 const SizedBox(height: 20),
-
-                                // ── Branding ──────────────────────────
                                 _buildBranding(),
-
                                 const SizedBox(height: 44),
-
-                                // ── Greeting ──────────────────────────
                                 const Text(
-                                  'Welcome back',
+                                  'Admin Portal',
                                   style: TextStyle(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w800,
@@ -197,26 +178,23 @@ class _LoginContentState extends State<_LoginContent>
                                 ),
                                 const SizedBox(height: 6),
                                 const Text(
-                                  'Sign in to access your PIL dashboard',
+                                  'Sign in to manage your system',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: AppTheme.textMuted,
                                     height: 1.5,
                                   ),
                                 ),
-
                                 const SizedBox(height: 32),
-
-                                // ── Email ─────────────────────────────
                                 AuthTextField(
-                                  label: 'Email Address',
-                                  hint: 'Enter your email',
+                                  label: 'Admin Email',
+                                  hint: 'Enter your admin email',
                                   controller: _emailController,
                                   keyboardType:
                                       TextInputType.emailAddress,
                                   textInputAction: TextInputAction.next,
                                   prefixIcon: const Icon(
-                                    Icons.email_outlined,
+                                    Icons.admin_panel_settings_outlined,
                                     color: AppTheme.textMuted,
                                     size: 20,
                                   ),
@@ -225,17 +203,10 @@ class _LoginContentState extends State<_LoginContent>
                                         value.trim().isEmpty) {
                                       return 'Email is required';
                                     }
-                                    if (!value.contains('@') ||
-                                        !value.contains('.')) {
-                                      return 'Please enter a valid email';
-                                    }
                                     return null;
                                   },
                                 ),
-
                                 const SizedBox(height: 18),
-
-                                // ── Password ──────────────────────────
                                 AuthTextField(
                                   label: 'Password',
                                   hint: 'Enter your password',
@@ -266,10 +237,7 @@ class _LoginContentState extends State<_LoginContent>
                                     return null;
                                   },
                                 ),
-
                                 const SizedBox(height: 12),
-
-                                // ── Remember Me ───────────────────────
                                 Row(
                                   children: [
                                     InkWell(
@@ -321,15 +289,63 @@ class _LoginContentState extends State<_LoginContent>
                                     ),
                                   ],
                                 ),
-
                                 const SizedBox(height: 28),
-
-                                // ── Sign in button ────────────────────
                                 _SignInButton(
                                   isLoading: viewModel.isLoading,
                                   onPressed: _handleLogin,
                                 ),
-
+                                const SizedBox(height: 28),
+                                Row(
+                                  children: [
+                                    const Expanded(
+                                        child: Divider(
+                                            color: Color(0xFFE8DDD5))),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14),
+                                      child: Text(
+                                        'New Admin?',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.textMuted,
+                                        ),
+                                      ),
+                                    ),
+                                    const Expanded(
+                                        child: Divider(
+                                            color: Color(0xFFE8DDD5))),
+                                  ],
+                                ),
+                                const SizedBox(height: 18),
+                                OutlinedButton(
+                                  onPressed: () {
+                                    viewModel.clearError();
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const RegistrationPage(),
+                                      ),
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppTheme.primary,
+                                    side: BorderSide(
+                                      color: AppTheme.primary
+                                          .withOpacity(0.4),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(14),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                    textStyle: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  child: const Text('Create an Admin Account'),
+                                ),
                                 const SizedBox(height: 32),
                               ],
                             ),
@@ -350,7 +366,6 @@ class _LoginContentState extends State<_LoginContent>
   Widget _buildBranding() {
     return Column(
       children: [
-        // Logo mark
         Container(
           width: 72,
           height: 72,
@@ -379,7 +394,7 @@ class _LoginContentState extends State<_LoginContent>
         ),
         const SizedBox(height: 14),
         const Text(
-          'PIL',
+          'PIL ADMIN',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w900,
@@ -389,7 +404,7 @@ class _LoginContentState extends State<_LoginContent>
         ),
         const SizedBox(height: 3),
         const Text(
-          'Point of Sale and Lending System',
+          'Management Dashboard Access',
           style: TextStyle(
             fontSize: 12,
             color: AppTheme.textMuted,
@@ -401,8 +416,6 @@ class _LoginContentState extends State<_LoginContent>
     );
   }
 }
-
-// ── Sign In Button ─────────────────────────────────────────────────────────
 
 class _SignInButton extends StatelessWidget {
   final bool isLoading;
@@ -450,7 +463,7 @@ class _SignInButton extends StatelessWidget {
                         color: Colors.white, size: 18),
                     SizedBox(width: 8),
                     Text(
-                      'Sign In',
+                      'Admin Sign In',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,

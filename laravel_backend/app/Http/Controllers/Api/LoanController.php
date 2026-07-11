@@ -412,11 +412,10 @@ class LoanController extends Controller
     {
         $periodExpr = DB::getDriverName() === 'pgsql' ? "TO_CHAR(date, 'Mon YY')" : "DATE_FORMAT(date, '%b %y')";
 
-        $metrics = DB::table('transactions')
-            ->select(
+        $metrics = Transaction::select(
                 DB::raw("$periodExpr as period"),
-                DB::raw("SUM(CASE WHEN type = 'Capital Contribution' THEN amount ELSE 0 END) as share_capital"),
-                DB::raw("SUM(CASE WHEN type = 'Loan Disbursement' THEN amount ELSE 0 END) as total_disbursed")
+                DB::raw("SUM(CASE WHEN type LIKE '%Capital%' THEN amount ELSE 0 END) as share_capital"),
+                DB::raw("SUM(CASE WHEN type LIKE '%Disbursement%' THEN amount ELSE 0 END) as total_disbursed")
             )
             ->groupBy(DB::raw($periodExpr))
             ->orderBy(DB::raw("MIN(date)"), 'asc')

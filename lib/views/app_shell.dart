@@ -329,7 +329,7 @@ class _AppShellState extends State<AppShell> {
       case '/transactions':
         return const TransactionsPage();
       case '/update-interest':
-        return const UpdateInterestPage();
+        return const InterestManagementPage();
       case '/activity-logs':
         return const ActivityLogsPage();
       default:

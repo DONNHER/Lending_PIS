@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
@@ -22,6 +23,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeAnim;
 
+  int _resendCooldown = 0;
+  Timer? _cooldownTimer;
+
   @override
   void initState() {
     super.initState();
@@ -32,12 +36,25 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _emailController.dispose();
     _otpController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     _animCtrl.dispose();
     super.dispose();
+  }
+
+  void _startCooldown() {
+    setState(() => _resendCooldown = 60);
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendCooldown == 0) {
+        timer.cancel();
+      } else {
+        setState(() => _resendCooldown--);
+      }
+    });
   }
 
   Future<void> _handleSendOtp() async {
@@ -59,6 +76,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
       setState(() {
         _codeSent = true;
       });
+      _startCooldown();
       _animCtrl.forward(from: 0);
     } else if (mounted && viewModel.errorMessage != null) {
       debugPrint('DEBUG: [ForgotPasswordPage] Error showing snackbar: ${viewModel.errorMessage}');
@@ -232,7 +250,35 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
           hint: '6-digit OTP',
           controller: _otpController,
           keyboardType: TextInputType.number,
-          prefixIcon: const Icon(Icons.pin_rounded, color: AppTheme.textMuted, size: 20),
+          prefixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(width: 12),
+              const Icon(Icons.numbers_rounded, color: AppTheme.textMuted, size: 20),
+              TextButton(
+                onPressed: (viewModel.isLoading || _resendCooldown > 0) ? null : _handleSendOtp,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  _resendCooldown > 0 ? 'Resend ($_resendCooldown s)' : 'Resend',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _resendCooldown > 0 ? AppTheme.textMuted : AppTheme.primary,
+                  ),
+                ),
+              ),
+              Container(
+                height: 20,
+                width: 1,
+                margin: const EdgeInsets.only(right: 8),
+                color: Colors.grey.withValues(alpha: 0.3),
+              ),
+            ],
+          ),
           validator: (val) => val == null || val.length != 6 ? 'Enter the 6-digit code' : null,
         ),
         const SizedBox(height: 20),

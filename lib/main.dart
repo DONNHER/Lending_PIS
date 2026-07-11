@@ -34,11 +34,14 @@ import 'package:capstone_application/viewmodels/consignment_detail_viewmodel.dar
 import 'package:capstone_application/viewmodels/consignee_detail_viewmodel.dart';
 import 'package:capstone_application/viewmodels/consignee_viewmodel.dart';
 import 'package:capstone_application/views/login_page.dart';
+import 'package:capstone_application/views/admin_login_page.dart';
 import 'package:capstone_application/views/registration_page.dart';
 import 'package:capstone_application/views/app_shell.dart';
 import 'package:capstone_application/views/ShareHolder_screens/layouts/app.dart';
 import 'package:capstone_application/views/ShareHolder_screens/notification.dart';
 import 'package:capstone_application/models/user_model.dart';
+
+import 'package:capstone_application/viewmodels/shareholder_detail_viewmodel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -134,6 +137,7 @@ class CanteenApp extends StatelessWidget {
           create: (context) => DashboardViewModel(
             context.read<LendingRepository>(),
             context.read<ShareholderRepository>(),
+            context.read<TransactionRepository>(),
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && 
@@ -148,7 +152,6 @@ class CanteenApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthViewModel, LoanRequestViewModel>(
           create: (context) => LoanRequestViewModel(
             context.read<LendingRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && 
@@ -163,7 +166,6 @@ class CanteenApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthViewModel, ShareholderViewModel>(
           create: (context) => ShareholderViewModel(
             context.read<ShareholderRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && 
@@ -178,7 +180,6 @@ class CanteenApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthViewModel, TransactionViewModel>(
           create: (context) => TransactionViewModel(
             context.read<TransactionRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && 
@@ -207,7 +208,6 @@ class CanteenApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthViewModel, UpdateInterestViewModel>(
           create: (context) => UpdateInterestViewModel(
             context.read<LendingRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && 
@@ -228,6 +228,11 @@ class CanteenApp extends StatelessWidget {
           ),
         ),
 
+        ChangeNotifierProvider(
+          create: (context) => ShareholderDetailViewModel(
+            context.read<ShareholderRepository>(),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => ConsignmentProductsViewModel()),
         ChangeNotifierProvider(
           create: (context) => ConsignmentDetailViewModel(
@@ -244,7 +249,6 @@ class CanteenApp extends StatelessWidget {
             context.read<ShareholderRepository>(),
             context.read<TransactionRepository>(),
             context.read<LendingRepository>(),
-            cacheService: cacheService,
           ),
           update: (context, auth, model) {
             if (auth.isAuthenticated && auth.currentUser?.role == UserRole.shareholder) {
@@ -306,6 +310,7 @@ class RootApp extends StatelessWidget {
       home: _getHome(auth),
       routes: {
         '/login': (context) => const LoginPage(),
+        '/admin-login': (context) => const AdminLoginPage(),
         '/register': (context) => const RegistrationPage(),
         '/dashboard': (context) => const AppShell(),
         '/users': (context) => const AppShell(),

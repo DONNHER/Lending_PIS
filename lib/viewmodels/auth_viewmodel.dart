@@ -169,6 +169,8 @@ class AuthViewModel extends ChangeNotifier {
     required String firstName,
     required String lastName,
     required UserRole role,
+    String? address,
+    String? phone,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -182,6 +184,8 @@ class AuthViewModel extends ChangeNotifier {
         firstName: firstName,
         lastName: lastName,
         role: role,
+        address: address,
+        phone: phone,
       );
       
       // Trigger Supabase Verification Email

@@ -12,6 +12,26 @@ class TransactionRepository {
     return data.map((e) => TransactionModel.fromJson(e)).toList();
   }
 
+  Future<Map<String, dynamic>> getPaginatedTransactions({int page = 1, int perPage = 10, String? search}) async {
+    final queryParams = {
+      'page': page.toString(),
+      'per_page': perPage.toString(),
+    };
+    if (search != null && search.isNotEmpty) {
+      queryParams['search'] = search;
+    }
+    
+    final response = await _apiService.get('/transactions', queryParams: queryParams);
+    final List dataList = response['data'] ?? [];
+    
+    return {
+      'transactions': dataList.map((e) => TransactionModel.fromJson(e)).toList(),
+      'total': response['meta']?['total'] ?? dataList.length,
+      'last_page': response['meta']?['last_page'] ?? 1,
+      'current_page': response['meta']?['current_page'] ?? page,
+    };
+  }
+
   Future<List<TransactionModel>> getTransactions() async {
     final response = await _apiService.get('/transactions');
     final List data = response['data'] ?? [];

@@ -102,28 +102,32 @@ class _EditAccountDetailsScreenState extends State<EditAccountDetailsScreen> {
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: GestureDetector(
-                        onTap: () => authViewModel.pickAvatar(),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
-                          child: const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (hasAvatar)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: GestureDetector(
+                                onTap: () => authViewModel.removeAvatar(),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                                  child: const Icon(Icons.delete_rounded, size: 18, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          GestureDetector(
+                            onTap: () => authViewModel.pickAvatar(),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                              child: const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    if (hasAvatar)
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: () => authViewModel.removeAvatar(),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-                            child: const Icon(Icons.delete_rounded, size: 18, color: Colors.white),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),

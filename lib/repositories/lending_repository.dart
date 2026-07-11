@@ -20,13 +20,13 @@ class LendingRepository {
   }
 
   Future<List<LoanRequestModel>> getLoanRequests() async {
-    final response = await _apiService.get('/loans/requests');
+    final response = await _apiService.get('/loan-requests');
     final List data = response['data'] ?? [];
     return data.map((e) => LoanRequestModel.fromJson(e)).toList();
   }
 
   Future<LoanRequestModel?> getLoanRequestById(String id) async {
-    final response = await _apiService.get('/loans/requests/$id');
+    final response = await _apiService.get('/loan-requests/$id');
     if (response != null && response['data'] != null) {
       return LoanRequestModel.fromJson(response['data']);
     }
@@ -62,18 +62,18 @@ class LendingRepository {
     required String comakerShareholderId,
     required ComakerStatus status,
   }) async {
-    await _apiService.post('/loans/requests/$loanRequestId/comaker-decision', body: {
+    await _apiService.post('/loan-requests/$loanRequestId/comaker-decision', body: {
       'shareholder_id': comakerShareholderId,
       'status': status.name,
     });
   }
 
   Future<void> submitLoanRequest(Map<String, dynamic> data) async {
-    await _apiService.post('/loans/requests', body: data);
+    await _apiService.post('/loan-requests', body: data);
   }
 
   Future<void> updateLoanRequestStatus(String id, LoanStatus status) async {
-    await _apiService.post('/loans/requests/$id/status', body: {
+    await _apiService.post('/loan-requests/$id/status', body: {
       'status': status.name,
     });
   }
@@ -97,5 +97,46 @@ class LendingRepository {
     final response = await _apiService.get('/loans/$loanId/payments');
     final List data = response['data'] ?? [];
     return data.map((e) => TransactionModel.fromJson(e)).toList();
+  }
+
+  Future<double> getTotalDisbursed() async {
+    final response = await _apiService.get('/stats/total-disbursed');
+    if (response != null && response['total'] != null) {
+      return (response['total'] as num).toDouble();
+    }
+    return 0.0;
+  }
+
+  Future<double> getInterestRate() async {
+    final response = await _apiService.get('/settings/interest-rate');
+    if (response != null && response['rate'] != null) {
+      return (response['rate'] as num).toDouble();
+    }
+    return 0.032; // Default fallback
+  }
+
+  Future<void> updateInterestRate({
+    required double oldRate,
+    required double newRate,
+    required String reason,
+    required DateTime effectiveDate,
+  }) async {
+    await _apiService.post('/settings/interest-rate', body: {
+      'old_rate': oldRate,
+      'new_rate': newRate,
+      'reason': reason,
+      'effective_date': effectiveDate.toIso8601String(),
+    });
+  }
+
+  Future<List<dynamic>> getInterestRateHistory() async {
+    final response = await _apiService.get('/settings/interest-rate/history');
+    return response['data'] ?? [];
+  }
+
+  Future<List<LendingChartData>> getMetrics({String range = 'month'}) async {
+    final response = await _apiService.get('/lending/metrics', queryParams: {'range': range});
+    final List data = response['data'] ?? [];
+    return data.map((e) => LendingChartData.fromJson(e)).toList();
   }
 }

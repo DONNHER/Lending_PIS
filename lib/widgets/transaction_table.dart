@@ -6,11 +6,13 @@ import '../models/transaction_model.dart';
 class TransactionTable extends StatelessWidget {
   final List<TransactionModel> transactions;
   final Function(TransactionModel) onView;
+  final bool isLoading;
 
   const TransactionTable({
     super.key,
     required this.transactions,
     required this.onView,
+    this.isLoading = false,
   });
 
   @override
@@ -39,25 +41,27 @@ class TransactionTable extends StatelessWidget {
         ),
         // Table Body
         Expanded(
-          child: transactions.isEmpty 
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: Text('No transactions found', style: TextStyle(color: AppTheme.textMuted)),
+          child: isLoading 
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)))
+            : transactions.isEmpty 
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Text('No transactions found', style: TextStyle(color: AppTheme.textMuted)),
+                  ),
+                )
+              : ListView.separated(
+                  itemCount: transactions.length,
+                  padding: EdgeInsets.zero,
+                  separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                  itemBuilder: (context, index) {
+                    final tx = transactions[index];
+                    return InkWell(
+                      onTap: () => onView(tx),
+                      child: _buildRow(tx),
+                    );
+                  },
                 ),
-              )
-            : ListView.separated(
-                itemCount: transactions.length,
-                padding: EdgeInsets.zero,
-                separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                itemBuilder: (context, index) {
-                  final tx = transactions[index];
-                  return InkWell(
-                    onTap: () => onView(tx),
-                    child: _buildRow(tx),
-                  );
-                },
-              ),
         ),
       ],
     );

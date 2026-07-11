@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/app_theme.dart';
 import 'admin_edit_account_details.dart';
@@ -174,6 +175,34 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                       thumbColor: const WidgetStatePropertyAll(AppTheme.primary),
                     ),
                     onTap: () => setState(() => _notificationsEnabled = !_notificationsEnabled),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildSection(
+                context,
+                title: 'Lending Configuration',
+                items: [
+                  _SettingsTile(
+                    icon: Icons.percent_rounded,
+                    title: 'Interest Rate Management',
+                    onTap: () {
+                      Navigator.pop(context); // Close settings
+                      // Find NavigationViewModel and switch to Interest tab
+                      final nav = context.read<NavigationViewModel>();
+                      final index = nav.getFilteredNavItems().indexWhere((item) => item.route == '/update-interest');
+                      if (index != -1) nav.navigateTo(index);
+                    },
+                  ),
+                  _SettingsTile(
+                    icon: Icons.timer_outlined,
+                    title: 'Grace Period Settings',
+                    onTap: () {},
+                  ),
+                  _SettingsTile(
+                    icon: Icons.payments_outlined,
+                    title: 'Late Payment Penalties',
+                    onTap: () {},
                   ),
                 ],
               ),

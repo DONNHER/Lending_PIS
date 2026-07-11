@@ -31,6 +31,8 @@ class AuthRepository {
     required String firstName,
     required String lastName,
     required UserRole role,
+    String? address,
+    String? phone,
   }) async {
     final response = await _apiService.post('/register', body: {
       'username': username,
@@ -39,6 +41,8 @@ class AuthRepository {
       'firstname': firstName,
       'lastname': lastName,
       'role': role.name,
+      'address': address,
+      'phone': phone,
     });
     return response;
   }

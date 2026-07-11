@@ -10,35 +10,40 @@ class TransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $searchable = ['reference_id', 'type', 'method', 'status'];
-        $query = Transaction::query();
+        $query = Transaction::with(['shareholder' => function($q) {
+            $q->withTrashed();
+        }]);
 
-        // Removed conditional SoftDeletes logic as 'deleted_at' column does not exist
-        // if ($request->boolean('trashed_only')) {
-        //     $query->onlyTrashed();
-        // } elseif ($request->boolean('with_trashed')) {
-        //     $query->withTrashed();
-        // }
+        // Basic Sorting
+        $query->orderBy('date', 'desc');
 
-        // Explicitly set 'sort_by' to 'date' to avoid 'created_at' error
-        $request->merge(['sort_by' => $request->get('sort_by', 'date')]);
-
-        $query->with('shareholder')->applyControls($request, $searchable);
-
-        if ($request->filled('types')) {
-            $types = explode(',', $request->types);
-            $query->whereIn('type', $types);
-        }
-
+        // Simple filtering
         if ($request->filled('shareholder_id')) {
             $query->where('shareholder_id', $request->shareholder_id);
         }
 
-        if ($request->filled('reference_id')) {
-            $query->where('reference_id', $request->reference_id);
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('type', 'like', "%$search%")
+                  ->orWhere('method', 'like', "%$search%")
+                  ->orWhere('status', 'like', "%$search%")
+                  ->orWhere('reference_id', 'like', "%$search%");
+            });
         }
 
-        return response()->json(Transaction::getPaginatedResponse($query, $request));
+        $paginated = $query->paginate($request->get('per_page', 10));
+
+        return response()->json([
+            'success' => true,
+            'data' => $paginated->items(),
+            'meta' => [
+                'total' => $paginated->total(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ]
+        ]);
     }
 
     /**
@@ -60,17 +65,16 @@ class TransactionController extends Controller
     public function count(Request $request)
     {
         $query = Transaction::query();
-        if ($request->has('types')) {
-            $types = explode(',', $request->types);
-            $query->whereIn('type', $types);
-        }
-        if ($request->has('status') && $request->status !== 'All') {
-            $query->where('status', $request->status);
-        }
-        if ($request->has('reference_id')) {
-            $query->where('reference_id', $request->reference_id);
-        }
-        return response()->json(['success' => true, 'total' => $query->count()]);
+
+        $total = $query->count();
+        $all = Transaction::all()->count();
+
+        return response()->json([
+            'success' => true,
+            'total' => $total,
+            'debug_all' => $all,
+            'table' => (new Transaction)->getTable()
+        ]);
     }
 
     public function getByShareholder($shareholderId)

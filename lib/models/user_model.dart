@@ -1,4 +1,6 @@
 
+import 'shareholder_model.dart';
+
 enum UserRole {
   admin,
   cashier,
@@ -22,6 +24,7 @@ class UserModel {
   final String? avatarUrl;
   final String? idImageUrl;
   final String? address;
+  final ShareholderModel? shareholder;
 
   UserModel({
     required this.id,
@@ -34,6 +37,7 @@ class UserModel {
     this.avatarUrl,
     this.idImageUrl,
     this.address,
+    this.shareholder,
   });
 
   String get fullName => '$firstName $lastName';
@@ -50,6 +54,9 @@ class UserModel {
       avatarUrl: json['avatar_url'],
       idImageUrl: json['id_image_url'],
       address: json['address'],
+      shareholder: json['shareholder'] != null 
+          ? ShareholderModel.fromJson(json['shareholder']) 
+          : null,
     );
   }
 
