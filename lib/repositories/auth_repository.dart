@@ -12,7 +12,16 @@ class AuthRepository {
       'email': email,
       'password': password,
     });
+    
+    if (response['token'] != null) {
+      await _apiService.setToken(response['token']);
+    }
+    
     return response;
+  }
+
+  Future<void> setToken(String token) async {
+    await _apiService.setToken(token);
   }
 
   Future<Map<String, dynamic>> register({
@@ -50,6 +59,11 @@ class AuthRepository {
     final response = await _apiService.post('/verify-mfa', body: {
       'email': email,
     });
+    
+    if (response['token'] != null) {
+      await _apiService.setToken(response['token']);
+    }
+
     return response;
   }
 
