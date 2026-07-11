@@ -226,7 +226,10 @@ class AuthController extends Controller
             return response()->json(['success' => true, 'message' => 'Yes, a reset link has been sent to your email.']);
         } catch (\Exception $e) {
             Log::error('Mail sending failed: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to send reset link.'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send reset link: ' . $e->getMessage()
+            ], 500);
         }
     }
 
