@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/repositories/auth_repository.dart';
 import 'package:capstone_application/repositories/activity_log_repository.dart';
@@ -17,6 +18,7 @@ class AuthViewModel extends ChangeNotifier {
 
   final AuthRepository _authRepository;
   final ActivityLogRepository _activityLogRepository;
+  final _supabase = Supabase.instance.client;
 
   UserModel? _currentUser;
   bool _isLoading = false;
@@ -126,6 +128,9 @@ class AuthViewModel extends ChangeNotifier {
       final response = await _authRepository.login(email, password);
       
       if (response['mfa_required'] == true) {
+        // Trigger Supabase OTP instead of Laravel SMTP
+        await _supabase.auth.signInWithOtp(email: email);
+        
         _isMfaRequired = true;
         _pendingMfaEmail = email;
         return false;
@@ -170,9 +175,100 @@ class AuthViewModel extends ChangeNotifier {
         lastName: lastName,
         role: role,
       );
+      
+      // Trigger Supabase Verification Email
+      await _supabase.auth.signInWithOtp(email: email);
+      
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> verifyMfa(String email, String code) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // 1. Verify with Supabase
+      final res = await _supabase.auth.verifyOTP(
+        email: email,
+        token: code,
+        type: OtpType.signup,
+      );
+
+      if (res.session != null) {
+        // 2. Tell Laravel that MFA is complete and get the Laravel token
+        final response = await _authRepository.verifyMfa(email);
+        if (response['success'] == true) {
+          _currentUser = UserModel.fromJson(response['user']);
+          _isMfaRequired = false;
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> forgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // Use Supabase to send the reset email
+      await _supabase.auth.resetPasswordForEmail(email);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // 1. Verify OTP with Supabase
+      await _supabase.auth.verifyOTP(
+        email: email,
+        token: code,
+        type: OtpType.recovery,
+      );
+
+      // 2. Update password in Supabase
+      await _supabase.auth.updateUser(UserAttributes(password: password));
+      
+      // 3. Sync with Laravel
+      await _authRepository.resetPassword(
+        email: email,
+        code: code,
+        password: password,
+      );
+      
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
       return false;
     } finally {
       _isLoading = false;
@@ -225,8 +321,8 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // In a real app, you'd call a repository method here
-      await Future.delayed(const Duration(seconds: 1));
+      // Update in Supabase
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -239,56 +335,10 @@ class AuthViewModel extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
+      await _supabase.auth.signOut();
       await _authRepository.logout();
     } finally {
       _currentUser = null;
-      notifyListeners();
-    }
-  }
-
-  Future<bool> forgotPassword(String email) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    debugPrint('DEBUG: [AuthViewModel] Attempting forgotPassword for: $email');
-
-    try {
-      final response = await _authRepository.forgotPassword(email);
-      debugPrint('DEBUG: [AuthViewModel] forgotPassword response: $response');
-      return true;
-    } catch (e, stack) {
-      debugPrint('DEBUG: [AuthViewModel] forgotPassword failed: $e');
-      debugPrint('DEBUG: [AuthViewModel] StackTrace: $stack');
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<bool> resetPassword({
-    required String email,
-    required String code,
-    required String password,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      await _authRepository.resetPassword(
-        email: email,
-        code: code,
-        password: password,
-      );
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      return false;
-    } finally {
-      _isLoading = false;
       notifyListeners();
     }
   }

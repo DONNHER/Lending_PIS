@@ -36,14 +36,21 @@ class AuthRepository {
 
   Future<UserModel?> getCurrentUser() async {
     try {
-      final response = await _apiService.get('/me');
-      if (response != null && response['user'] != null) {
-        return UserModel.fromJson(response['user']);
+      final response = await _apiService.get('/user');
+      if (response != null) {
+        return UserModel.fromJson(response);
       }
     } catch (e) {
       return null;
     }
     return null;
+  }
+
+  Future<Map<String, dynamic>> verifyMfa(String email) async {
+    final response = await _apiService.post('/verify-mfa', body: {
+      'email': email,
+    });
+    return response;
   }
 
   Future<void> logout() async {
