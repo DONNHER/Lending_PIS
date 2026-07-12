@@ -158,18 +158,14 @@ class DashboardViewModel extends ChangeNotifier {
     }
 
     try {
-      // 🚀 Search locally first since we already have the full list from initialization
-      final allShareholders = await _shareholderRepository.getShareholders();
-      
-      final lowerQuery = query.toLowerCase();
-      _searchResults.clear();
-      _searchResults.addAll(
-        allShareholders.where((s) => 
-          s.firstName.toLowerCase().contains(lowerQuery) || 
-          s.lastName.toLowerCase().contains(lowerQuery) ||
-          s.email.toLowerCase().contains(lowerQuery)
-        ).take(10).toList()
+      // 🚀 Optimization: Use the paginated endpoint to search across the entire DB
+      final result = await _shareholderRepository.getPaginatedShareholders(
+        search: query,
+        perPage: 10,
       );
+      
+      _searchResults.clear();
+      _searchResults.addAll(result['shareholders']);
       
       debugPrint('DEBUG: Dashboard search for "$query" found ${_searchResults.length} results');
     } catch (e) {

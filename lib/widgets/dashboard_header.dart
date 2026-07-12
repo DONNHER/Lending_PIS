@@ -25,36 +25,21 @@ class DashboardHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    greeting,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    currentDate,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-              const CircleAvatar(
-                radius: 24,
-                backgroundColor: Color(0xFFC06C4D),
-                child: Icon(Icons.person, color: Colors.white),
-              ),
-            ],
+          Text(
+            greeting,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textDark,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            currentDate,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppTheme.textMuted,
+            ),
           ),
           const SizedBox(height: 24),
           _buildSearchField(context),

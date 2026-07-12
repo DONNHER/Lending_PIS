@@ -18,20 +18,35 @@ class ShareholderController extends Controller
      */
     public function index(Request $request)
     {
-        $searchable = ['first_name', 'last_name', 'email', 'status'];
-        
-        // 🚀 Fix: Eager load 'user' so we can access account status in the frontend
         $query = Shareholder::with(['user']);
 
-        if ($request->boolean('trashed_only')) {
-            $query->onlyTrashed();
-        } elseif ($request->boolean('with_trashed')) {
-            $query->withTrashed();
+        // Handle Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%$search%")
+                  ->orWhere('last_name', 'like', "%$search%")
+                  ->orWhere('email', 'like', "%$search%")
+                  ->orWhere('full_name', 'like', "%$search%");
+            });
         }
 
-        $query->applyControls($request, $searchable);
+        // Sorting - Default to first_name if created_at is problematic
+        $query->orderBy('first_name', 'asc');
 
-        return response()->json(Shareholder::getPaginatedResponse($query, $request));
+        // Manual Pagination to be safe
+        $perPage = $request->get('per_page', 10);
+        $paginated = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $paginated->items(),
+            'meta' => [
+                'total' => $paginated->total(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ]
+        ]);
     }
 
     /**
@@ -40,10 +55,10 @@ class ShareholderController extends Controller
      */
     public function show($id)
     {
-        $shareholder = Shareholder::withTrashed()->with(['user'])->find($id);
+        $shareholder = Shareholder::withTrashed()->with(['user', 'loans'])->find($id);
         
         if (!$shareholder) {
-            $shareholder = Shareholder::withTrashed()->with(['user'])->where('user_id', $id)->first();
+            $shareholder = Shareholder::withTrashed()->with(['user', 'loans'])->where('user_id', $id)->first();
         }
 
         if (!$shareholder) {
