@@ -34,6 +34,10 @@ class AuthViewModel extends ChangeNotifier {
   Uint8List? _avatarBytes;
   bool _removeAvatarRequested = false;
 
+  // 🚀 Impersonation State
+  UserModel? _originalAdminUser;
+  String? _originalAdminToken;
+
   AuthViewModel(
     this._authRepository,
     this._activityLogRepository,
@@ -54,6 +58,9 @@ class AuthViewModel extends ChangeNotifier {
 
   Uint8List? get avatarBytes => _avatarBytes;
   bool get removeAvatarRequested => _removeAvatarRequested;
+
+  bool get isImpersonating => _originalAdminUser != null;
+  UserModel? get originalAdminUser => _originalAdminUser;
 
   AuthStatus get status {
     if (!_isInitialized) return AuthStatus.uninitialized;
@@ -118,7 +125,7 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String email, String password, {bool isAdminLogin = false}) async {
     _isLoading = true;
     _errorMessage = null;
     _isMfaRequired = false;
@@ -135,8 +142,27 @@ class AuthViewModel extends ChangeNotifier {
       }
 
       if (response['token'] != null && response['user'] != null) {
+        final user = UserModel.fromJson(response['user']);
+        
+        // 🚀 ROLE-BASED LOGIN BLOCKING
+        if (isAdminLogin) {
+          if (user.role != UserRole.admin) {
+            _errorMessage = 'Access denied. This login is for Administrators only.';
+            _isLoading = false;
+            notifyListeners();
+            return false;
+          }
+        } else {
+          if (user.role == UserRole.admin) {
+            _errorMessage = 'Administrators must use the secure Admin Login portal.';
+            _isLoading = false;
+            notifyListeners();
+            return false;
+          }
+        }
+
         // 1. Set the user locally immediately
-        _currentUser = UserModel.fromJson(response['user']);
+        _currentUser = user;
         
         // 2. Log activity but don't let it block login if it fails
         try {
@@ -224,6 +250,23 @@ class AuthViewModel extends ChangeNotifier {
         }
       }
       return false;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resendMfa(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _supabase.auth.signInWithOtp(email: email);
+      return true;
     } catch (e) {
       _errorMessage = e.toString();
       return false;
@@ -360,5 +403,33 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = 'Session expired. Please login again.';
     notifyListeners();
     navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+
+  Future<void> startImpersonation(Map<String, dynamic> response) async {
+    if (response['token'] == null || response['user'] == null) return;
+
+    // 1. Save original admin state
+    _originalAdminUser = _currentUser;
+    _originalAdminToken = await _authRepository.getToken();
+
+    // 2. Switch to target user
+    _currentUser = UserModel.fromJson(response['user']);
+    await _authRepository.setToken(response['token']);
+
+    notifyListeners();
+  }
+
+  Future<void> stopImpersonation() async {
+    if (_originalAdminUser == null || _originalAdminToken == null) return;
+
+    // 1. Restore original admin state
+    _currentUser = _originalAdminUser;
+    await _authRepository.setToken(_originalAdminToken!);
+
+    // 2. Clear impersonation data
+    _originalAdminUser = null;
+    _originalAdminToken = null;
+
+    notifyListeners();
   }
 }

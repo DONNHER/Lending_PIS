@@ -47,9 +47,13 @@ class RateHistoryTable extends StatelessWidget {
                   itemCount: history.length,
                   padding: EdgeInsets.zero,
                   separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                  itemBuilder: (context, index) {
+                    itemBuilder: (context, index) {
                     final item = history[index];
-                    return _buildRow(item);
+                    return InkWell(
+                      onTap: () {},
+                      hoverColor: const Color(0xFFC06C4D).withOpacity(0.05),
+                      child: _buildRow(item),
+                    );
                   },
                 ),
         ),

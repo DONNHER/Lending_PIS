@@ -68,13 +68,16 @@ class _LoanEvaluationBody extends StatelessWidget {
         return Scaffold(
           backgroundColor: const Color(0xFFFDF8F5),
           appBar: AppBar(
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.white,
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Color(0xFF32211A)),
               onPressed: onBack ?? () => Navigator.pop(context),
             ),
-            title: const Text('Loan Evaluation', style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)),
+            title: const Text(
+              'Loan Evaluation', 
+              style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+            ),
           ),
           body: SafeArea(
             child: SingleChildScrollView(

@@ -25,7 +25,26 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: const Color(0xFFFDF8F5),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Transactions', 
+          style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+        ),
+        actions: [
+          Consumer<TransactionViewModel>(
+            builder: (context, viewModel, _) => IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+              onPressed: viewModel.refresh,
+              tooltip: 'Refresh',
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Consumer<TransactionViewModel>(
         builder: (context, viewModel, child) {
           return Column(
@@ -53,7 +72,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         Expanded(
                           child: TransactionTable(
                             transactions: viewModel.transactions,
-                            isLoading: viewModel.isLoading && viewModel.transactions.isEmpty,
+                            isLoading: viewModel.isLoading,
                             onView: (tx) {
                               showDialog(
                                 context: context,
@@ -86,24 +105,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   Widget _buildActionBar(TransactionViewModel viewModel) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       child: Column(
         children: [
-          Row(
-            children: [
-              const Text(
-                'Transactions',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: viewModel.refresh,
-                icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMuted),
-                tooltip: 'Refresh',
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
           Row(
             children: [
               _buildFilterDropdown(

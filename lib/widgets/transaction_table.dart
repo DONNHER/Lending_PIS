@@ -58,6 +58,7 @@ class TransactionTable extends StatelessWidget {
                     final tx = transactions[index];
                     return InkWell(
                       onTap: () => onView(tx),
+                      hoverColor: const Color(0xFFC06C4D).withOpacity(0.05),
                       child: _buildRow(tx),
                     );
                   },

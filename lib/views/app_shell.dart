@@ -77,15 +77,22 @@ class _AppShellState extends State<AppShell> {
 
         return Scaffold(
           body: SafeArea(
-            child: Row(
+            child: Column(
               children: [
-                _TabletRail(
-                  items: filteredItems,
-                  selectedIndex: nav.selectedIndex,
-                  onDestinationSelected: nav.navigateTo,
+                if (auth.isImpersonating) _buildImpersonationBanner(context, auth, nav),
+                Expanded(
+                  child: Row(
+                    children: [
+                      _TabletRail(
+                        items: filteredItems,
+                        selectedIndex: nav.selectedIndex,
+                        onDestinationSelected: nav.navigateTo,
+                      ),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: _buildPage(filteredItems, nav.selectedIndex)),
+                    ],
+                  ),
                 ),
-                const VerticalDivider(width: 1),
-                Expanded(child: _buildPage(filteredItems, nav.selectedIndex)),
               ],
             ),
           ),
@@ -332,6 +339,9 @@ class _AppShellState extends State<AppShell> {
         return const InterestManagementPage();
       case '/activity-logs':
         return const ActivityLogsPage();
+      case '/shareholder-dashboard':
+        // 🚀 Redirect to user dashboard if impersonating or is shareholder
+        return _placeholderPage(title: 'Shareholder Dashboard', icon: Icons.dashboard_rounded);
       default:
         return _placeholderPage(
           title: route
@@ -345,6 +355,40 @@ class _AppShellState extends State<AppShell> {
           icon: items[selectedIndex].icon,
         );
     }
+  }
+
+  Widget _buildImpersonationBanner(BuildContext context, AuthViewModel auth, NavigationViewModel nav) {
+    return Container(
+      color: Colors.amber[100],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'You are currently impersonating ${auth.currentUser?.fullName} (ID: ${auth.currentUser?.id.substring(0, 8)}...).',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await auth.stopImpersonation();
+              // Back to users management
+              final items = nav.getFilteredNavItems();
+              final idx = items.indexWhere((it) => it.route == '/users');
+              if (idx != -1) nav.navigateTo(idx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            child: const Text('Exit Session'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _placeholderPage(
@@ -487,6 +531,7 @@ class _TabletRail extends StatefulWidget {
 
 class _TabletRailState extends State<_TabletRail> {
   bool _extended = false;
+  int? _hoveredIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -501,30 +546,30 @@ class _TabletRailState extends State<_TabletRail> {
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
             child: _extended
                 ? Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 _logoIcon(),
                 const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Engr Canteen',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: AppTheme.textDark,
-                        ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Engr Canteen',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppTheme.textDark,
                       ),
-                      Text(
-                        'Lending',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textMuted,
-                        ),
+                    ),
+                    const Text(
+                      'Lending',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textMuted,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             )
@@ -538,49 +583,75 @@ class _TabletRailState extends State<_TabletRail> {
               onDestinationSelected: widget.onDestinationSelected,
               labelType: _extended
                   ? NavigationRailLabelType.none
-                  : NavigationRailLabelType.selected,
+                  : NavigationRailLabelType.all,
+              unselectedLabelTextStyle: const TextStyle(
+                fontSize: 10,
+                color: Colors.transparent, // Hide by default
+              ),
+              selectedLabelTextStyle: const TextStyle(
+                fontSize: 10,
+                color: AppTheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
               leading: const SizedBox.shrink(),
-              trailing: Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Divider(),
-                        IconButton(
-                          icon: Icon(
-                            _extended
-                                ? Icons.chevron_left_rounded
-                                : Icons.chevron_right_rounded,
-                            color: AppTheme.textMuted,
-                          ),
-                          onPressed: () =>
-                              setState(() => _extended = !_extended),
-                          tooltip: _extended ? 'Collapse' : 'Expand',
+              trailing: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Divider(),
+                      IconButton(
+                        icon: Icon(
+                          _extended
+                              ? Icons.chevron_left_rounded
+                              : Icons.chevron_right_rounded,
+                          color: AppTheme.textMuted,
                         ),
-                        const SizedBox(height: 4),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.person_outline_rounded,
-                            color: AppTheme.textMuted,
-                          ),
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminSettingsScreen())),
-                          tooltip: 'Account Settings',
+                        onPressed: () =>
+                            setState(() => _extended = !_extended),
+                        tooltip: _extended ? 'Collapse' : 'Expand',
+                      ),
+                      const SizedBox(height: 4),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.person_outline_rounded,
+                          color: AppTheme.textMuted,
                         ),
-                      ],
-                    ),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminSettingsScreen())),
+                        tooltip: 'Account Settings',
+                      ),
+                    ],
                   ),
                 ),
               ),
-              destinations: widget.items
-                  .map((item) => NavigationRailDestination(
-                icon: Icon(item.icon),
-                selectedIcon: Icon(item.activeIcon),
-                label: Text(item.label),
-              ))
-                  .toList(),
+              destinations: widget.items.asMap().entries.map((entry) {
+                final int idx = entry.key;
+                final item = entry.value;
+                final bool isHovered = _hoveredIndex == idx;
+                final bool isSelected = widget.selectedIndex == idx;
+
+                return NavigationRailDestination(
+                  icon: MouseRegion(
+                    onEnter: (_) => setState(() => _hoveredIndex = idx),
+                    onExit: (_) => setState(() => _hoveredIndex = null),
+                    child: Icon(item.icon),
+                  ),
+                  selectedIcon: Icon(item.activeIcon),
+                  label: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: (isSelected || isHovered)
+                          ? AppTheme.primary
+                          : Colors.transparent,
+                    ),
+                    child: Text(item.label),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ],

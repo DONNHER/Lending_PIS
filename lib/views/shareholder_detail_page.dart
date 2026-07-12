@@ -31,15 +31,28 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: const Color(0xFFFDF8F5),
       appBar: AppBar(
-        title: const Text('Shareholder Details', style: TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0,
         backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF32211A)),
           onPressed: widget.onBack ?? () => Navigator.pop(context),
         ),
+        title: const Text(
+          'Shareholder Details', 
+          style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+        ),
+        actions: [
+          Consumer<ShareholderDetailViewModel>(
+            builder: (context, viewModel, _) => IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+              onPressed: () => viewModel.loadShareholder(widget.shareholderId),
+              tooltip: 'Refresh',
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Consumer<ShareholderDetailViewModel>(
         builder: (context, viewModel, child) {
@@ -59,19 +72,28 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
               children: [
                 _buildHeader(context, person),
                 const SizedBox(height: 24),
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(flex: 2, child: _buildInfoCard(person)),
-                      const SizedBox(width: 24),
-                      Expanded(flex: 3, child: _buildLoanSection(context, viewModel)),
-                    ],
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 2, child: _buildInfoCard(person)),
+                    const SizedBox(width: 24),
+                    if (person.id.isNotEmpty)
+                      Expanded(
+                        flex: 3, 
+                        child: SizedBox(
+                          height: 350, // Fixed height to prevent IntrinsicHeight crash
+                          child: _buildLoanSection(context, viewModel)
+                        )
+                      )
+                    else
+                      const Spacer(flex: 3),
+                  ],
                 ),
                 const SizedBox(height: 24),
-                _buildStats(viewModel),
-                const SizedBox(height: 24),
+                if (person.id.isNotEmpty) ...[
+                  _buildStats(viewModel),
+                  const SizedBox(height: 24),
+                ],
                 _buildActivitySection(context, viewModel),
               ],
             ),
@@ -117,31 +139,36 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    color: (person.id.isEmpty ? Colors.blue : const Color(0xFF10B981)).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    'ACTIVE SHAREHOLDER',
-                    style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold),
+                  child: Text(
+                    person.id.isEmpty ? 'ADMINISTRATOR' : 'ACTIVE SHAREHOLDER',
+                    style: TextStyle(
+                      color: person.id.isEmpty ? Colors.blue : const Color(0xFF10B981), 
+                      fontSize: 10, 
+                      fontWeight: FontWeight.bold
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AddShareCapitalPage(shareholder: person)),
+          if (person.id.isNotEmpty)
+            ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AddShareCapitalPage(shareholder: person)),
+              ),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Share Capital'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC06C4D),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                minimumSize: const Size(0, 48), // Fix: Prevents infinite width crash in Row
+              ),
             ),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add Share Capital'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC06C4D),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              minimumSize: const Size(0, 48), // Fix: Prevents infinite width crash in Row
-            ),
-          ),
         ],
       ),
     );

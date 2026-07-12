@@ -69,166 +69,171 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Avatar Selection Section
-              Center(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 110,
-                      height: 110,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Avatar Selection Section
+                  Center(
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 110,
+                          height: 110,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+                            border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 4),
+                          ),
+                          child: ClipOval(
+                            child: authViewModel.avatarBytes != null
+                                ? Image.memory(authViewModel.avatarBytes!, fit: BoxFit.cover)
+                                : (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty && !authViewModel.removeAvatarRequested)
+                                    ? Image.network(
+                                        user.avatarUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
+                                      )
+                                    : const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+
+                              if (hasAvatar) const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => authViewModel.pickAvatar(),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                                  child: const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
+                                ),
+                              ),
+                              if (hasAvatar)
+                                GestureDetector(
+                                  onTap: () => authViewModel.removeAvatar(),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                                    child: const Icon(Icons.delete_rounded, size: 18, color: Colors.white),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  _buildTextField('First Name', _firstNameController, isRequired: false),
+                  const SizedBox(height: 16),
+                  _buildTextField('Last Name', _lastNameController, isRequired: false),
+                  const SizedBox(height: 16),
+                  _buildTextField('Email Address', _emailController, enabled: false, isRequired: false),
+                  
+                  const SizedBox(height: 32),
+                  const Text('Address', style: TextStyle(color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  
+                  InkWell(
+                    onTap: _selectAddress,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
-                        border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.withOpacity(0.2)),
                       ),
-                      child: ClipOval(
-                        child: authViewModel.avatarBytes != null
-                            ? Image.memory(authViewModel.avatarBytes!, fit: BoxFit.cover)
-                            : (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty && !authViewModel.removeAvatarRequested)
-                                ? Image.network(
-                                    user.avatarUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
-                                  )
-                                : const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-
-                          if (hasAvatar) const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => authViewModel.pickAvatar(),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
-                              child: const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
-                            ),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(Icons.location_on_outlined, size: 20, color: AppTheme.textMuted),
                           ),
-                          if (hasAvatar)
-                            GestureDetector(
-                              onTap: () => authViewModel.removeAvatar(),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-                                child: const Icon(Icons.delete_rounded, size: 18, color: Colors.white),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _addressController.text.trim().isEmpty ? 'No address provided' : _addressController.text,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: _addressController.text.trim().isEmpty ? AppTheme.textMuted : AppTheme.textDark,
                               ),
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.edit_outlined, size: 20, color: AppTheme.primary),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              
-              _buildTextField('First Name', _firstNameController, isRequired: false),
-              const SizedBox(height: 16),
-              _buildTextField('Last Name', _lastNameController, isRequired: false),
-              const SizedBox(height: 16),
-              _buildTextField('Email Address', _emailController, enabled: false, isRequired: false),
-              
-              const SizedBox(height: 32),
-              const Text('Address', style: TextStyle(color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              
-              InkWell(
-                onTap: _selectAddress,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.withOpacity(0.2)),
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 2),
-                        child: Icon(Icons.location_on_outlined, size: 20, color: AppTheme.textMuted),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _addressController.text.trim().isEmpty ? 'No address provided' : _addressController.text,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: _addressController.text.trim().isEmpty ? AppTheme.textMuted : AppTheme.textDark,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.edit_outlined, size: 20, color: AppTheme.primary),
-                    ],
-                  ),
-                ),
-              ),
 
-              const SizedBox(height: 48),
-              ElevatedButton(
-                onPressed: authViewModel.isLoading
-                    ? null
-                    : () async {
-                        if (_formKey.currentState!.validate()) {
-                          final success = await authViewModel.updateProfile(
-                            firstName: _firstNameController.text.trim(),
-                            lastName: _lastNameController.text.trim(),
-                            address: _addressController.text.trim(),
-                          );
-                          
-                          if (context.mounted) {
-                            if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Profile updated successfully'),
-                                  backgroundColor: Colors.green,
-                                ),
+                  const SizedBox(height: 48),
+                  ElevatedButton(
+                    onPressed: authViewModel.isLoading
+                        ? null
+                        : () async {
+                            if (_formKey.currentState!.validate()) {
+                              final success = await authViewModel.updateProfile(
+                                firstName: _firstNameController.text.trim(),
+                                lastName: _lastNameController.text.trim(),
+                                address: _addressController.text.trim(),
                               );
-                              Navigator.pop(context);
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(authViewModel.errorMessage ?? 'Update failed'),
-                                  backgroundColor: AppTheme.error,
-                                ),
-                              );
+                              
+                              if (context.mounted) {
+                                if (success) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Profile updated successfully'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                  Navigator.pop(context);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(authViewModel.errorMessage ?? 'Update failed'),
+                                      backgroundColor: AppTheme.error,
+                                    ),
+                                  );
+                                }
+                              }
                             }
-                          }
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(54),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
-                ),
-                child: authViewModel.isLoading
-                    ? const SizedBox(height: 24, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(54),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: authViewModel.isLoading
+                        ? const SizedBox(height: 24, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => _showResetPasswordDialog(context, authViewModel),
+                    child: const Center(
+                      child: Text('Change Password', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => _showResetPasswordDialog(context, authViewModel),
-                child: const Center(
-                  child: Text('Change Password', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

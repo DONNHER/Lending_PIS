@@ -11,6 +11,7 @@ enum UserStatus {
   active,
   inactive,
   suspended,
+  pending,
 }
 
 class UserModel {
@@ -83,6 +84,8 @@ class UserModel {
         return UserStatus.inactive;
       case 'suspended':
         return UserStatus.suspended;
+      case 'pending':
+        return UserStatus.pending;
       default:
         return UserStatus.active;
     }

@@ -31,8 +31,7 @@ class _LoansPageState extends State<LoansPage> {
     if (nav.selectedLoanRequest != null) {
       return LoanEvaluationPage(
         request: nav.selectedLoanRequest!,
-        // Assuming LoanEvaluationPage might need a way to signal "back" 
-        // if it's being used within this internal navigation
+        onBack: () => nav.clearLoanSelection(),
       );
     }
 
@@ -40,11 +39,31 @@ class _LoansPageState extends State<LoansPage> {
       return LoanDetailsPage(
         loanId: nav.selectedLoanId!,
         shareholderId: nav.selectedLoanShareholderId ?? '',
+        onBack: () => nav.clearLoanSelection(),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: const Color(0xFFFDF8F5),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Loan Management', 
+          style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+        ),
+        actions: [
+          Consumer<LoanRequestViewModel>(
+            builder: (context, viewModel, _) => IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+              onPressed: viewModel.refresh,
+              tooltip: 'Refresh',
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Consumer<LoanRequestViewModel>(
         builder: (context, viewModel, child) {
           return Column(
@@ -72,7 +91,7 @@ class _LoansPageState extends State<LoansPage> {
                         Expanded(
                           child: LoanRequestsTable(
                             requests: viewModel.loanRequests,
-                            isLoading: viewModel.isLoading && viewModel.loanRequests.isEmpty,
+                            isLoading: viewModel.isLoading,
                             onView: (request) {
                               nav.navigateToLoanRequest(request);
                             },
@@ -102,24 +121,9 @@ class _LoansPageState extends State<LoansPage> {
 
   Widget _buildActionBar(LoanRequestViewModel viewModel) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       child: Column(
         children: [
-          Row(
-            children: [
-              const Text(
-                'Loan Management',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: viewModel.refresh,
-                icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMuted),
-                tooltip: 'Refresh',
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
           Row(
             children: [
               _buildFilterDropdown(

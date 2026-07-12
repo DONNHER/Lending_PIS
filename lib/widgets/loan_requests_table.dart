@@ -57,6 +57,7 @@ class LoanRequestsTable extends StatelessWidget {
                     final req = requests[index];
                     return InkWell(
                       onTap: () => onView(req),
+                      hoverColor: const Color(0xFFC06C4D).withOpacity(0.05),
                       child: _buildRow(req),
                     );
                   },

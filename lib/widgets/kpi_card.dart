@@ -18,7 +18,8 @@ class KpiCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        height: 110, // Fixed height for alignment
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -34,6 +35,7 @@ class KpiCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Icon at Top Left
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
@@ -42,27 +44,34 @@ class KpiCard extends StatelessWidget {
               ),
               child: Icon(data.icon, color: data.color, size: 16),
             ),
-            const SizedBox(height: 12),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                data.value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textDark,
+            
+            // Total Value in the Middle
+            Expanded(
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    data.value,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 2),
+            
+            // Label at Bottom Left
             Text(
-              data.label,
+              data.label.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 9,
                 color: AppTheme.textMuted,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
               ),
             ),
           ],

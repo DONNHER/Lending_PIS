@@ -50,26 +50,30 @@ class DashboardHeader extends StatelessWidget {
 
   Widget _buildSearchField(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextField(
-          onChanged: onSearch,
-          decoration: InputDecoration(
-            hintText: 'Search shareholders by name or email...',
-            prefixIcon: const Icon(Icons.search, color: Color(0xFFC06C4D)),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFC06C4D), width: 2),
+        SizedBox(
+          width: 400, // Fixed width similar to users_page
+          child: TextField(
+            onChanged: onSearch,
+            decoration: InputDecoration(
+              hintText: 'Search shareholders by name or email...',
+              prefixIcon: const Icon(Icons.search, color: Color(0xFFC06C4D)),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFC06C4D), width: 2),
+              ),
             ),
           ),
         ),
@@ -80,6 +84,7 @@ class DashboardHeader extends StatelessWidget {
             color: Colors.transparent,
             child: Container(
               margin: const EdgeInsets.only(top: 8),
+              width: 400, // Match search field width
               constraints: const BoxConstraints(maxHeight: 300),
               decoration: BoxDecoration(
                 color: Colors.white,

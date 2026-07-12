@@ -24,6 +24,10 @@ class AuthRepository {
     await _apiService.setToken(token);
   }
 
+  Future<String?> getToken() async {
+    return await _apiService.getToken();
+  }
+
   Future<Map<String, dynamic>> register({
     required String username,
     required String email,

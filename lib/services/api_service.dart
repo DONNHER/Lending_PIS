@@ -128,8 +128,16 @@ class ApiService {
         }
 
         String errorMessage = 'API Error ${response.statusCode}';
-        if (decoded is Map && decoded.containsKey('message')) {
-          errorMessage = decoded['message'];
+        if (decoded is Map) {
+          if (decoded.containsKey('errors') && decoded['errors'] is Map) {
+            final Map<String, dynamic> errors = decoded['errors'];
+            final firstErrorList = errors.values.first;
+            if (firstErrorList is List && firstErrorList.isNotEmpty) {
+              errorMessage = firstErrorList.first.toString();
+            }
+          } else if (decoded.containsKey('message')) {
+            errorMessage = decoded['message'];
+          }
         }
         
         throw Exception(errorMessage);

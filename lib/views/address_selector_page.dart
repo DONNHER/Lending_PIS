@@ -88,157 +88,162 @@ class _AddressSelectorPageState extends State<AddressSelectorPage> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Philippine Address Selection',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textMuted,
-                    letterSpacing: 1.1),
-              ),
-              const SizedBox(height: 24),
-
-              // 1. REGION
-              _buildLabel('Region'),
-              PhilippineRegionDropdownView(
-                value: selectedRegion,
-                onChanged: (dynamic value) {
-                  setState(() {
-                    if (selectedRegion != value) {
-                      selectedProvince = null;
-                      selectedMunicipality = null;
-                      selectedBarangay = null;
-                    }
-                    selectedRegion = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // 2. PROVINCE
-              _buildLabel('Province'),
-              PhilippineProvinceDropdownView(
-                provinces: _getProvinces(),
-                value: selectedProvince,
-                onChanged: (dynamic value) {
-                  setState(() {
-                    if (selectedProvince != value) {
-                      selectedMunicipality = null;
-                      selectedBarangay = null;
-                    }
-                    selectedProvince = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // 3. CITY / MUNICIPALITY
-              _buildLabel('City / Municipality'),
-              PhilippineMunicipalityDropdownView(
-                municipalities: _getMunicipalities(),
-                value: selectedMunicipality,
-                onChanged: (dynamic value) {
-                  setState(() {
-                    if (selectedMunicipality != value) {
-                      selectedBarangay = null;
-                    }
-                    selectedMunicipality = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // 4. BARANGAY
-              _buildLabel('Barangay'),
-              PhilippineBarangayDropdownView(
-                barangays: _getBarangays(),
-                value: selectedBarangay,
-                onChanged: (dynamic value) {
-                  setState(() => selectedBarangay = value);
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // 5. HOUSE NUMBER & STREET
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('House/Unit No.'),
-                        TextFormField(
-                          controller: _houseNumberController,
-                          decoration: _inputDecoration('e.g. Blk 2 Lot 4'),
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty)
-                                  ? 'Required'
-                                  : null,
-                        ),
-                      ],
-                    ),
+                  const Text(
+                    'Philippine Address Selection',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textMuted,
+                        letterSpacing: 1.1),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('Street Name'),
-                        TextFormField(
-                          controller: _streetController,
-                          decoration: _inputDecoration('e.g. Rizal St.'),
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty)
-                                  ? 'Required'
-                                  : null,
+                  const SizedBox(height: 24),
+
+                  // 1. REGION
+                  _buildLabel('Region'),
+                  PhilippineRegionDropdownView(
+                    value: selectedRegion,
+                    onChanged: (dynamic value) {
+                      setState(() {
+                        if (selectedRegion != value) {
+                          selectedProvince = null;
+                          selectedMunicipality = null;
+                          selectedBarangay = null;
+                        }
+                        selectedRegion = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 2. PROVINCE
+                  _buildLabel('Province'),
+                  PhilippineProvinceDropdownView(
+                    provinces: _getProvinces(),
+                    value: selectedProvince,
+                    onChanged: (dynamic value) {
+                      setState(() {
+                        if (selectedProvince != value) {
+                          selectedMunicipality = null;
+                          selectedBarangay = null;
+                        }
+                        selectedProvince = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 3. CITY / MUNICIPALITY
+                  _buildLabel('City / Municipality'),
+                  PhilippineMunicipalityDropdownView(
+                    municipalities: _getMunicipalities(),
+                    value: selectedMunicipality,
+                    onChanged: (dynamic value) {
+                      setState(() {
+                        if (selectedMunicipality != value) {
+                          selectedBarangay = null;
+                        }
+                        selectedMunicipality = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 4. BARANGAY
+                  _buildLabel('Barangay'),
+                  PhilippineBarangayDropdownView(
+                    barangays: _getBarangays(),
+                    value: selectedBarangay,
+                    onChanged: (dynamic value) {
+                      setState(() => selectedBarangay = value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 5. HOUSE NUMBER & STREET
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('House/Unit No.'),
+                            TextFormField(
+                              controller: _houseNumberController,
+                              decoration: _inputDecoration('e.g. Blk 2 Lot 4'),
+                              validator: (value) =>
+                                  (value == null || value.trim().isEmpty)
+                                      ? 'Required'
+                                      : null,
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('Street Name'),
+                            TextFormField(
+                              controller: _streetController,
+                              decoration: _inputDecoration('e.g. Rizal St.'),
+                              validator: (value) =>
+                                  (value == null || value.trim().isEmpty)
+                                      ? 'Required'
+                                      : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 40),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState!.validate() &&
+                          selectedBarangay != null) {
+                        
+                        String bName = _getName(selectedBarangay);
+                        String mName = _getName(selectedMunicipality);
+                        String pName = _getName(selectedProvince);
+
+                        String fullAddress =
+                            "${_houseNumberController.text.trim()}, ${_streetController.text.trim()}, Brgy. $bName, $mName, $pName";
+                        
+                        Navigator.pop(context, fullAddress);
+                      } else if (selectedBarangay == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Please select a complete address')),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
+                    child: const Text('Save and Use Address',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate() &&
-                      selectedBarangay != null) {
-                    
-                    String bName = _getName(selectedBarangay);
-                    String mName = _getName(selectedMunicipality);
-                    String pName = _getName(selectedProvince);
-
-                    String fullAddress =
-                        "${_houseNumberController.text.trim()}, ${_streetController.text.trim()}, Brgy. $bName, $mName, $pName";
-                    
-                    Navigator.pop(context, fullAddress);
-                  } else if (selectedBarangay == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              'Please select a complete address')),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: const Text('Save and Use Address',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-            ],
+            ),
           ),
         ),
       ),

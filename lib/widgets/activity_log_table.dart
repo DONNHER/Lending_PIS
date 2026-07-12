@@ -50,7 +50,11 @@ class ActivityLogTable extends StatelessWidget {
                   separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
                   itemBuilder: (context, index) {
                     final log = logs[index];
-                    return _buildRow(log);
+                    return InkWell(
+                      onTap: () {}, // Optional: Add detail view later
+                      hoverColor: const Color(0xFFC06C4D).withOpacity(0.05),
+                      child: _buildRow(log),
+                    );
                   },
                 ),
         ),

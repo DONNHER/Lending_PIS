@@ -8,6 +8,7 @@ import '../viewmodels/shareholder_viewmodel.dart';
 import '../viewmodels/transaction_viewmodel.dart';
 import '../viewmodels/activity_log_viewmodel.dart';
 import '../viewmodels/update_interest_viewmodel.dart';
+import '../viewmodels/user_management_viewmodel.dart';
 import '../widgets/auth_text_field.dart';
 import 'registration_page.dart';
 import 'forgot_password_page.dart';
@@ -83,6 +84,7 @@ class _LoginContentState extends State<_LoginContent>
     final success = await viewModel.login(
       _emailController.text,
       _passwordController.text,
+      isAdminLogin: false,
     );
 
     debugPrint('DEBUG: [LoginPage] Login success status: $success');
@@ -94,6 +96,7 @@ class _LoginContentState extends State<_LoginContent>
           context.read<DashboardViewModel>().initDashboard(),
           context.read<LoanRequestViewModel>().fetchLoanRequests(),
           context.read<ShareholderViewModel>().fetchShareholders(),
+          context.read<UserManagementViewModel>().fetchUsers(),
           context.read<TransactionViewModel>().fetchTransactions(),
           context.read<ActivityLogViewModel>().fetchLogs(),
           context.read<UpdateInterestViewModel>().loadData(),

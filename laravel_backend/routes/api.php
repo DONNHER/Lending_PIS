@@ -77,7 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
             'destroy' => 'api.admin.users.destroy',
         ]);
         Route::get('/admin/users/{id}/login-history', [UserController::class, 'loginHistory']);
-        
+        Route::post('/admin/users/{id}/impersonate', [UserController::class, 'impersonate']);
+
         // 🚀 Status & Address Updates
         Route::match(['PUT', 'POST'], '/admin/users/{id}/status', [UserController::class, 'updateStatus']);
         Route::match(['PUT', 'POST'], '/admin/users/{id}/address', [UserController::class, 'updateAddress']);

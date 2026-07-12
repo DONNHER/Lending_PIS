@@ -24,32 +24,65 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: const Color(0xFFFDF8F5),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Interest Management', 
+          style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+        ),
+        actions: [
+          Consumer<UpdateInterestViewModel>(
+            builder: (context, viewModel, _) => IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+              onPressed: viewModel.refresh,
+              tooltip: 'Refresh',
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Consumer<UpdateInterestViewModel>(
         builder: (context, viewModel, child) {
-          return Column(
-            children: [
-              _buildActionBar(viewModel),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildCurrentRateCard(context, viewModel),
-                      const SizedBox(height: 32),
-                      const Text(
-                        'Rate History',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: Column(
+                children: [
+                  _buildActionBar(viewModel),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildCurrentRateCard(context, viewModel),
+                          const SizedBox(height: 24),
+                          _buildFilterDropdown(
+                            label: 'Sort By',
+                            value: viewModel.sortOrder,
+                            items: ['Newest', 'Oldest'],
+                            onChanged: (val) {
+                              if (val != null) viewModel.setSortOrder(val);
+                            },
+                          ),
+                          const SizedBox(height: 32),
+                          const Text(
+                            'Rate History',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildHistoryTable(viewModel),
+                          const SizedBox(height: 32),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      _buildHistoryTable(viewModel),
-                      const SizedBox(height: 32),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           );
         },
       ),
@@ -58,35 +91,16 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
 
   Widget _buildActionBar(UpdateInterestViewModel viewModel) {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Text(
-                'Interest Management',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: viewModel.refresh,
-                icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMuted),
-                tooltip: 'Refresh',
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              _buildFilterDropdown(
-                label: 'Sort By',
-                value: viewModel.sortOrder,
-                items: ['Newest', 'Oldest'],
-                onChanged: (val) {
-                  if (val != null) viewModel.setSortOrder(val);
-                },
-              ),
-            ],
+          _buildFilterDropdown(
+            label: 'Sort By',
+            value: viewModel.sortOrder,
+            items: ['Newest', 'Oldest'],
+            onChanged: (val) {
+              if (val != null) viewModel.setSortOrder(val);
+            },
           ),
         ],
       ),

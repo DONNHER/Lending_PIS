@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../viewmodels/shareholder_viewmodel.dart';
+import '../repositories/user_repository.dart';
+import '../viewmodels/auth_viewmodel.dart';
+import '../viewmodels/user_management_viewmodel.dart';
 import '../viewmodels/navigation_viewmodel.dart';
 import '../app_theme.dart';
-import '../widgets/shareholder_table.dart';
+import '../widgets/user_table.dart';
 import '../widgets/page_turner.dart';
 import 'shareholder_detail_page.dart';
+import 'add_shareholder_page.dart';
 
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
@@ -16,13 +19,12 @@ class UsersPage extends StatefulWidget {
 
 class _UsersPageState extends State<UsersPage> {
   final TextEditingController _searchController = TextEditingController();
-  String? _selectedShareholderId;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ShareholderViewModel>().fetchShareholders();
+      context.read<UserManagementViewModel>().fetchUsers();
     });
   }
 
@@ -34,89 +36,144 @@ class _UsersPageState extends State<UsersPage> {
 
   @override
   Widget build(BuildContext context) {
-    final nav = context.watch<NavigationViewModel>();
-    final selectedId = nav.selectedShareholderId;
+    return Consumer<NavigationViewModel>(
+      builder: (context, nav, child) {
+        final selectedId = nav.selectedShareholderId;
 
-    if (selectedId != null) {
-      return ShareholderDetailPage(
-        shareholderId: selectedId,
-        onBack: () => nav.clearShareholderSelection(),
-      );
-    }
+        if (selectedId != null) {
+          return ShareholderDetailPage(
+            shareholderId: selectedId,
+            onBack: () => nav.clearShareholderSelection(),
+          );
+        }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      body: Consumer<ShareholderViewModel>(
-        builder: (context, viewModel, child) {
-          return Column(
-            children: [
-              // Search and Action Bar
-              _buildActionBar(viewModel),
-
-              // Table Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: ShareholderTable(
-                            shareholders: viewModel.shareholders,
-                            isLoading: viewModel.isLoading && viewModel.shareholders.isEmpty,
-                            onView: (shareholder) {
-                              nav.navigateToShareholder(shareholder.id);
-                            },
-                          ),
-                        ),
-                        // Pagination
-                        PageTurner(
-                          currentPage: viewModel.currentPage,
-                          totalPages: viewModel.lastPage,
-                          totalRows: viewModel.totalRows,
-                          rowsPerPage: viewModel.rowsPerPage,
-                          onPageChanged: viewModel.setPage,
-                          onRowsPerPageChanged: (val) {
-                            if (val != null) viewModel.setRowsPerPage(val);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+        return Scaffold(
+          backgroundColor: const Color(0xFFFDF8F5),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Users Management', 
+              style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+            ),
+            actions: [
+              Consumer<UserManagementViewModel>(
+                builder: (context, viewModel, _) => IconButton(
+                  icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+                  onPressed: viewModel.refresh,
+                  tooltip: 'Refresh',
                 ),
               ),
+              const SizedBox(width: 8),
             ],
-          );
-        },
-      ),
+          ),
+          body: Consumer<UserManagementViewModel>(
+            builder: (context, viewModel, child) {
+              return Column(
+                children: [
+                  // Search and Action Bar
+                  _buildActionBar(viewModel),
+
+                  // Table Content
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.02),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: UserTable(
+                              users: viewModel.users,
+                              isLoading: viewModel.isLoading,
+                              onView: (user) {
+                                nav.navigateToShareholder(user.id);
+                              },
+                              onImpersonate: (user) async {
+                                try {
+                                  final repo = context.read<UserRepository>();
+                                  final response = await repo.impersonate(user.id);
+                                  
+                                  final authModel = context.read<AuthViewModel>();
+                                  await authModel.startImpersonation(response);
+                                  
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Now impersonating ${user.fullName}'),
+                                        backgroundColor: const Color(0xFFC06C4D),
+                                      ),
+                                    );
+                                    // Navigate to appropriate dashboard
+                                    final route = authModel.dashboardRoute;
+                                    if (route != null) {
+                                      // Find dashboard index
+                                      final navItems = nav.getFilteredNavItems();
+                                      final idx = navItems.indexWhere((it) => it.route == route);
+                                      if (idx != -1) nav.navigateTo(idx);
+                                    }
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Impersonation failed: $e'), backgroundColor: Colors.red),
+                                    );
+                                  }
+                                }
+                              },
+                              onEdit: (user) {
+                                // Handle edit
+                              },
+                              onDelete: (user) {
+                                // Handle delete
+                              },
+                            ),
+                            ),
+                            // Pagination
+                            PageTurner(
+                              currentPage: viewModel.currentPage,
+                              totalPages: viewModel.lastPage,
+                              totalRows: viewModel.totalRows,
+                              rowsPerPage: viewModel.rowsPerPage,
+                              onPageChanged: (page) => viewModel.setPage(page),
+                              onRowsPerPageChanged: (val) {
+                                if (val != null) viewModel.setRowsPerPage(val);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildActionBar(ShareholderViewModel viewModel) {
+  Widget _buildActionBar(UserManagementViewModel viewModel) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       child: Column(
         children: [
           Row(
             children: [
-              const Text(
-                'Shareholders',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-              ),
-              const Spacer(),
               // Search Field
               SizedBox(
                 width: 300,
@@ -141,12 +198,24 @@ class _UsersPageState extends State<UsersPage> {
                   onChanged: viewModel.setSearch,
                 ),
               ),
-              const SizedBox(width: 12),
-              // Refresh Button
-              IconButton(
-                onPressed: viewModel.refresh,
-                icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMuted),
-                tooltip: 'Refresh',
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AddShareholderPage()),
+                  ).then((_) => viewModel.refresh());
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Shareholder'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC06C4D),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                  minimumSize: const Size(0, 40),
+                ),
               ),
             ],
           ),
@@ -154,11 +223,20 @@ class _UsersPageState extends State<UsersPage> {
           Row(
             children: [
               _buildFilterDropdown(
-                label: 'Sort By',
-                value: viewModel.sortOrder,
-                items: ['Name (A-Z)', 'Name (Z-A)', 'Highest Capital', 'Highest Score'],
+                label: 'Role',
+                value: viewModel.roleFilter,
+                items: ['All', 'Admin', 'Shareholder'],
                 onChanged: (val) {
-                  if (val != null) viewModel.setSortOrder(val);
+                  if (val != null) viewModel.setRoleFilter(val);
+                },
+              ),
+              const SizedBox(width: 12),
+              _buildFilterDropdown(
+                label: 'Status',
+                value: viewModel.statusFilter,
+                items: ['All', 'Active', 'Inactive', 'Suspended', 'Pending'],
+                onChanged: (val) {
+                  if (val != null) viewModel.setStatusFilter(val);
                 },
               ),
             ],

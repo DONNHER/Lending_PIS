@@ -155,4 +155,19 @@ class UserController extends Controller
         $user->delete();
         return response()->json(['success' => true, 'message' => 'User soft-deleted successfully']);
     }
+
+    public function impersonate($id)
+    {
+        $targetUser = User::findOrFail($id);
+
+        // 🚀 Create a new token for the target user
+        $token = $targetUser->createToken('impersonation_token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => "Now impersonating {$targetUser->fullName}",
+            'user' => $targetUser->load('shareholder'),
+            'token' => $token
+        ]);
+    }
 }

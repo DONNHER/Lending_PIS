@@ -43,6 +43,9 @@ import 'package:capstone_application/models/user_model.dart';
 
 import 'package:capstone_application/viewmodels/shareholder_detail_viewmodel.dart';
 
+import 'package:capstone_application/viewmodels/user_management_viewmodel.dart';
+import 'package:capstone_application/repositories/user_repository.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "assets/env");
@@ -95,6 +98,7 @@ class CanteenApp extends StatelessWidget {
         Provider(create: (_) => ShareholderRepository(apiService)),
         Provider(create: (_) => TransactionRepository(apiService)),
         Provider(create: (_) => NotificationRepository(apiService)),
+        Provider(create: (_) => UserRepository(apiService)),
         Provider(create: (_) => ConsignmentProductsRepository(apiService)),
         Provider(create: (_) => DailyInventoryRepository(apiService)),
 
@@ -177,6 +181,20 @@ class CanteenApp extends StatelessWidget {
           },
         ),
 
+        ChangeNotifierProxyProvider<AuthViewModel, UserManagementViewModel>(
+          create: (context) => UserManagementViewModel(
+            context.read<UserRepository>(),
+          ),
+          update: (context, auth, model) {
+            if (auth.isAuthenticated && 
+                auth.currentUser?.role == UserRole.admin && 
+                model != null && !model.isInitialized) {
+              model.fetchUsers();
+            }
+            return model!;
+          },
+        ),
+
         ChangeNotifierProxyProvider<AuthViewModel, TransactionViewModel>(
           create: (context) => TransactionViewModel(
             context.read<TransactionRepository>(),
@@ -214,6 +232,20 @@ class CanteenApp extends StatelessWidget {
                 auth.currentUser?.role == UserRole.admin && 
                 model != null && !model.isInitialized) {
               model.loadData();
+            }
+            return model!;
+          },
+        ),
+
+        ChangeNotifierProxyProvider<AuthViewModel, UserManagementViewModel>(
+          create: (context) => UserManagementViewModel(
+            context.read<UserRepository>(),
+          ),
+          update: (context, auth, model) {
+            if (auth.isAuthenticated && 
+                auth.currentUser?.role == UserRole.admin && 
+                model != null && !model.isInitialized) {
+              model.fetchUsers();
             }
             return model!;
           },
