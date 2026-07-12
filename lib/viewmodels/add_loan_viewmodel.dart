@@ -26,7 +26,8 @@ class AddLoanViewModel extends ChangeNotifier {
     this._lendingRepository,
     this._shareholderRepository, {
     this.currentUserId,
-  });
+    ShareholderModel? initialShareholder,
+  }) : _selectedBorrower = initialShareholder;
 
   // Getters
   bool get isLoading => _isLoading;

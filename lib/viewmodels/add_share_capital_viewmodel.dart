@@ -35,12 +35,23 @@ class AddShareCapitalViewModel extends ChangeNotifier {
 
     try {
       final transaction = await transactionRepo.createTransaction(
-        userId: shareholder.id,
+        shareholderId: shareholder.id,
         amount: amount,
         type: 'Capital Contribution',
-        status: 'Success',
+        status: 'Successful',
+        method: _selectedPaymentMethod,
         referenceId: 'CAP-${DateTime.now().millisecondsSinceEpoch}',
+        description: 'Manual Capital Contribution for ${shareholder.fullName}',
       );
+      
+      if (transaction != null) {
+        // Also update the shareholder's total capital on the server
+        await shareholderRepo.updateCapital(
+          shareholder.id, 
+          shareholder.shareCapital + amount
+        );
+      }
+
       return transaction;
     } catch (e) {
       debugPrint('Error executing investment: $e');

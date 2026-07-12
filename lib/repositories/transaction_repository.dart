@@ -53,18 +53,23 @@ class TransactionRepository {
   }
 
   Future<TransactionModel?> createTransaction({
-    required String userId,
+    required String shareholderId,
     required double amount,
     required String type,
     required String status,
     required String referenceId,
+    String method = 'Cash',
+    String? description,
   }) async {
     final response = await _apiService.post('/transactions', body: {
-      'user_id': userId,
+      'shareholder_id': shareholderId,
       'amount': amount,
       'type': type,
       'status': status,
       'reference_id': referenceId,
+      'method': method,
+      'description': description,
+      'date': DateTime.now().toIso8601String(),
     });
     if (response != null && response['data'] != null) {
       return TransactionModel.fromJson(response['data']);

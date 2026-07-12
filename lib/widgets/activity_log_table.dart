@@ -60,7 +60,13 @@ class ActivityLogTable extends StatelessWidget {
 
   Widget _buildRow(dynamic log) {
     final dateFormat = DateFormat('MMM dd, HH:mm:ss');
-    final createdAt = log['created_at'] != null ? DateTime.parse(log['created_at']) : DateTime.now();
+    
+    DateTime createdAt;
+    try {
+      createdAt = log['created_at'] != null ? DateTime.parse(log['created_at']) : DateTime.now();
+    } catch (e) {
+      createdAt = DateTime.now();
+    }
     
     final userName = log['user'] != null 
         ? '${log['user']['firstname']} ${log['user']['lastname']}' 

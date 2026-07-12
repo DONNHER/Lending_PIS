@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import 'add_share_capital_page.dart';
 import 'loan_details_page.dart';
 
+import 'add_loan_page.dart';
+
 class ShareholderDetailPage extends StatefulWidget {
   final String shareholderId;
   const ShareholderDetailPage({super.key, required this.shareholderId});
@@ -52,16 +54,18 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
               children: [
                 _buildHeader(context, person),
                 const SizedBox(height: 24),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 2, child: _buildInfoCard(person)),
-                    const SizedBox(width: 24),
-                    Expanded(flex: 3, child: _buildStats(viewModel)),
-                  ],
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(flex: 2, child: _buildInfoCard(person)),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 3, child: _buildLoanSection(context, viewModel)),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
-                _buildLoanSection(context, viewModel),
+                _buildStats(viewModel),
                 const SizedBox(height: 24),
                 _buildActivitySection(context, viewModel),
               ],
@@ -86,7 +90,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
             radius: 40,
             backgroundColor: AppTheme.primary.withOpacity(0.1),
             child: Text(
-              person.firstName[0],
+              person.firstName.isNotEmpty ? person.firstName[0] : '?',
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primary),
             ),
           ),
@@ -130,6 +134,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
               backgroundColor: const Color(0xFFC06C4D),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              minimumSize: const Size(0, 48), // Fix: Prevents infinite width crash in Row
             ),
           ),
         ],
@@ -139,7 +144,11 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
 
   Widget _buildLoanSection(BuildContext context, ShareholderDetailViewModel viewModel) {
     final currencyFormat = NumberFormat.currency(symbol: '₱');
-    
+    final activeLoan = viewModel.loans.firstWhere(
+      (l) => l['status']?.toString().toLowerCase() == 'active',
+      orElse: () => null,
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -157,69 +166,123 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(20.0),
-            child: Text(
-              'Loan Accounts',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Loan Accounts',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                ),
+                if (activeLoan == null)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddLoanPage(
+                            shareholder: viewModel.shareholder!,
+                          ),
+                        ),
+                      ).then((_) => viewModel.loadShareholder(widget.shareholderId));
+                    },
+                    icon: const Icon(Icons.add_circle_outline, size: 16),
+                    label: const Text('Request Loan'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFC06C4D),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: const Size(0, 36),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LoanDetailsPage(
+                            loanId: activeLoan['id'],
+                            shareholderId: viewModel.shareholder!.id,
+                          ),
+                        ),
+                      ).then((_) => viewModel.loadShareholder(widget.shareholderId));
+                    },
+                    icon: const Icon(Icons.visibility_outlined, size: 16),
+                    label: const Text('View Loan'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFC06C4D),
+                      side: const BorderSide(color: Color(0xFFC06C4D)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: const Size(0, 36),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+              ],
             ),
           ),
           if (viewModel.loans.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24.0),
+            const Expanded(
               child: Center(child: Text('No active loans found', style: TextStyle(color: AppTheme.textMuted))),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: viewModel.loans.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final loan = viewModel.loans[index];
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  title: Text(
-                    'Loan ID: ${loan['id'].toString().substring(0, 8)}...',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  subtitle: Text(
-                    'Principal: ${currencyFormat.format(double.tryParse(loan['principal_amount'].toString()) ?? 0.0)}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: (loan['status'] == 'active' ? Colors.green : Colors.orange).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          loan['status'].toString().toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: loan['status'] == 'active' ? Colors.green : Colors.orange,
+            Expanded(
+              child: ListView.separated(
+                padding: EdgeInsets.zero,
+                itemCount: viewModel.loans.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final loan = viewModel.loans[index];
+                  final String rawId = loan['id']?.toString() ?? 'N/A';
+                  final String displayId = rawId.length > 8 ? rawId.substring(0, 8) : rawId;
+                  
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    title: Text(
+                      'Loan ID: $displayId...',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    subtitle: Text(
+                      'Principal: ${currencyFormat.format(double.tryParse(loan['principal_amount'].toString()) ?? 0.0)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: (loan['status'] == 'active' ? Colors.green : Colors.orange).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            loan['status'].toString().toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: loan['status'] == 'active' ? Colors.green : Colors.orange,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.chevron_right, color: AppTheme.textMuted),
-                    ],
-                  ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LoanDetailsPage(
-                        loanId: loan['id'],
-                        shareholderId: viewModel.shareholder!.id,
+                        const SizedBox(width: 12),
+                        const Icon(Icons.chevron_right, color: AppTheme.textMuted),
+                      ],
+                    ),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LoanDetailsPage(
+                          loanId: loan['id'],
+                          shareholderId: viewModel.shareholder!.id,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
         ],
       ),

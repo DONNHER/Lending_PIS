@@ -59,4 +59,10 @@ class ShareholderRepository {
   Future<void> addShareholder(Map<String, dynamic> data) async {
     await _apiService.post('/shareholders', body: data);
   }
+
+  Future<void> updateCapital(String shareholderId, double newTotal) async {
+    await _apiService.post('/shareholders/$shareholderId/capital', body: {
+      'total_share_capital': newTotal,
+    });
+  }
 }

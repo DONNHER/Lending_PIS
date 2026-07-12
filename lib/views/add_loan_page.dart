@@ -7,8 +7,11 @@ import '../repositories/shareholder_repository.dart';
 import '../viewmodels/add_loan_viewmodel.dart';
 import '../widgets/shareholder_search_overlay.dart';
 
+import '../models/shareholder_model.dart';
+
 class AddLoanPage extends StatelessWidget {
-  const AddLoanPage({super.key});
+  final ShareholderModel? shareholder;
+  const AddLoanPage({super.key, this.shareholder});
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +19,7 @@ class AddLoanPage extends StatelessWidget {
       create: (context) => AddLoanViewModel(
         context.read<LendingRepository>(),
         context.read<ShareholderRepository>(),
+        initialShareholder: shareholder,
       ),
       child: const _AddLoanBody(),
     );
