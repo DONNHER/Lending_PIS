@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/loan_request_viewmodel.dart';
+import '../viewmodels/navigation_viewmodel.dart';
 import '../app_theme.dart';
 import '../widgets/loan_requests_table.dart';
 import '../widgets/page_turner.dart';
 import 'loan_evaluation_page.dart';
+import 'loan_details_page.dart';
 
 class LoansPage extends StatefulWidget {
   const LoansPage({super.key});
@@ -24,6 +26,23 @@ class _LoansPageState extends State<LoansPage> {
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavigationViewModel>();
+    
+    if (nav.selectedLoanRequest != null) {
+      return LoanEvaluationPage(
+        request: nav.selectedLoanRequest!,
+        // Assuming LoanEvaluationPage might need a way to signal "back" 
+        // if it's being used within this internal navigation
+      );
+    }
+
+    if (nav.selectedLoanId != null) {
+      return LoanDetailsPage(
+        loanId: nav.selectedLoanId!,
+        shareholderId: nav.selectedLoanShareholderId ?? '',
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: Consumer<LoanRequestViewModel>(
@@ -55,12 +74,7 @@ class _LoansPageState extends State<LoansPage> {
                             requests: viewModel.loanRequests,
                             isLoading: viewModel.isLoading && viewModel.loanRequests.isEmpty,
                             onView: (request) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LoanEvaluationPage(request: request),
-                                ),
-                              );
+                              nav.navigateToLoanRequest(request);
                             },
                           ),
                         ),

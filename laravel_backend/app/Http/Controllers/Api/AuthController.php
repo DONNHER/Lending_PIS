@@ -60,6 +60,7 @@ class AuthController extends Controller
             'lastname' => 'required|string',
             'role' => 'required|string',
             'avatar_url' => 'nullable|string',
+            'address' => 'nullable|string',
         ], [
             'password.regex' => $this->passwordPolicyMessage
         ]);
@@ -78,6 +79,7 @@ class AuthController extends Controller
                 'role' => $request->role,
                 'status' => 'pending', 
                 'avatar_url' => $request->avatar_url,
+                'address' => $request->address,
             ]);
 
             $this->logAuth($user, 'Register (Pending)', $request);
@@ -140,11 +142,11 @@ class AuthController extends Controller
         }
 
         try {
-            // Update User model fields
             $user->update($request->only([
                 'firstname', 
                 'lastname', 
                 'avatar_url', 
+                'address',
             ]));
 
             // Sync with shareholders table if user has a shareholder profile
@@ -153,8 +155,7 @@ class AuthController extends Controller
                     'first_name' => $user->firstname,
                     'last_name' => $user->lastname,
                     'full_name' => $user->firstname . ' ' . $user->lastname,
-                    // Use request values directly since they aren't stored in the users table
-                    'address' => $request->has('address') ? $request->address : $user->shareholder->address,
+                    'address' => $user->address,
                     'id_image_url' => $request->has('id_image_url') ? $request->id_image_url : $user->shareholder->id_image_url,
                 ]);
             }

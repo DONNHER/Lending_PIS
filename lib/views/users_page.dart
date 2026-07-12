@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/shareholder_viewmodel.dart';
+import '../viewmodels/navigation_viewmodel.dart';
 import '../app_theme.dart';
 import '../widgets/shareholder_table.dart';
 import '../widgets/page_turner.dart';
@@ -15,6 +16,7 @@ class UsersPage extends StatefulWidget {
 
 class _UsersPageState extends State<UsersPage> {
   final TextEditingController _searchController = TextEditingController();
+  String? _selectedShareholderId;
 
   @override
   void initState() {
@@ -32,6 +34,16 @@ class _UsersPageState extends State<UsersPage> {
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavigationViewModel>();
+    final selectedId = nav.selectedShareholderId;
+
+    if (selectedId != null) {
+      return ShareholderDetailPage(
+        shareholderId: selectedId,
+        onBack: () => nav.clearShareholderSelection(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: Consumer<ShareholderViewModel>(
@@ -66,12 +78,7 @@ class _UsersPageState extends State<UsersPage> {
                             shareholders: viewModel.shareholders,
                             isLoading: viewModel.isLoading && viewModel.shareholders.isEmpty,
                             onView: (shareholder) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ShareholderDetailPage(shareholderId: shareholder.id),
-                                ),
-                              );
+                              nav.navigateToShareholder(shareholder.id);
                             },
                           ),
                         ),

@@ -4,6 +4,7 @@ import '../viewmodels/transaction_viewmodel.dart';
 import '../app_theme.dart';
 import '../widgets/transaction_table.dart';
 import '../widgets/page_turner.dart';
+import '../widgets/transaction_detail_dialog.dart';
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
@@ -54,7 +55,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             transactions: viewModel.transactions,
                             isLoading: viewModel.isLoading && viewModel.transactions.isEmpty,
                             onView: (tx) {
-                              // Handle view details
+                              showDialog(
+                                context: context,
+                                builder: (context) => TransactionDetailDialog(transaction: tx),
+                              );
                             },
                           ),
                         ),

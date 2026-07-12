@@ -12,7 +12,8 @@ import 'add_loan_page.dart';
 
 class ShareholderDetailPage extends StatefulWidget {
   final String shareholderId;
-  const ShareholderDetailPage({super.key, required this.shareholderId});
+  final VoidCallback? onBack;
+  const ShareholderDetailPage({super.key, required this.shareholderId, this.onBack});
 
   @override
   State<ShareholderDetailPage> createState() => _ShareholderDetailPageState();
@@ -35,6 +36,10 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
         title: const Text('Shareholder Details', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: widget.onBack ?? () => Navigator.pop(context),
+        ),
       ),
       body: Consumer<ShareholderDetailViewModel>(
         builder: (context, viewModel, child) {

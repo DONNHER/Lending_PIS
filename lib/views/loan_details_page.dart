@@ -9,11 +9,13 @@ import 'package:capstone_application/views/shareholder_detail_page.dart';
 class LoanDetailsPage extends StatefulWidget {
   final String loanId;
   final String shareholderId;
+  final VoidCallback? onBack;
 
   const LoanDetailsPage({
     super.key,
     required this.loanId,
     required this.shareholderId,
+    this.onBack,
   });
 
   @override
@@ -97,9 +99,13 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
               elevation: 0,
               toolbarHeight: 80,
               leading: IconButton(
-                icon: const Icon(Icons.close, color: Colors.black),
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
                 onPressed: () {
-                  Navigator.of(context, rootNavigator: true).pop();
+                  if (widget.onBack != null) {
+                    widget.onBack!();
+                  } else {
+                    Navigator.of(context, rootNavigator: true).pop();
+                  }
                 },
               ),
               title: InkWell(

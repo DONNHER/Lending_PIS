@@ -86,14 +86,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
                       onResultTap: (shareholder) {
                         if (shareholder == null) return;
                         viewModel.setSearchQuery('');
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ShareholderDetailPage(
-                              shareholderId: shareholder.id,
-                            ),
-                          ),
-                        );
+                        context.read<NavigationViewModel>().navigateToShareholder(shareholder.id);
                       },
                     ),
                   ),
@@ -138,14 +131,21 @@ class _DashboardBodyState extends State<_DashboardBody> {
       );
     }
 
+    if (viewModel.kpiCards.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: viewModel.kpiCards.map((kpi) {
+        children: viewModel.kpiCards.asMap().entries.map((entry) {
+          final kpi = entry.value;
+          final isLast = entry.key == viewModel.kpiCards.length - 1;
+          
           return Expanded(
             child: Padding(
               padding: EdgeInsets.only(
-                right: kpi == viewModel.kpiCards.last ? 0 : 8,
+                right: isLast ? 0 : 8,
               ),
               child: KpiCard(
                 data: kpi,
@@ -233,24 +233,22 @@ class _DashboardBodyState extends State<_DashboardBody> {
     return RecentLoansTable(
       transactions: viewModel.recentTransactions,
       onTap: (tx) async {
+        debugPrint('DEBUG: Dashboard tapping transaction: ${tx.id}, Type: ${tx.type}, Shareholder: ${tx.shareholderId}');
+        
         final repo = context.read<LendingRepository>();
+        final nav = context.read<NavigationViewModel>();
         final String? refId = tx.referenceId;
         final String? shareholderId = tx.shareholderId;
 
-        if (tx.type == 'Loan Disbursement' && refId != null && refId.isNotEmpty) {
+        // 1. If it's a Loan Disbursement, go to Loan Details
+        if (tx.type.contains('Disbursement') && refId != null && refId.isNotEmpty) {
           if (!context.mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LoanDetailsPage(
-                loanId: refId,
-                shareholderId: shareholderId ?? '',
-              ),
-            ),
-          );
+          nav.navigateToLoanDetails(refId, shareholderId ?? '');
           return;
         }
-        if (tx.type == 'Loan Payment' && refId != null && refId.isNotEmpty) {
+
+        // 2. If it's a Loan Payment, go to Loan Payment Page
+        if (tx.type.contains('Payment') && refId != null && refId.isNotEmpty) {
           if (!context.mounted) return;
           Navigator.push(
             context,
@@ -261,16 +259,20 @@ class _DashboardBodyState extends State<_DashboardBody> {
           return;
         }
         
+        // 3. If it's a Capital Contribution or something else, go to Shareholder Details
+        if (shareholderId != null && shareholderId.isNotEmpty) {
+          debugPrint('DEBUG: Navigating to Shareholder Details for: $shareholderId');
+          if (!context.mounted) return;
+          nav.navigateToShareholder(shareholderId);
+          return;
+        }
+
+        // Fallback: try to see if it's a loan request ID
         final String targetId = (refId != null && refId.isNotEmpty) ? refId : tx.id;
         final fullRequest = await repo.getLoanRequestById(targetId);
             
         if (fullRequest != null && context.mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LoanEvaluationPage(request: fullRequest),
-            ),
-          );
+          nav.navigateToLoanRequest(fullRequest);
         }
       },
       onSeeAll: () {

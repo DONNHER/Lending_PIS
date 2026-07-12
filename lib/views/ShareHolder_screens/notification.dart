@@ -9,7 +9,7 @@ import 'package:capstone_application/repositories/transaction_repository.dart';
 import 'package:capstone_application/models/transaction_model.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/loan_request_approval.dart';
-import 'details_page/repayment_details.dart';
+import '../../../widgets/transaction_detail_dialog.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -346,7 +346,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (metadata['transaction'] is Map) {
       try {
         final tx = TransactionModel.fromJson(Map<String, dynamic>.from(metadata['transaction']));
-        Navigator.push(context, MaterialPageRoute(builder: (context) => RepaymentDetailsScreen(transaction: tx)));
+        showDialog(
+          context: context,
+          builder: (context) => TransactionDetailDialog(transaction: tx),
+        );
         return;
       } catch (e) {
         debugPrint('DEBUG: [NotificationScreen] Error parsing embedded transaction: $e');
@@ -429,8 +432,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
       if (context.mounted) {
         Navigator.pop(context); // Close loader
         if (tx != null) {
-          final TransactionModel finalTx = tx; // Fix nullable assignment
-          Navigator.push(context, MaterialPageRoute(builder: (context) => RepaymentDetailsScreen(transaction: finalTx)));
+          showDialog(
+            context: context,
+            builder: (context) => TransactionDetailDialog(transaction: tx!),
+          );
         } else {
           _showError(context, "Transaction details not found.");
         }

@@ -30,9 +30,16 @@ class LendingChartData {
   factory LendingChartData.fromJson(Map<String, dynamic> json) {
     return LendingChartData(
       period: json['period'] ?? '',
-      totalDisbursed: (json['total_disbursed'] ?? 0.0).toDouble(),
-      shareCapital: (json['share_capital'] ?? 0.0).toDouble(),
+      totalDisbursed: _parseDouble(json['total_disbursed']),
+      shareCapital: _parseDouble(json['share_capital']),
     );
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 }
 

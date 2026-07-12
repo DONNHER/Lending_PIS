@@ -6,7 +6,7 @@ import '../app_theme.dart';
 import '../models/lending_models.dart';
 import '../repositories/lending_repository.dart';
 import '../viewmodels/loan_payment_viewmodel.dart';
-import 'ShareHolder_screens/details_page/repayment_details.dart';
+import '../widgets/transaction_detail_dialog.dart';
 
 class LoanPaymentPage extends StatefulWidget {
   final LoanRequestModel? initialRequest;
@@ -321,11 +321,9 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
                 final tx = history[index];
                 return InkWell(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RepaymentDetailsScreen(transaction: tx),
-                      ),
+                    showDialog(
+                      context: context,
+                      builder: (context) => TransactionDetailDialog(transaction: tx),
                     );
                   },
                   child: Row(
@@ -484,13 +482,11 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
                   const SnackBar(content: Text('Payment recorded successfully')),
                 );
                 
-                // 🚀 Navigation Fix: Use push instead of pushReplacement to ensure the result is passed back to LoanDetailsPage
+                // 🚀 Navigation Fix: Use showDialog instead of pushing a new route
                 if (viewModel.lastTransaction != null) {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RepaymentDetailsScreen(transaction: viewModel.lastTransaction!),
-                    ),
+                  await showDialog(
+                    context: context,
+                    builder: (context) => TransactionDetailDialog(transaction: viewModel.lastTransaction!),
                   );
                 }
                 

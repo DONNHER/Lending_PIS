@@ -6,7 +6,7 @@ import 'package:capstone_application/repositories/shareholder_repository.dart';
 import 'package:capstone_application/repositories/transaction_repository.dart';
 import 'package:capstone_application/viewmodels/add_share_capital_viewmodel.dart';
 import 'package:capstone_application/models/shareholder_model.dart' as sm;
-import 'package:capstone_application/views/ShareHolder_screens/details_page/repayment_details.dart';
+import 'package:capstone_application/widgets/transaction_detail_dialog.dart';
 
 class AddShareCapitalPage extends StatelessWidget {
   final sm.ShareholderModel shareholder;
@@ -242,11 +242,9 @@ class _AddShareCapitalBody extends StatelessWidget {
                   const SnackBar(content: Text('Capital deposit executed successfully')),
                 );
                 
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => RepaymentDetailsScreen(transaction: transaction),
-                  ),
+                showDialog(
+                  context: context,
+                  builder: (context) => TransactionDetailDialog(transaction: transaction),
                 ).then((_) {
                   if (context.mounted) Navigator.pop(context, true);
                 });

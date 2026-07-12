@@ -10,8 +10,9 @@ import 'package:capstone_application/views/loan_approval_page.dart';
 
 class LoanEvaluationPage extends StatelessWidget {
   final LoanRequestModel request;
+  final VoidCallback? onBack;
 
-  const LoanEvaluationPage({super.key, required this.request});
+  const LoanEvaluationPage({super.key, required this.request, this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -21,13 +22,14 @@ class LoanEvaluationPage extends StatelessWidget {
         context.read<ShareholderRepository>(),
         request,
       ),
-      child: const _LoanEvaluationBody(),
+      child: _LoanEvaluationBody(onBack: onBack),
     );
   }
 }
 
 class _LoanEvaluationBody extends StatelessWidget {
-  const _LoanEvaluationBody();
+  final VoidCallback? onBack;
+  const _LoanEvaluationBody({this.onBack});
 
   void _showProcessingDialog(BuildContext context) {
     showDialog(
@@ -70,7 +72,7 @@ class _LoanEvaluationBody extends StatelessWidget {
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Color(0xFF32211A)),
-              onPressed: () => Navigator.pop(context),
+              onPressed: onBack ?? () => Navigator.pop(context),
             ),
             title: const Text('Loan Evaluation', style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)),
           ),

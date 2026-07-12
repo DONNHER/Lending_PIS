@@ -2,12 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/models/nav_item_model.dart';
 
+import 'package:capstone_application/models/lending_models.dart';
+
 class NavigationViewModel extends ChangeNotifier {
   int _selectedIndex = 0;
   UserRole? _currentUserRole;
+  String? _selectedShareholderId;
+  LoanRequestModel? _selectedLoanRequest;
+  String? _selectedLoanId;
+  String? _selectedLoanShareholderId;
 
   int get selectedIndex => _selectedIndex;
   UserRole? get currentUserRole => _currentUserRole;
+  String? get selectedShareholderId => _selectedShareholderId;
+  LoanRequestModel? get selectedLoanRequest => _selectedLoanRequest;
+  String? get selectedLoanId => _selectedLoanId;
+  String? get selectedLoanShareholderId => _selectedLoanShareholderId;
 
   final List<NavItemModel> _allItems = [
     const NavItemModel(
@@ -57,11 +67,66 @@ class NavigationViewModel extends ChangeNotifier {
   void setUserRole(UserRole role) {
     _currentUserRole = role;
     _selectedIndex = 0;
+    _clearSubViews();
     notifyListeners();
   }
 
   void navigateTo(int index) {
     _selectedIndex = index;
+    _clearSubViews();
+    notifyListeners();
+  }
+
+  void navigateToShareholder(String id) {
+    final items = getFilteredNavItems();
+    final index = items.indexWhere((item) => item.route == '/users');
+    if (index != -1) {
+      _selectedIndex = index;
+      _clearSubViews();
+      _selectedShareholderId = id;
+      notifyListeners();
+    }
+  }
+
+  void navigateToLoanRequest(LoanRequestModel request) {
+    final items = getFilteredNavItems();
+    final index = items.indexWhere((item) => item.route == '/loans');
+    if (index != -1) {
+      _selectedIndex = index;
+      _clearSubViews();
+      _selectedLoanRequest = request;
+      notifyListeners();
+    }
+  }
+
+  void navigateToLoanDetails(String loanId, String shareholderId) {
+    final items = getFilteredNavItems();
+    final index = items.indexWhere((item) => item.route == '/loans');
+    if (index != -1) {
+      _selectedIndex = index;
+      _clearSubViews();
+      _selectedLoanId = loanId;
+      _selectedLoanShareholderId = shareholderId;
+      notifyListeners();
+    }
+  }
+
+  void _clearSubViews() {
+    _selectedShareholderId = null;
+    _selectedLoanRequest = null;
+    _selectedLoanId = null;
+    _selectedLoanShareholderId = null;
+  }
+
+  void clearShareholderSelection() {
+    _selectedShareholderId = null;
+    notifyListeners();
+  }
+
+  void clearLoanSelection() {
+    _selectedLoanRequest = null;
+    _selectedLoanId = null;
+    _selectedLoanShareholderId = null;
     notifyListeners();
   }
 

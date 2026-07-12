@@ -38,6 +38,7 @@ class User extends Authenticatable
         'role',
         'status',
         'avatar_url',
+        'address',
         'failed_attempts',
         'locked_until',
         'mfa_code',
@@ -58,14 +59,6 @@ class User extends Authenticatable
         'mfa_enabled' => 'boolean',
         'version' => 'integer',
     ];
-
-    // 🚀 Automatically include address from the shareholder relationship
-    protected $appends = ['address'];
-
-    public function getAddressAttribute()
-    {
-        return $this->shareholder ? $this->shareholder->address : null;
-    }
 
     public function isActive(): bool
     {

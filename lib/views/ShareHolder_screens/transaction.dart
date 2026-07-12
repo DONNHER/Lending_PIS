@@ -5,7 +5,7 @@ import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/viewmodels/shareholder_transaction_viewmodel.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'details_page/loan_details.dart';
-import 'details_page/repayment_details.dart';
+import '../../../widgets/transaction_detail_dialog.dart';
 import 'details_page/loan_request_approval.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
@@ -279,7 +279,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             child: InkWell(
               onTap: () {
                 if (type.contains('payment') || type.contains('repayment') || type.contains('capital')) {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => RepaymentDetailsScreen(transaction: item)));
+                  showDialog(
+                    context: context,
+                    builder: (context) => TransactionDetailDialog(transaction: item),
+                  );
                 } else if (type.contains('loan')) {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => ActiveLoanDetailsScreen(loanId: item.referenceId ?? '')));
                 }
