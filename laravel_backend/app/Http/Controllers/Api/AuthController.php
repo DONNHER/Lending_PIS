@@ -6,10 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\Notification;
+use App\Models\Shareholder;
+use App\Mail\PasswordResetMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -87,7 +91,7 @@ class AuthController extends Controller
 
                 // 🚀 AUTOMATICALLY CREATE SHAREHOLDER RECORD
                 if ($user->role === 'shareholder') {
-                    \App\Models\Shareholder::create([
+                    Shareholder::create([
                         'user_id' => $user->id,
                         'email' => $user->email,
                         'first_name' => $user->firstname,
@@ -245,7 +249,7 @@ class AuthController extends Controller
                 'mfa_expires_at' => now()->addMinutes(15)
             ]);
 
-            \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PasswordResetMail($user, $code));
+            Mail::to($user->email)->send(new PasswordResetMail($user, $code));
 
             $this->logAuth($user, 'Password Reset Request', $request);
 
