@@ -265,6 +265,23 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // 🚀 1. REGISTER IN SUPABASE FIRST
+      debugPrint('DEBUG: [AuthViewModel] Registering in Supabase...');
+      try {
+        await _supabase.auth.signUp(email: email, password: password);
+        debugPrint('DEBUG: [AuthViewModel] Supabase signUp success.');
+      } on AuthException catch (e) {
+        // If user already exists in Supabase, we can proceed to sync with Laravel
+        if (e.message.toLowerCase().contains('already registered') || 
+            e.message.toLowerCase().contains('already been registered')) {
+          debugPrint('DEBUG: [AuthViewModel] User already in Supabase, proceeding to Laravel sync...');
+        } else {
+          rethrow;
+        }
+      }
+
+      // 🚀 2. REGISTER IN LARAVEL
+      debugPrint('DEBUG: [AuthViewModel] Registering in Laravel...');
       await _authRepository.register(
         username: username,
         email: email,
@@ -277,13 +294,11 @@ class AuthViewModel extends ChangeNotifier {
         idImageUrl: idImageUrl,
       );
       
-      // Trigger Supabase Verification Email ONLY after Laravel success
-      debugPrint('DEBUG: [AuthViewModel] Laravel success. Triggering Supabase OTP...');
-      await _supabase.auth.signInWithOtp(email: email);
-      
+      debugPrint('DEBUG: [AuthViewModel] Registration complete.');
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      debugPrint('DEBUG: [AuthViewModel] Registration Error: $_errorMessage');
       return false;
     } finally {
       _isLoading = false;

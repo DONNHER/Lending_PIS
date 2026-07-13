@@ -81,7 +81,22 @@ class AddShareholderViewModel extends ChangeNotifier {
         debugPrint('DEBUG: [AddShareholderViewModel] ID image upload success: $idImageUrl');
       }
 
-      // 2. Register via AuthRepository
+      // 🚀 2. REGISTER IN SUPABASE FIRST
+      debugPrint('DEBUG: [AddShareholderViewModel] Registering in Supabase...');
+      try {
+        await Supabase.instance.client.auth.signUp(email: email, password: password);
+        debugPrint('DEBUG: [AddShareholderViewModel] Supabase signUp success.');
+      } on AuthException catch (e) {
+        if (e.message.toLowerCase().contains('already registered') || 
+            e.message.toLowerCase().contains('already been registered')) {
+          debugPrint('DEBUG: [AddShareholderViewModel] User already in Supabase, proceeding to Laravel sync...');
+        } else {
+          rethrow;
+        }
+      }
+
+      // 🚀 3. REGISTER IN LARAVEL
+      debugPrint('DEBUG: [AddShareholderViewModel] Registering in Laravel...');
       final response = await authRepository.register(
         username: username,
         email: email,
@@ -95,11 +110,6 @@ class AddShareholderViewModel extends ChangeNotifier {
       );
 
       if (response['success'] == true) {
-        // Trigger Supabase Verification Email ONLY after Laravel success
-        debugPrint('DEBUG: [AddShareholderViewModel] Laravel success. Triggering Supabase OTP...');
-        // For simplicity in this VM, we can use the singleton if initialized
-        await Supabase.instance.client.auth.signInWithOtp(email: email);
-
         // Clear local state
         _idImageBytes = null;
         _idImageName = null;
@@ -112,6 +122,7 @@ class AddShareholderViewModel extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      debugPrint('DEBUG: [AddShareholderViewModel] Registration Error: $_errorMessage');
       return null;
     } finally {
       _isLoading = false;
