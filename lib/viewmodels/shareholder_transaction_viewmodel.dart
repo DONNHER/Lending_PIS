@@ -88,6 +88,13 @@ class ShareholderTransactionViewModel extends ChangeNotifier {
 
       final shareholderId = _currentShareholder!.id;
 
+      if (shareholderId.isEmpty) {
+        _allTransactions = [];
+        _allLoanRequests = [];
+        _isInitialized = true;
+        return;
+      }
+
       final results = await Future.wait([
         _transactionRepository.getTransactionsByShareholderId(shareholderId),
         _roleFilter == 'Borrower' 

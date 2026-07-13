@@ -99,6 +99,7 @@ class LoanRequestModel {
   });
 
   int get tenureMonths => months;
+  List<LoanComaker> get comakerDecisions => effectiveComakers;
 
   LoanRequestModel copyWith({
     String? id,

@@ -61,6 +61,7 @@ class AuthController extends Controller
             'role' => 'required|string',
             'avatar_url' => 'nullable|string',
             'address' => 'nullable|string',
+            'phone' => 'nullable|string',
         ], [
             'password.regex' => $this->passwordPolicyMessage
         ]);
@@ -81,6 +82,22 @@ class AuthController extends Controller
                 'avatar_url' => $request->avatar_url,
                 'address' => $request->address,
             ]);
+
+            // 🚀 AUTOMATICALLY CREATE SHAREHOLDER RECORD
+            if ($user->role === 'shareholder') {
+                \App\Models\Shareholder::create([
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'first_name' => $user->firstname,
+                    'last_name' => $user->lastname,
+                    'full_name' => $user->firstname . ' ' . $user->lastname,
+                    'address' => $user->address,
+                    'contact_number' => $request->phone ?? '',
+                    'total_share_capital' => 0.00,
+                    'creditscore' => 700,
+                    'status' => 'active',
+                ]);
+            }
 
             $this->logAuth($user, 'Register (Pending)', $request);
             

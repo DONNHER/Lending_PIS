@@ -7,6 +7,7 @@ class TransactionRepository {
   TransactionRepository(this._apiService);
 
   Future<List<TransactionModel>> getTransactionsByShareholderId(String shareholderId) async {
+    if (shareholderId.isEmpty) return [];
     final response = await _apiService.get('/transactions/shareholder/$shareholderId');
     final List data = response['data'] ?? [];
     return data.map((e) => TransactionModel.fromJson(e)).toList();

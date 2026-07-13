@@ -137,16 +137,22 @@ class AuthViewModel extends ChangeNotifier {
       if (response['mfa_required'] == true) {
         // 🚀 STRICT CHECK: Ensure account is confirmed in Supabase
         try {
+          debugPrint('DEBUG: [AuthViewModel] Checking Supabase confirmation for: $email');
+          
           // Attempt a silent sign-in to check confirmation status
           final authRes = await _supabase.auth.signInWithPassword(email: email, password: password);
           
+          debugPrint('DEBUG: [AuthViewModel] Supabase Sign-In Success. User ID: ${authRes.user?.id}');
+          debugPrint('DEBUG: [AuthViewModel] Email Confirmed At: ${authRes.user?.emailConfirmedAt}');
+          
           // If we reach here, password is correct and account IS confirmed.
-          // We sign out immediately because we want to use the OTP flow for the real session.
           await _supabase.auth.signOut();
           
         } on AuthException catch (e) {
+          debugPrint('DEBUG: [AuthViewModel] Supabase Auth Error: ${e.message}');
+          debugPrint('DEBUG: [AuthViewModel] Supabase Error Code: ${e.statusCode}');
+
           // Block if email is not confirmed
-          // Supabase uses 'Email not confirmed' message or 'email_not_confirmed' code
           if (e.message.toLowerCase().contains('email not confirmed')) {
             _errorMessage = 'Account not verified. Please check your inbox and click "Verify this email" in your welcome email first.';
             _isLoading = false;
@@ -154,9 +160,14 @@ class AuthViewModel extends ChangeNotifier {
             return false;
           }
           
-          // If it's a different error (like user not found in Supabase), 
-          // it means the account is still syncing or registration was incomplete.
-          _errorMessage = 'Account synchronization in progress. Please wait a moment or check your email.';
+          // Improved error message to show actual Supabase error for debugging
+          _errorMessage = 'Verification Error: ${e.message}';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        } catch (unexpected) {
+          debugPrint('DEBUG: [AuthViewModel] Unexpected Supabase Error: $unexpected');
+          _errorMessage = 'Account synchronization error. Please try again later.';
           _isLoading = false;
           notifyListeners();
           return false;
@@ -164,11 +175,14 @@ class AuthViewModel extends ChangeNotifier {
 
         // ONLY if the above check passed (no exception thrown), we send the OTP
         try {
+          debugPrint('DEBUG: [AuthViewModel] Triggering OTP via Supabase...');
           await _supabase.auth.signInWithOtp(email: email);
+          debugPrint('DEBUG: [AuthViewModel] OTP successfully sent.');
           _isMfaRequired = true;
           _pendingMfaEmail = email;
           return false;
         } catch (otpError) {
+          debugPrint('DEBUG: [AuthViewModel] OTP Send Error: $otpError');
           _errorMessage = 'Failed to send verification code. Please try again.';
           _isLoading = false;
           notifyListeners();
@@ -268,14 +282,29 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Verify with Supabase
-      final res = await _supabase.auth.verifyOTP(
-        email: email,
-        token: code,
-        type: OtpType.signup,
-      );
+      debugPrint('DEBUG: [AuthViewModel] Attempting MFA verification for $email...');
+      
+      // 🚀 TRY SIGNUP OTP FIRST (for new accounts)
+      AuthResponse? res;
+      try {
+        res = await _supabase.auth.verifyOTP(
+          email: email,
+          token: code,
+          type: OtpType.signup,
+        );
+        debugPrint('DEBUG: [AuthViewModel] Signup OTP verification success.');
+      } catch (e) {
+        debugPrint('DEBUG: [AuthViewModel] Signup OTP failed, trying Magiclink OTP...');
+        // 🚀 TRY MAGICLINK OTP SECOND (for existing confirmed accounts)
+        res = await _supabase.auth.verifyOTP(
+          email: email,
+          token: code,
+          type: OtpType.magiclink,
+        );
+        debugPrint('DEBUG: [AuthViewModel] Magiclink OTP verification success.');
+      }
 
-      if (res.session != null) {
+      if (res != null && res.session != null) {
         // 2. Tell Laravel that MFA is complete and get the Laravel token
         final response = await _authRepository.verifyMfa(email);
         if (response['success'] == true) {
@@ -286,6 +315,7 @@ class AuthViewModel extends ChangeNotifier {
       }
       return false;
     } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] All MFA verification attempts failed: $e');
       _errorMessage = e.toString();
       return false;
     } finally {

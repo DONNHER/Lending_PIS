@@ -56,20 +56,28 @@ class ShareCapitalScreen extends StatelessWidget {
               color: const Color(0xFFC06C4D),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(context, viewModel),
-                    const SizedBox(height: 24),
-                    _buildMainCapitalCard(context, viewModel),
-                    
-                    const SizedBox(height: 32),
-                    const _AdsCarousel(),
-                    const SizedBox(height: 32),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(context, viewModel),
+                          const SizedBox(height: 24),
+                          _buildMainCapitalCard(context, viewModel),
+                          
+                          const SizedBox(height: 32),
+                          const _AdsCarousel(),
+                          const SizedBox(height: 32),
 
-                    _buildLoanRequestsSection(context, viewModel),
-                  ],
+                          _buildLoanRequestsSection(context, viewModel),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             );
@@ -105,83 +113,80 @@ class ShareCapitalScreen extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFC06C4D), Color(0xFFD98A6D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: const Color(0xFFC06C4D).withOpacity(0.2), 
+            blurRadius: 20, 
+            offset: const Offset(0, 10)
+          ),
         ],
       ),
       child: Column(
         children: [
-          const Text('TOTAL SHARE CAPITAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textGrey)),
+          const Text(
+            'TOTAL SHARE CAPITAL', 
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white70, letterSpacing: 1)
+          ),
           const SizedBox(height: 8),
           Text(
             '${currencyFormat.format(viewModel.totalCapital)} PHP', 
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppTheme.textDark),
+            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white),
           ),
-          const SizedBox(height: 40),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    activeLoan != null ? 'OUTSTANDING BALANCE' : 'ACTIVE LOAN DUE DATE', 
-                    style: const TextStyle(fontSize: 10, color: textGrey)
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        activeLoan != null ? 'OUTSTANDING BALANCE' : 'ACTIVE LOAN STATUS', 
+                        style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.bold)
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        activeLoan != null 
+                            ? '${currencyFormat.format(activeLoan.remainingBalance)} PHP'
+                            : 'No Active Loan',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
+                      ),
+                      if (activeLoan != null && activeLoan.nextRepaymentDate != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Next Due: ${dateFormat.format(activeLoan.nextRepaymentDate!)}',
+                          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    activeLoan != null 
-                        ? '${currencyFormat.format(activeLoan.remainingBalance)} PHP'
-                        : 'No Active Loan',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  if (activeLoan != null && activeLoan.nextRepaymentDate != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Next Due: ${dateFormat.format(activeLoan.nextRepaymentDate!)}',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFC06C4D), fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ],
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _buildCardButton(
-                    label: 'Apply Loan',
-                    icon: Icons.assignment_outlined,
-                    bgColor: const Color(0xFFC06C4D),
-                    textColor: Colors.white,
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddLoanPage()));
-                    },
-                  ),
-                  if (activeLoan != null) ...[
-                    const SizedBox(height: 8),
-                    _buildCardButton(
-                      label: 'View Details',
-                      icon: Icons.visibility_outlined,
-                      bgColor: const Color(0xFFF3F4F6),
-                      textColor: const Color(0xFF32211A),
-                      onTap: () {
-                        Navigator.push(
-                          context, 
-                          MaterialPageRoute(
-                            builder: (context) => ActiveLoanDetailsScreen(loanId: activeLoan.id)
-                          )
-                        );
-                      },
-                    ),
-                  ],
-                ],
-              ),
-            ],
+                ),
+                _buildCardButton(
+                  label: 'Apply Loan',
+                  icon: Icons.assignment_outlined,
+                  bgColor: Colors.white,
+                  textColor: const Color(0xFFC06C4D),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AddLoanPage()));
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -446,7 +451,7 @@ class _AdsCarouselState extends State<_AdsCarousel> {
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
-      if (_pageController.hasClients) {
+      if (mounted && _pageController.hasClients && _pageController.page != null) {
         _pageController.nextPage(
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeInOut,

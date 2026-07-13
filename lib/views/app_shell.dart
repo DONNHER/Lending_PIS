@@ -4,6 +4,7 @@ import 'package:capstone_application/views/activity_logs_page.dart';
 import 'package:capstone_application/views/transactions_page.dart';
 import 'package:capstone_application/views/update_interest_page.dart';
 import 'package:capstone_application/views/admin_settings.dart';
+import 'package:capstone_application/views/ShareHolder_screens/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/app_theme.dart';
@@ -340,8 +341,7 @@ class _AppShellState extends State<AppShell> {
       case '/activity-logs':
         return const ActivityLogsPage();
       case '/shareholder-dashboard':
-        // 🚀 Redirect to user dashboard if impersonating or is shareholder
-        return _placeholderPage(title: 'Shareholder Dashboard', icon: Icons.dashboard_rounded);
+        return const ShareCapitalScreen();
       default:
         return _placeholderPage(
           title: route

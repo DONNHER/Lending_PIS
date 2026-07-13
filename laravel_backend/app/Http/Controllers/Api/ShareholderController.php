@@ -165,6 +165,26 @@ class ShareholderController extends Controller
     public function showByUserId($userId)
     {
         $shareholder = Shareholder::with('user')->where('user_id', $userId)->first();
+
+        // 🚀 LAZY INITIALIZATION: Create record if missing for a user with 'shareholder' role
+        if (!$shareholder) {
+            $user = User::find($userId);
+            if ($user && $user->role === 'shareholder') {
+                $shareholder = Shareholder::create([
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'first_name' => $user->firstname,
+                    'last_name' => $user->lastname,
+                    'full_name' => "{$user->firstname} {$user->lastname}",
+                    'address' => $user->address,
+                    'total_share_capital' => 0.00,
+                    'creditscore' => 700,
+                    'status' => 'active',
+                ]);
+                $shareholder->load('user');
+            }
+        }
+
         if (!$shareholder) return $this->show($userId);
         return response()->json(['success' => true, 'data' => $shareholder]);
     }

@@ -8,12 +8,14 @@ class LendingRepository {
   LendingRepository(this._apiService);
 
   Future<List<LoanRequestModel>> getLoanRequestsByShareholderId(String shareholderId) async {
+    if (shareholderId.isEmpty) return [];
     final response = await _apiService.get('/loan-requests', queryParams: {'shareholder_id': shareholderId});
     final List data = response['data'] ?? [];
     return data.map((e) => LoanRequestModel.fromJson(e)).toList();
   }
 
   Future<List<LoanRequestModel>> getLoanRequestsByComakerId(String comakerId) async {
+    if (comakerId.isEmpty) return [];
     final response = await _apiService.get('/loan-requests', queryParams: {'comaker_id': comakerId});
     final List data = response['data'] ?? [];
     return data.map((e) => LoanRequestModel.fromJson(e)).toList();
