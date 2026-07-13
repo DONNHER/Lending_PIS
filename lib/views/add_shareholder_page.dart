@@ -113,6 +113,8 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
                 children: [
                   _buildSectionTitle('Personal Information'),
                   const SizedBox(height: 16),
+                  _buildIdUpload(context),
+                  const SizedBox(height: 24),
                   Row(
                     children: [
                       Expanded(
@@ -229,6 +231,78 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
     return Text(
       title,
       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF32211A)),
+    );
+  }
+
+  Widget _buildIdUpload(BuildContext context) {
+    return Consumer<AddShareholderViewModel>(
+      builder: (context, viewModel, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Valid ID Image',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
+            ),
+            const SizedBox(height: 12),
+            if (viewModel.idImageBytes != null)
+              Stack(
+                children: [
+                  Container(
+                    height: 180,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      image: DecorationImage(
+                        image: MemoryImage(viewModel.idImageBytes!),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      onPressed: viewModel.removeIdImage,
+                      icon: const Icon(Icons.cancel_rounded, color: Colors.red),
+                      style: IconButton.styleFrom(backgroundColor: Colors.white),
+                    ),
+                  ),
+                ],
+              )
+            else
+              InkWell(
+                onTap: viewModel.pickIdImage,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE5E7EB), style: BorderStyle.solid),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_a_photo_outlined, size: 32, color: Color(0xFFC06C4D)),
+                      SizedBox(height: 8),
+                      Text(
+                        'Upload Identification Card',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFC06C4D)),
+                      ),
+                      Text(
+                        'JPG or PNG, max 5MB',
+                        style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

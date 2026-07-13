@@ -22,6 +22,25 @@ class StorageRepository {
     }
   }
 
+  Future<String?> uploadBytes({
+    required String bucket,
+    required String path,
+    required String fileName,
+    required dynamic bytes, // Uint8List
+  }) async {
+    try {
+      final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final String fullPath = '$path/${timestamp}_$fileName';
+
+      await _supabase.storage.from(bucket).uploadBinary(fullPath, bytes);
+      
+      final String publicUrl = _supabase.storage.from(bucket).getPublicUrl(fullPath);
+      return publicUrl;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> deleteFile(String url) async {
     // Logic to extract path from URL and delete from Supabase
   }

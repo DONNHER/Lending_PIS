@@ -339,6 +339,50 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
           _infoTile(Icons.location_on_outlined, 'Address', person.address ?? 'N/A'),
           const Divider(height: 32),
           _infoTile(Icons.credit_card_outlined, 'Shareholder ID', person.id),
+          if (person.idImageUrl != null && person.idImageUrl!.isNotEmpty) ...[
+            const Divider(height: 32),
+            const Text('Verification Document', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => Dialog(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AppBar(
+                          title: const Text('ID Document'),
+                          backgroundColor: Colors.white,
+                          elevation: 0,
+                        ),
+                        Image.network(person.idImageUrl!, fit: BoxFit.contain),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  image: DecorationImage(
+                    image: NetworkImage(person.idImageUrl!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                    child: const Icon(Icons.fullscreen_rounded, color: Colors.white, size: 24),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

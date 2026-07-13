@@ -62,6 +62,7 @@ class AuthController extends Controller
             'avatar_url' => 'nullable|string',
             'address' => 'nullable|string',
             'phone' => 'nullable|string',
+            'id_image_url' => 'nullable|string',
         ], [
             'password.regex' => $this->passwordPolicyMessage
         ]);
@@ -96,6 +97,7 @@ class AuthController extends Controller
                     'total_share_capital' => 0.00,
                     'creditscore' => 700,
                     'status' => 'active',
+                    'id_image_url' => $request->id_image_url,
                 ]);
             }
 

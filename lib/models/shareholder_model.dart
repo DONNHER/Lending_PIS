@@ -8,6 +8,7 @@ class ShareholderModel {
   final double creditScore;
   final double shareCapital;
   final String? avatarUrl;
+  final String? idImageUrl;
 
   ShareholderModel({
     required this.id,
@@ -19,6 +20,7 @@ class ShareholderModel {
     this.creditScore = 0.0,
     this.shareCapital = 0.0,
     this.avatarUrl,
+    this.idImageUrl,
   });
 
   String get fullName => '$firstName $lastName';
@@ -36,6 +38,7 @@ class ShareholderModel {
       creditScore: (json['creditscore'] ?? json['credit_score'] ?? 0.0).toDouble(),
       shareCapital: _parseDouble(json['total_share_capital'] ?? json['share_capital']),
       avatarUrl: json['avatar_url'],
+      idImageUrl: json['id_image_url'],
     );
   }
 
@@ -58,6 +61,7 @@ class ShareholderModel {
       'creditscore': creditScore,
       'total_share_capital': shareCapital,
       'avatar_url': avatarUrl,
+      'id_image_url': idImageUrl,
     };
   }
 }

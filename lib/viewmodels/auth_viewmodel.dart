@@ -246,6 +246,7 @@ class AuthViewModel extends ChangeNotifier {
     required UserRole role,
     String? address,
     String? phone,
+    String? idImageUrl,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -261,6 +262,7 @@ class AuthViewModel extends ChangeNotifier {
         role: role,
         address: address,
         phone: phone,
+        idImageUrl: idImageUrl,
       );
       
       // Trigger Supabase Verification Email
