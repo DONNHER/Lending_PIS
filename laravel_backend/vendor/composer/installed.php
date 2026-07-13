@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
-        'name' => 'laravel/laravel',
+        'name' => 'laravel/lending-system',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '0b5b2bf69a2e5307ca7ac5f7180e7401d17327fd',
+        'reference' => 'b37a9badb17f8c32ec136c474248c83e950f155f',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -361,10 +361,10 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
-        'laravel/laravel' => array(
+        'laravel/lending-system' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '0b5b2bf69a2e5307ca7ac5f7180e7401d17327fd',
+            'reference' => 'b37a9badb17f8c32ec136c474248c83e950f155f',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
