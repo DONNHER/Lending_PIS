@@ -135,10 +135,45 @@ class AuthViewModel extends ChangeNotifier {
       final response = await _authRepository.login(email, password);
       
       if (response['mfa_required'] == true) {
-        await _supabase.auth.signInWithOtp(email: email);
-        _isMfaRequired = true;
-        _pendingMfaEmail = email;
-        return false;
+        // 🚀 STRICT CHECK: Ensure account is confirmed in Supabase
+        try {
+          // Attempt a silent sign-in to check confirmation status
+          final authRes = await _supabase.auth.signInWithPassword(email: email, password: password);
+          
+          // If we reach here, password is correct and account IS confirmed.
+          // We sign out immediately because we want to use the OTP flow for the real session.
+          await _supabase.auth.signOut();
+          
+        } on AuthException catch (e) {
+          // Block if email is not confirmed
+          // Supabase uses 'Email not confirmed' message or 'email_not_confirmed' code
+          if (e.message.toLowerCase().contains('email not confirmed')) {
+            _errorMessage = 'Account not verified. Please check your inbox and click "Verify this email" in your welcome email first.';
+            _isLoading = false;
+            notifyListeners();
+            return false;
+          }
+          
+          // If it's a different error (like user not found in Supabase), 
+          // it means the account is still syncing or registration was incomplete.
+          _errorMessage = 'Account synchronization in progress. Please wait a moment or check your email.';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+
+        // ONLY if the above check passed (no exception thrown), we send the OTP
+        try {
+          await _supabase.auth.signInWithOtp(email: email);
+          _isMfaRequired = true;
+          _pendingMfaEmail = email;
+          return false;
+        } catch (otpError) {
+          _errorMessage = 'Failed to send verification code. Please try again.';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
       }
 
       if (response['token'] != null && response['user'] != null) {
