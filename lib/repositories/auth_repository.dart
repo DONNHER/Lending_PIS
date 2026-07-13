@@ -77,6 +77,21 @@ class AuthRepository {
     return response;
   }
 
+  Future<Map<String, dynamic>> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String address,
+    String? avatarUrl,
+  }) async {
+    final response = await _apiService.post('/user/profile', body: {
+      'firstname': firstName,
+      'lastname': lastName,
+      'address': address,
+      'avatar_url': avatarUrl,
+    });
+    return response;
+  }
+
   Future<void> logout() async {
     await _apiService.post('/logout');
     await _apiService.clearToken();

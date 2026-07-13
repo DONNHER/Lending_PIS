@@ -577,81 +577,87 @@ class _TabletRailState extends State<_TabletRail> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: NavigationRail(
-              extended: _extended,
-              selectedIndex: widget.selectedIndex,
-              onDestinationSelected: widget.onDestinationSelected,
-              labelType: _extended
-                  ? NavigationRailLabelType.none
-                  : NavigationRailLabelType.all,
-              unselectedLabelTextStyle: const TextStyle(
-                fontSize: 10,
-                color: Colors.transparent, // Hide by default
-              ),
-              selectedLabelTextStyle: const TextStyle(
-                fontSize: 10,
-                color: AppTheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-              leading: const SizedBox.shrink(),
-              trailing: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Divider(),
-                      IconButton(
-                        icon: Icon(
-                          _extended
-                              ? Icons.chevron_left_rounded
-                              : Icons.chevron_right_rounded,
-                          color: AppTheme.textMuted,
-                        ),
-                        onPressed: () =>
-                            setState(() => _extended = !_extended),
-                        tooltip: _extended ? 'Collapse' : 'Expand',
-                      ),
-                      const SizedBox(height: 4),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.person_outline_rounded,
-                          color: AppTheme.textMuted,
-                        ),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminSettingsScreen())),
-                        tooltip: 'Account Settings',
-                      ),
-                    ],
+            child: SingleChildScrollView(
+              child: IntrinsicHeight(
+                child: NavigationRail(
+                  extended: _extended,
+                  selectedIndex: widget.selectedIndex,
+                  onDestinationSelected: widget.onDestinationSelected,
+                  labelType: _extended
+                      ? NavigationRailLabelType.none
+                      : NavigationRailLabelType.all,
+                  unselectedLabelTextStyle: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.transparent, // Hide by default
                   ),
+                  selectedLabelTextStyle: const TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  leading: const SizedBox.shrink(),
+                  trailing: Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Divider(),
+                            IconButton(
+                              icon: Icon(
+                                _extended
+                                    ? Icons.chevron_left_rounded
+                                    : Icons.chevron_right_rounded,
+                                color: AppTheme.textMuted,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _extended = !_extended),
+                              tooltip: _extended ? 'Collapse' : 'Expand',
+                            ),
+                            const SizedBox(height: 4),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.person_outline_rounded,
+                                color: AppTheme.textMuted,
+                              ),
+                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminSettingsScreen())),
+                              tooltip: 'Account Settings',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  destinations: widget.items.asMap().entries.map((entry) {
+                    final int idx = entry.key;
+                    final item = entry.value;
+                    final bool isHovered = _hoveredIndex == idx;
+                    final bool isSelected = widget.selectedIndex == idx;
+
+                    return NavigationRailDestination(
+                      icon: MouseRegion(
+                        onEnter: (_) => setState(() => _hoveredIndex = idx),
+                        onExit: (_) => setState(() => _hoveredIndex = null),
+                        child: Icon(item.icon),
+                      ),
+                      selectedIcon: Icon(item.activeIcon),
+                      label: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 200),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: (isSelected || isHovered)
+                              ? AppTheme.primary
+                              : Colors.transparent,
+                        ),
+                        child: Text(item.label),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
-              destinations: widget.items.asMap().entries.map((entry) {
-                final int idx = entry.key;
-                final item = entry.value;
-                final bool isHovered = _hoveredIndex == idx;
-                final bool isSelected = widget.selectedIndex == idx;
-
-                return NavigationRailDestination(
-                  icon: MouseRegion(
-                    onEnter: (_) => setState(() => _hoveredIndex = idx),
-                    onExit: (_) => setState(() => _hoveredIndex = null),
-                    child: Icon(item.icon),
-                  ),
-                  selectedIcon: Icon(item.activeIcon),
-                  label: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: (isSelected || isHovered)
-                          ? AppTheme.primary
-                          : Colors.transparent,
-                    ),
-                    child: Text(item.label),
-                  ),
-                );
-              }).toList(),
             ),
           ),
         ],

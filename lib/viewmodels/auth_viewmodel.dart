@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/repositories/auth_repository.dart';
@@ -18,6 +19,7 @@ class AuthViewModel extends ChangeNotifier {
 
   final AuthRepository _authRepository;
   final ActivityLogRepository _activityLogRepository;
+  final StorageRepository _storageRepository;
   final _supabase = Supabase.instance.client;
 
   UserModel? _currentUser;
@@ -41,7 +43,7 @@ class AuthViewModel extends ChangeNotifier {
   AuthViewModel(
     this._authRepository,
     this._activityLogRepository,
-    StorageRepository storageRepository,
+    this._storageRepository,
   );
 
   UserModel? get currentUser => _currentUser;
@@ -101,8 +103,18 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<void> pickAvatar() async {
-    // Logic to pick avatar image and set _avatarBytes
-    notifyListeners();
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+      
+      if (image != null) {
+        _avatarBytes = await image.readAsBytes();
+        _removeAvatarRequested = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Error picking avatar: $e');
+    }
   }
 
   void removeAvatar() {
@@ -265,7 +277,8 @@ class AuthViewModel extends ChangeNotifier {
         idImageUrl: idImageUrl,
       );
       
-      // Trigger Supabase Verification Email
+      // Trigger Supabase Verification Email ONLY after Laravel success
+      debugPrint('DEBUG: [AuthViewModel] Laravel success. Triggering Supabase OTP...');
       await _supabase.auth.signInWithOtp(email: email);
       
       return true;
@@ -408,23 +421,37 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // In a real app, you'd call a repository method here
-      await Future.delayed(const Duration(seconds: 1));
-      // Update local user model
-      if (_currentUser != null) {
-        _currentUser = UserModel(
-          id: _currentUser!.id,
-          username: _currentUser!.username,
-          email: _currentUser!.email,
-          firstName: firstName,
-          lastName: lastName,
-          role: _currentUser!.role,
-          status: _currentUser!.status,
-          address: address,
-          avatarUrl: _currentUser!.avatarUrl,
+      String? avatarUrl = _currentUser?.avatarUrl;
+
+      // 1. Handle Avatar Upload
+      if (_avatarBytes != null) {
+        debugPrint('DEBUG: [AuthViewModel] Uploading new avatar...');
+        avatarUrl = await _storageRepository.uploadBytes(
+          bucket: 'avatars',
+          path: 'users',
+          fileName: 'avatar.jpg',
+          bytes: _avatarBytes!,
         );
+      } else if (_removeAvatarRequested) {
+        avatarUrl = null;
       }
-      return true;
+
+      // 2. Sync with Laravel
+      final response = await _authRepository.updateProfile(
+        firstName: firstName,
+        lastName: lastName,
+        address: address,
+        avatarUrl: avatarUrl,
+      );
+
+      if (response['success'] == true) {
+        _currentUser = UserModel.fromJson(response['user']);
+        _avatarBytes = null;
+        _removeAvatarRequested = false;
+        notifyListeners();
+        return true;
+      }
+      return false;
     } catch (e) {
       _errorMessage = e.toString();
       return false;

@@ -72,47 +72,53 @@ class AuthController extends Controller
         }
 
         try {
-            $user = User::create([
-                'username' => $request->username,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'firstname' => $request->firstname,
-                'lastname' => $request->lastname,
-                'role' => $request->role,
-                'status' => 'pending', 
-                'avatar_url' => $request->avatar_url,
-                'address' => $request->address,
-            ]);
-
-            // 🚀 AUTOMATICALLY CREATE SHAREHOLDER RECORD
-            if ($user->role === 'shareholder') {
-                \App\Models\Shareholder::create([
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'first_name' => $user->firstname,
-                    'last_name' => $user->lastname,
-                    'full_name' => $user->firstname . ' ' . $user->lastname,
-                    'address' => $user->address,
-                    'contact_number' => $request->phone ?? '',
-                    'total_share_capital' => 0.00,
-                    'creditscore' => 700,
-                    'status' => 'active',
-                    'id_image_url' => $request->id_image_url,
+            return DB::transaction(function () use ($request) {
+                $user = User::create([
+                    'username' => $request->username,
+                    'email' => $request->email,
+                    'password' => Hash::make($request->password),
+                    'firstname' => $request->firstname,
+                    'lastname' => $request->lastname,
+                    'role' => $request->role,
+                    'status' => 'pending',
+                    'avatar_url' => $request->avatar_url,
+                    'address' => $request->address,
                 ]);
-            }
 
-            $this->logAuth($user, 'Register (Pending)', $request);
-            
-            return response()->json([
-                'success' => true, 
-                'user' => $user->load('shareholder'),
-                'mfa_required' => true,
-                'email' => $user->email,
-                'message' => 'Registration successful. Please verify the code sent to your email.'
-            ], 201);
+                // 🚀 AUTOMATICALLY CREATE SHAREHOLDER RECORD
+                if ($user->role === 'shareholder') {
+                    \App\Models\Shareholder::create([
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'first_name' => $user->firstname,
+                        'last_name' => $user->lastname,
+                        'full_name' => $user->firstname . ' ' . $user->lastname,
+                        'address' => $user->address,
+                        'contact_number' => $request->phone ?? '',
+                        'total_share_capital' => 0.00,
+                        'creditscore' => 700,
+                        'status' => 'active',
+                        'id_image_url' => $request->id_image_url,
+                    ]);
+                }
+
+                $this->logAuth($user, 'Register (Pending)', $request);
+
+                return response()->json([
+                    'success' => true,
+                    'user' => $user->load('shareholder'),
+                    'mfa_required' => true,
+                    'email' => $user->email,
+                    'message' => 'Registration successful. Please verify the code sent to your email.'
+                ], 201);
+            });
         } catch (\Exception $e) {
             Log::error('Registration failed: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Registration failed'], 500);
+            Log::error('Trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Registration failed: ' . $e->getMessage()
+            ], 500);
         }
     }
 

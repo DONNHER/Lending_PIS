@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class StorageRepository {
@@ -32,11 +33,15 @@ class StorageRepository {
       final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       final String fullPath = '$path/${timestamp}_$fileName';
 
+      debugPrint('DEBUG: [StorageRepository] Uploading bytes to bucket: $bucket, path: $fullPath');
+
       await _supabase.storage.from(bucket).uploadBinary(fullPath, bytes);
       
       final String publicUrl = _supabase.storage.from(bucket).getPublicUrl(fullPath);
+      debugPrint('DEBUG: [StorageRepository] Upload success. Public URL: $publicUrl');
       return publicUrl;
     } catch (e) {
+      debugPrint('DEBUG: [StorageRepository] Upload failed: $e');
       return null;
     }
   }
