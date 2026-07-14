@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:capstone_application/services/api_service.dart';
 import 'package:capstone_application/models/lending_models.dart';
 import 'package:capstone_application/models/transaction_model.dart';
@@ -96,9 +97,19 @@ class LendingRepository {
   }
 
   Future<List<TransactionModel>> getPaymentHistory(String loanId) async {
-    final response = await _apiService.get('/loans/$loanId/payments');
-    final List data = response['data'] ?? [];
-    return data.map((e) => TransactionModel.fromJson(e)).toList();
+    if (loanId.isEmpty || loanId == 'null') {
+      debugPrint('DEBUG [LendingRepository]: getPaymentHistory called with invalid ID: $loanId');
+      return [];
+    }
+    try {
+      debugPrint('DEBUG [LendingRepository]: Fetching payment history for loan: $loanId');
+      final response = await _apiService.get('/loans/$loanId/payments');
+      final List data = response['data'] ?? [];
+      return data.map((e) => TransactionModel.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint('DEBUG [LendingRepository]: Error fetching payment history for $loanId: $e');
+      rethrow;
+    }
   }
 
   Future<double> getTotalDisbursed() async {

@@ -37,7 +37,7 @@ class LoanPaymentViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (loanId != null) {
+      if (loanId != null && loanId.isNotEmpty && loanId != 'null') {
         _loan = await _lendingRepo.getLoanById(loanId);
         if (_loan != null) {
           _request = await _lendingRepo.getLoanRequestById(_loan!.loanRequestId);

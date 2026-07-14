@@ -8,10 +8,7 @@ import '../widgets/kpi_card.dart';
 import '../widgets/lending_bar_chart.dart';
 import '../widgets/recent_loans_table.dart';
 import '../widgets/dashboard_header.dart';
-import 'loan_evaluation_page.dart';
-import 'loan_details_page.dart';
 import 'loan_payment_page.dart';
-import 'shareholder_detail_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -250,12 +247,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
         // 2. If it's a Loan Payment, go to Loan Payment Page
         if (tx.type.contains('Payment') && refId != null && refId.isNotEmpty) {
           if (!context.mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LoanPaymentPage(loanId: refId),
-            ),
-          );
+          context.read<NavigationViewModel>().navigateToLoanPayment(loanId: refId);
           return;
         }
         

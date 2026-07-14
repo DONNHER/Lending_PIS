@@ -115,6 +115,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Loans
     Route::get('/loans/by-request/{requestId}', [LoanController::class, 'showByRequest']);
     Route::get('/loans', [LoanController::class, 'index']);
+    Route::get('/loans/{id}/payments', [LoanController::class, 'getPayments']);
     Route::post('/loans/{id}/payments', [LoanController::class, 'recordPayment']);
     Route::get('/loans/{id}', [LoanController::class, 'show']);
     Route::get('/shareholders/{shareholderId}/loans', [LoanController::class, 'getByShareholder']);

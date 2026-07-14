@@ -345,6 +345,19 @@ class LoanController extends Controller
         });
     }
 
+    public function getPayments($id)
+    {
+        $payments = Transaction::where('reference_id', $id)
+            ->where('type', 'Loan Repayment')
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $payments
+        ]);
+    }
+
     public function updateRequestStatus(Request $request, $id)
     {
         $loanRequest = LoanRequest::with('shareholder')->findOrFail($id);

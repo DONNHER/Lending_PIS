@@ -9,6 +9,7 @@ import 'package:capstone_application/views/ShareHolder_screens/transaction.dart'
 import 'package:capstone_application/views/ShareHolder_screens/settings.dart';
 import 'package:capstone_application/views/ShareHolder_screens/managements/loan_application.dart';
 import 'package:capstone_application/views/ShareHolder_screens/details_page/loan_request_approval.dart';
+import 'package:capstone_application/views/loan_payment_page.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -358,6 +359,13 @@ class _AppShellState extends State<AppShell> {
 
     if (nav.isReviewingLoanRequest && nav.loanRequestIdToReview != null) {
       return LoanRequestDetailsScreen(loanRequestId: nav.loanRequestIdToReview!);
+    }
+
+    if (nav.isRecordingPayment) {
+      return LoanPaymentPage(
+        loanId: nav.paymentLoanId,
+        initialRequest: nav.paymentLoanRequest,
+      );
     }
     
     if (nav.isViewingAdminSettings) {

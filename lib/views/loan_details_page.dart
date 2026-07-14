@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/models/lending_models.dart';
 import 'package:capstone_application/viewmodels/loan_details_viewmodel.dart';
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'package:capstone_application/views/loan_payment_page.dart';
 import 'package:capstone_application/views/shareholder_detail_page.dart';
 
@@ -41,47 +42,30 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
     return Consumer<LoanDetailsViewModel>(
       builder: (context, viewModel, _) {
         if (viewModel.isLoading && !viewModel.isInitialized) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFFDF8F5),
-            body: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D))),
-          );
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)));
         }
 
         final loan = viewModel.loan;
         if (loan == null && !viewModel.isLoading) {
-          return Scaffold(
-            backgroundColor: background,
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.close, color: Colors.black),
-                onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
-              ),
-            ),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                  const SizedBox(height: 16),
-                  Text(viewModel.errorMessage ?? 'Loan details could not be found.',
-                      style: const TextStyle(color: Colors.grey, fontSize: 16)),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => viewModel.fetchLoanDetails(widget.loanId, forceRefresh: true),
-                    style: ElevatedButton.styleFrom(backgroundColor: primaryBrown),
-                    child: const Text('Try Again', style: TextStyle(color: Colors.white)),
-                  )
-                ],
-              ),
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+                const SizedBox(height: 16),
+                Text(viewModel.errorMessage ?? 'Loan details could not be found.',
+                    style: const TextStyle(color: Colors.grey, fontSize: 16)),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => viewModel.fetchLoanDetails(widget.loanId, forceRefresh: true),
+                  style: ElevatedButton.styleFrom(backgroundColor: primaryBrown),
+                  child: const Text('Try Again', style: TextStyle(color: Colors.white)),
+                )
+              ],
             ),
           );
         } else if (loan == null) {
-            return const Scaffold(
-              backgroundColor: Color(0xFFFDF8F5),
-              body: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D))),
-            );
+            return const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)));
         }
 
         final request = viewModel.request;
@@ -277,20 +261,11 @@ class _Sidebar extends StatelessWidget {
         children: [
           const Text('Quick Actions', style: TextStyle(color: Colors.white54)),
           const SizedBox(height: 16),
-          _ActionButton(Icons.payment_rounded, 'Record payment', () async {
-            final refreshed = await Navigator.push<bool>(
-              context,
-              MaterialPageRoute(
-                builder: (context) => LoanPaymentPage(
-                  loanId: loan.id,
-                  initialRequest: viewModel.request,
-                ),
-              ),
+          _ActionButton(Icons.payment_rounded, 'Record payment', () {
+            context.read<NavigationViewModel>().navigateToLoanPayment(
+              loanId: loan.id,
+              request: viewModel.request,
             );
-
-            if (refreshed == true && context.mounted) {
-              await viewModel.fetchLoanDetails(loanId, forceRefresh: true);
-            }
           }),
           _ActionButton(Icons.print, 'Print statement', () => viewModel.handleAction('Print')),
           _ActionButton(Icons.edit, 'Edit details', () => viewModel.handleAction('Edit')),

@@ -16,7 +16,10 @@ class NavigationViewModel extends ChangeNotifier {
   bool _isApplyingLoan = false;
   bool _isViewingAdminSettings = false;
   bool _isReviewingLoanRequest = false; // 🚀 Added
+  bool _isRecordingPayment = false; // 🚀 Added
   String? _loanRequestIdToReview; // 🚀 Added
+  String? _paymentLoanId; // 🚀 Added
+  LoanRequestModel? _paymentLoanRequest; // 🚀 Added
   ShareholderModel? _loanInitialShareholder;
 
   int get selectedIndex => _selectedIndex;
@@ -29,7 +32,10 @@ class NavigationViewModel extends ChangeNotifier {
   bool get isApplyingLoan => _isApplyingLoan;
   bool get isViewingAdminSettings => _isViewingAdminSettings;
   bool get isReviewingLoanRequest => _isReviewingLoanRequest; // 🚀 Added
+  bool get isRecordingPayment => _isRecordingPayment; // 🚀 Added
   String? get loanRequestIdToReview => _loanRequestIdToReview; // 🚀 Added
+  String? get paymentLoanId => _paymentLoanId; // 🚀 Added
+  LoanRequestModel? get paymentLoanRequest => _paymentLoanRequest; // 🚀 Added
   ShareholderModel? get loanInitialShareholder => _loanInitialShareholder;
 
   final List<NavItemModel> _allItems = [
@@ -151,6 +157,23 @@ class NavigationViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void navigateToLoanPayment({String? loanId, LoanRequestModel? request}) {
+    _isRecordingPayment = true;
+    _paymentLoanId = loanId;
+    _paymentLoanRequest = request;
+    _isApplyingLoan = false;
+    _isViewingAdminSettings = false;
+    _isReviewingLoanRequest = false;
+    notifyListeners();
+  }
+
+  void clearLoanPayment() {
+    _isRecordingPayment = false;
+    _paymentLoanId = null;
+    _paymentLoanRequest = null;
+    notifyListeners();
+  }
+
   void navigateToShareholder(String id) {
     final items = getFilteredNavItems();
     final index = items.indexWhere((item) => item.route == '/users');
@@ -193,8 +216,11 @@ class NavigationViewModel extends ChangeNotifier {
     _isApplyingLoan = false;
     _isViewingAdminSettings = false;
     _isReviewingLoanRequest = false;
+    _isRecordingPayment = false;
     _loanInitialShareholder = null;
     _loanRequestIdToReview = null;
+    _paymentLoanId = null;
+    _paymentLoanRequest = null;
   }
 
   void clearShareholderSelection() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import '../app_theme.dart';
 import '../models/lending_models.dart';
 import '../repositories/lending_repository.dart';
@@ -92,33 +93,30 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
         }
 
         if (viewModel.isLoading && loan == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFFDF8F5),
-            body: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D))),
-          );
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)));
         }
+
+        final nav = context.read<NavigationViewModel>();
 
         if (loan == null) {
           debugPrint('DEBUG [LoanPaymentPage]: Rendering fallback blank/error screen because loan instance is null.');
-          return Scaffold(
-            backgroundColor: const Color(0xFFFDF8F5),
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.close, color: AppTheme.textDark),
-                onPressed: () => Navigator.pop(context),
-              ),
-              title: const Text('Record payment', style: TextStyle(color: AppTheme.textDark, fontSize: 16)),
-            ),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  viewModel.errorMessage ?? 'Unable to load loan.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.textMuted),
-                ),
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    viewModel.errorMessage ?? 'Unable to load loan.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => nav.clearLoanPayment(),
+                    child: const Text('Go Back'),
+                  ),
+                ],
               ),
             ),
           );
@@ -128,61 +126,70 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
         final interestPortion = (loan.totalRepayable - loan.principalAmount).clamp(0.0, double.infinity);
         final totalDue = loan.remainingBalance;
 
-        return Scaffold(
-          backgroundColor: const Color(0xFFFDF8F5),
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.close, color: Color(0xFF32211A)),
-              onPressed: () {
-                debugPrint('DEBUG [LoanPaymentPage]: User tapped upper Close button.');
-                Navigator.pop(context);
-              },
-            ),
-            title: const Text(
-              'Record Loan Payment',
-              style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-              child: Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left Column: Entry Form & Balance Details Card
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          children: [
-                            _buildPaymentFormCard(viewModel, currencyFormat, loan, borrowerName),
-                            const SizedBox(height: 24),
-                            _buildPaymentHistoryCard(viewModel, currencyFormat),
-                          ],
+        return Material(
+          color: Colors.transparent,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Record Loan Payment',
+                          style: TextStyle(
+                            color: Color(0xFF32211A),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 24),
-                      // Right Column: Summary Breakdowns & Metrics
-                      Expanded(
-                        flex: 1,
-                        child: Column(
-                          children: [
-                            _buildRightSidebarSummary(currencyFormat, loan, interestPortion, totalDue),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Color(0xFF32211A)),
+                          onPressed: () => nav.clearLoanPayment(),
+                          tooltip: 'Close',
                         ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Column: Entry Form & Balance Details Card
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            children: [
+                              _buildPaymentFormCard(viewModel, currencyFormat, loan, borrowerName),
+                              const SizedBox(height: 24),
+                              _buildPaymentHistoryCard(viewModel, currencyFormat),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        // Right Column: Summary Breakdowns & Metrics
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                              _buildRightSidebarSummary(currencyFormat, loan, interestPortion, totalDue),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    if (viewModel.errorMessage != null) ...[
+                      Text(viewModel.errorMessage!, style: const TextStyle(color: AppTheme.error, fontSize: 13)),
+                      const SizedBox(height: 16),
                     ],
-                  ),
-                  const SizedBox(height: 32),
-                  if (viewModel.errorMessage != null) ...[
-                    Text(viewModel.errorMessage!, style: const TextStyle(color: AppTheme.error, fontSize: 13)),
-                    const SizedBox(height: 16),
+                    _buildActionButtons(context, viewModel, currencyFormat),
+                    const SizedBox(height: 40),
                   ],
-                  _buildActionButtons(context, viewModel, currencyFormat),
-                ],
+                ),
               ),
             ),
           ),
@@ -430,7 +437,7 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
           child: OutlinedButton(
             onPressed: viewModel.isSubmitting ? null : () {
               debugPrint('DEBUG [LoanPaymentPage]: Cancel execution triggered via button interaction.');
-              Navigator.pop(context);
+              context.read<NavigationViewModel>().clearLoanPayment();
             },
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.textDark,
@@ -491,7 +498,7 @@ class _LoanPaymentBodyState extends State<_LoanPaymentBody> {
                 }
                 
                 if (context.mounted) {
-                  Navigator.pop(context, true);
+                  context.read<NavigationViewModel>().clearLoanPayment();
                 }
               } else {
                 debugPrint('DEBUG [LoanPaymentPage]: Error detected inside repository sequence: ${viewModel.errorMessage}');

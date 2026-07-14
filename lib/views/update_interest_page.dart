@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../viewmodels/update_interest_viewmodel.dart';
 import '../app_theme.dart';
-import '../widgets/rate_history_table.dart';
-import '../widgets/page_turner.dart';
 
 class InterestManagementPage extends StatefulWidget {
   const InterestManagementPage({super.key});
@@ -23,20 +22,43 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    const primaryBrown = Color(0xFFC06C4D);
+    const background = Color(0xFFFDF8F5);
+    const textDark = Color(0xFF1F2937);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF8F5),
+      backgroundColor: background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 80,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'Interest Management', 
-          style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+        title: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8.0),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: Color(0xFFC06C4D),
+                child: Icon(Icons.percent_rounded, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Interest Management',
+                      style: TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('System Settings',
+                      style: TextStyle(color: primaryBrown, fontSize: 13, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           Consumer<UpdateInterestViewModel>(
             builder: (context, viewModel, _) => IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+              icon: const Icon(Icons.refresh_rounded, color: primaryBrown),
               onPressed: viewModel.refresh,
               tooltip: 'Refresh',
             ),
@@ -46,170 +68,169 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
       ),
       body: Consumer<UpdateInterestViewModel>(
         builder: (context, viewModel, child) {
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildCurrentRateCard(context, viewModel),
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Rate History',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                        ),
-                        _buildFilterDropdown(
-                          label: 'Sort By',
-                          value: viewModel.sortOrder,
-                          items: ['Newest', 'Oldest'],
-                          onChanged: (val) {
-                            if (val != null) viewModel.setSortOrder(val);
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildHistoryTable(viewModel),
-                    const SizedBox(height: 32),
-                  ],
+          if (viewModel.isLoading && !viewModel.isInitialized) {
+            return const Center(child: CircularProgressIndicator(color: primaryBrown));
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(32.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _MainContent(viewModel: viewModel),
                 ),
-              ),
+                const SizedBox(width: 32),
+                Expanded(
+                  flex: 1,
+                  child: _Sidebar(viewModel: viewModel),
+                ),
+              ],
             ),
           );
         },
       ),
     );
   }
+}
 
-  Widget _buildFilterDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('$label: ', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-          DropdownButton<String>(
-            value: value,
-            underline: const SizedBox(),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-            items: items.map((String v) => DropdownMenuItem<String>(value: v, child: Text(v))).toList(),
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
+class _MainContent extends StatelessWidget {
+  final UpdateInterestViewModel viewModel;
 
-  Widget _buildCurrentRateCard(BuildContext context, UpdateInterestViewModel viewModel) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: const Color(0xFFC06C4D),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFC06C4D).withOpacity(0.2),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
+  const _MainContent({required this.viewModel});
+
+  @override
+  Widget build(BuildContext context) {
+    const primaryBrown = Color(0xFFC06C4D);
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE5E7EB))),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text('Financial Summary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              _infoRow('Current Interest Rate', '${(viewModel.currentRate * 100).toStringAsFixed(1)}%',
+                  valueColor: primaryBrown),
+              _infoRow('Rate Type', 'Monthly Periodic'),
+              _infoRow('Calculation Method', 'Simple Interest'),
+              _infoRow('Target Products', 'All Loan Types'),
+              const Divider(height: 40),
               const Text(
-                'Current Interest Rate',
-                style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                'Adjustment Policy',
+                style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    '${(viewModel.currentRate * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'per month',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                ],
+              const SizedBox(height: 12),
+              const Text(
+                'Interest rate changes are applied to new loan requests only. Existing active loans will maintain their original rates until fully paid.',
+                style: TextStyle(color: Color(0xFF1F2937), fontSize: 14, height: 1.5),
               ),
             ],
           ),
-          ElevatedButton.icon(
-            onPressed: () => _showUpdateDialog(context, viewModel),
-            icon: const Icon(Icons.edit_rounded, size: 18),
-            label: const Text('Update Rate'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFFC06C4D),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              minimumSize: const Size(0, 52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildHistoryTable(UpdateInterestViewModel viewModel) {
+  Widget _infoRow(String label, String value, {Color? valueColor}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(color: Color(0xFF6B7280))),
+            Text(value,
+                style: TextStyle(
+                    color: valueColor ?? const Color(0xFF1F2937), fontWeight: FontWeight.w600, fontSize: 15)),
+          ],
+        ),
+      );
+}
+
+class _Sidebar extends StatelessWidget {
+  final UpdateInterestViewModel viewModel;
+
+  const _Sidebar({required this.viewModel});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      height: 500,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
+      height: 650,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(color: const Color(0xFF32211A), borderRadius: BorderRadius.circular(24)),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text('Quick Actions', style: TextStyle(color: Colors.white54)),
+          const SizedBox(height: 16),
+          _ActionButton(Icons.edit_rounded, 'Update rate', () => _showUpdateDialog(context, viewModel)),
+          _ActionButton(Icons.history_rounded, 'Export history', () {}),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(color: Colors.white24)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Rate History', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              DropdownButton<String>(
+                value: viewModel.sortOrder,
+                dropdownColor: const Color(0xFF32211A),
+                underline: const SizedBox(),
+                icon: const Icon(Icons.sort_rounded, color: Colors.white54, size: 16),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                items: ['Newest', 'Oldest']
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) viewModel.setSortOrder(val);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Expanded(
-            child: RateHistoryTable(
-              history: viewModel.history ?? [],
-              isLoading: viewModel.isLoading,
-            ),
+            child: viewModel.history.isEmpty
+                ? const Center(child: Text('No history yet', style: TextStyle(color: Colors.white54)))
+                : ListView.builder(
+                    itemCount: viewModel.history.length,
+                    itemBuilder: (context, index) {
+                      final item = viewModel.history[index];
+                      final dateStr = item['created_at'] ?? item['effective_date'] ?? DateTime.now().toIso8601String();
+                      final date = DateTime.parse(dateStr);
+                      final rate = (double.tryParse(item['new_rate'].toString()) ?? 0.0) * 100;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(DateFormat('MMM dd, yyyy').format(date),
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                Text('${rate.toStringAsFixed(1)}%',
+                                    style: const TextStyle(
+                                        color: Color(0xFFC06C4D), fontWeight: FontWeight.bold, fontSize: 15)),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item['reason'] ?? 'System adjustment',
+                              style: const TextStyle(color: Colors.white54, fontSize: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
           ),
-          PageTurner(
-            currentPage: viewModel.currentPage,
-            totalPages: viewModel.lastPage,
-            totalRows: viewModel.totalRows,
-            rowsPerPage: viewModel.rowsPerPage,
-            onPageChanged: viewModel.setPage,
-            onRowsPerPageChanged: (val) {
-              if (val != null) viewModel.setRowsPerPage(val);
-            },
-          ),
+          const Divider(color: Colors.white24, height: 32),
+          _PaginationControl(viewModel: viewModel),
         ],
       ),
     );
@@ -261,7 +282,7 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
               if (formKey.currentState!.validate()) {
                 final newRate = double.tryParse(rateController.text);
                 if (newRate == null) return;
-                
+
                 final success = await viewModel.updateRate(newRate / 100, reasonController.text);
                 if (context.mounted) {
                   Navigator.pop(context);
@@ -283,6 +304,54 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _ActionButton(this.icon, this.label, this.onTap);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: InkWell(
+          onTap: onTap,
+          child: Row(
+            children: [
+              Icon(icon, color: const Color(0xFFC06C4D), size: 20),
+              const SizedBox(width: 12),
+              Text(label, style: const TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+      );
+}
+
+class _PaginationControl extends StatelessWidget {
+  final UpdateInterestViewModel viewModel;
+  const _PaginationControl({required this.viewModel});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.chevron_left_rounded, color: Colors.white54),
+          onPressed: viewModel.currentPage > 1 ? () => viewModel.setPage(viewModel.currentPage - 1) : null,
+        ),
+        Text(
+          'Page ${viewModel.currentPage} of ${viewModel.lastPage}',
+          style: const TextStyle(color: Colors.white54, fontSize: 11),
+        ),
+        IconButton(
+          icon: const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+          onPressed: viewModel.currentPage < viewModel.lastPage ? () => viewModel.setPage(viewModel.currentPage + 1) : null,
+        ),
+      ],
     );
   }
 }
