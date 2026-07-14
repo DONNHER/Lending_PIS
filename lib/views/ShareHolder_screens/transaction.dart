@@ -39,31 +39,34 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         builder: (context, viewModel, child) {
           return Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
-                    child: Text("History",
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                  ),
-                  _buildFilterChips(viewModel),
-                  
-                  if (viewModel.selectedFilter == 'Loan Requests') ...[
-                    const SizedBox(height: 4),
-                    _buildRoleSelector(viewModel),
-                  ],
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(0, 24, 0, 16),
+                      child: Text("History",
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                    ),
+                    _buildFilterChips(viewModel),
+                    
+                    if (viewModel.selectedFilter == 'Loan Requests') ...[
+                      const SizedBox(height: 4),
+                      _buildRoleSelector(viewModel),
+                    ],
 
-                  const SizedBox(height: 10),
-                  _buildDateHeader(viewModel.selectedFilter == 'Loan Requests' 
-                      ? "Recent Requests" 
-                      : "Recent Transactions"),
-                      
-                  Expanded(
-                    child: _buildBody(viewModel),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    _buildDateHeader(viewModel.selectedFilter == 'Loan Requests' 
+                        ? "Recent Requests" 
+                        : "Recent Transactions"),
+                        
+                    Expanded(
+                      child: _buildBody(viewModel),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -137,7 +140,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     return SizedBox(
       height: 64,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         scrollDirection: Axis.horizontal,
         itemCount: filters.length,
         separatorBuilder: (context, index) => const SizedBox(width: 10),
@@ -172,29 +175,26 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   }
 
   Widget _buildRoleSelector(ShareholderTransactionViewModel viewModel) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildRoleButton(
-              label: 'Borrower',
-              isSelected: viewModel.roleFilter == 'Borrower',
-              onTap: () => viewModel.setRoleFilter('Borrower'),
-            ),
-            _buildRoleButton(
-              label: 'Co-maker',
-              isSelected: viewModel.roleFilter == 'Co-maker',
-              onTap: () => viewModel.setRoleFilter('Co-maker'),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildRoleButton(
+            label: 'Borrower',
+            isSelected: viewModel.roleFilter == 'Borrower',
+            onTap: () => viewModel.setRoleFilter('Borrower'),
+          ),
+          _buildRoleButton(
+            label: 'Co-maker',
+            isSelected: viewModel.roleFilter == 'Co-maker',
+            onTap: () => viewModel.setRoleFilter('Co-maker'),
+          ),
+        ],
       ),
     );
   }
@@ -226,15 +226,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   }
 
   Widget _buildDateHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(color: textGrey, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-          const Divider(height: 24, color: borderGrey),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(color: textGrey, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+        const Divider(height: 24, color: borderGrey),
+      ],
     );
   }
 
@@ -252,7 +249,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       },
       color: AppTheme.primary,
       child: ListView.builder(
-        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+        padding: const EdgeInsets.only(bottom: 20),
         itemCount: viewModel.transactions.length,
         itemBuilder: (context, index) {
           final item = viewModel.transactions[index];
@@ -352,7 +349,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       },
       color: AppTheme.primary,
       child: ListView.builder(
-        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+        padding: const EdgeInsets.only(bottom: 20),
         itemCount: viewModel.loanRequests.length,
         itemBuilder: (context, index) {
           final item = viewModel.loanRequests[index];

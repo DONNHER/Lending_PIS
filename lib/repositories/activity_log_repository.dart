@@ -1,4 +1,5 @@
 import '../services/api_service.dart';
+import '../models/activity_log_model.dart';
 
 class ActivityLogRepository {
   final ApiService _apiService;
@@ -9,6 +10,8 @@ class ActivityLogRepository {
     required String action,
     required String details,
     String? type,
+    String? ipAddress,
+    String? deviceInfo,
   }) async {
     try {
       await _apiService.post(
@@ -17,6 +20,8 @@ class ActivityLogRepository {
           'action': action,
           'details': details,
           'type': type ?? 'info',
+          if (ipAddress != null) 'ip_address': ipAddress,
+          if (deviceInfo != null) 'device_info': deviceInfo,
         },
         triggerUnauthorized: false,
       );
@@ -25,8 +30,9 @@ class ActivityLogRepository {
     }
   }
 
-  Future<List<dynamic>> getLogs() async {
+  Future<List<ActivityLog>> getLogs() async {
     final response = await _apiService.get('/activity-logs');
-    return response['data'] ?? [];
+    final List<dynamic> data = response['data'] ?? [];
+    return data.map((json) => ActivityLog.fromJson(json)).toList();
   }
 }

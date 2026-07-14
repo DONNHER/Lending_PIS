@@ -46,7 +46,7 @@ class _LoansPageState extends State<LoansPage> {
       } else if (request.status == LoanStatus.released || request.status == LoanStatus.rejected) {
         // Use the specific navigation method for loan details to ensure it doesn't fall back to evaluation
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          nav.navigateToLoanDetails(request.id, request.shareholderId);
+          nav.navigateToLoanDetails(request.id, request.shareholderId, request: request);
         });
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       } else {
@@ -62,6 +62,8 @@ class _LoansPageState extends State<LoansPage> {
         loanId: nav.selectedLoanId!,
         shareholderId: nav.selectedLoanShareholderId ?? '',
         onBack: () => nav.clearLoanSelection(),
+        initialLoan: nav.selectedLoan,
+        initialRequest: nav.selectedLoanRequestForDetails,
       );
     }
 
@@ -151,7 +153,7 @@ class _LoansPageState extends State<LoansPage> {
               _buildFilterDropdown(
                 label: 'Status',
                 value: viewModel.statusFilter,
-                items: ['All', 'Pending', 'Approved', 'Released', 'Rejected'],
+                items: ['All', 'Pending', 'Approved', 'Released', 'Rejected', 'Fully Paid', 'Overdue'],
                 onChanged: (val) {
                   if (val != null) viewModel.setStatusFilter(val);
                 },

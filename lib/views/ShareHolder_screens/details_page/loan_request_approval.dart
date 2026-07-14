@@ -22,7 +22,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
   // Design System Colors
   static const Color primaryGreen = Color(0xFF66FF66);
   static const Color accentRed = Color(0xFFFF4D4D);
-  static const Color bgLight = Color(0xFFF8F9FA);
+  static const Color bgLight = Color(0xFFFDF8F5);
   static const Color textGrey = Color(0xFF9CA3AF);
 
   final currencyFormat = NumberFormat.currency(symbol: '₱');
@@ -316,6 +316,12 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     }
 
     final shareholderId = context.read<NotificationViewModel>().shareholderId;
+    
+    // 🚀 Hide buttons if the current user is the borrower
+    if (loan.shareholderId == shareholderId) {
+      return const SizedBox.shrink();
+    }
+
     final decisions = loan.comakerDecisionsMap;
     final status = decisions[shareholderId ?? ''];
 

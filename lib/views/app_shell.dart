@@ -9,7 +9,6 @@ import 'package:capstone_application/views/ShareHolder_screens/transaction.dart'
 import 'package:capstone_application/views/ShareHolder_screens/settings.dart';
 import 'package:capstone_application/views/ShareHolder_screens/managements/loan_application.dart';
 import 'package:capstone_application/views/ShareHolder_screens/details_page/loan_request_approval.dart';
-import 'package:capstone_application/views/loan_payment_page.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +16,7 @@ import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/models/nav_item_model.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
+import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
 import 'dashboard_page.dart';
 
 class AppShell extends StatefulWidget {
@@ -174,7 +174,7 @@ class _AppShellState extends State<AppShell> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: ClipOval(
@@ -269,7 +269,7 @@ class _AppShellState extends State<AppShell> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textMuted.withOpacity(0.7),
+                        color: AppTheme.textMuted.withValues(alpha: 0.7),
                         letterSpacing: 1.4,
                       ),
                     ),
@@ -297,7 +297,7 @@ class _AppShellState extends State<AppShell> {
                           ),
                         ),
                         selected: isSelected,
-                        selectedTileColor: AppTheme.primary.withOpacity(0.08),
+                        selectedTileColor: AppTheme.primary.withValues(alpha: 0.08),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -359,13 +359,6 @@ class _AppShellState extends State<AppShell> {
 
     if (nav.isReviewingLoanRequest && nav.loanRequestIdToReview != null) {
       return LoanRequestDetailsScreen(loanRequestId: nav.loanRequestIdToReview!);
-    }
-
-    if (nav.isRecordingPayment) {
-      return LoanPaymentPage(
-        loanId: nav.paymentLoanId,
-        initialRequest: nav.paymentLoanRequest,
-      );
     }
     
     if (nav.isViewingAdminSettings) {
@@ -464,7 +457,7 @@ class _AppShellState extends State<AppShell> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(icon, color: AppTheme.primary, size: 34),
@@ -510,7 +503,7 @@ class _CompactBottomNav extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, -4),
           ),
@@ -538,7 +531,7 @@ class _CompactBottomNav extends StatelessWidget {
                             horizontal: 14, vertical: 5),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppTheme.primary.withOpacity(0.12)
+                              ? AppTheme.primary.withValues(alpha: 0.12)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -646,18 +639,62 @@ class _TabletRailState extends State<_TabletRail> {
                   extended: _extended,
                   selectedIndex: widget.selectedIndex,
                   onDestinationSelected: widget.onDestinationSelected,
-                  labelType: NavigationRailLabelType.none, // Labels are handled by the 'extended' property
+                  labelType: NavigationRailLabelType.all, 
                   unselectedLabelTextStyle: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: AppTheme.textMuted,
                   ),
                   selectedLabelTextStyle: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 11,
                     color: AppTheme.primary,
                     fontWeight: FontWeight.w700,
                   ),
-                  leading: const SizedBox.shrink(),
+                  leading: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Consumer2<NotificationViewModel, AuthViewModel>(
+                        builder: (context, viewModel, auth, child) {
+                          if (!auth.isImpersonating) return const SizedBox.shrink();
+
+                          return IconButton(
+                            icon: Stack(
+                              children: [
+                                const Icon(Icons.notifications_none_rounded, color: AppTheme.textMuted),
+                                if (viewModel.unreadCount > 0)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 12,
+                                        minHeight: 12,
+                                      ),
+                                      child: Text(
+                                        '${viewModel.unreadCount}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                            tooltip: 'Notifications',
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                   trailing: Expanded(
                     child: Align(
                       alignment: Alignment.bottomCenter,
@@ -710,9 +747,21 @@ class _TabletRailState extends State<_TabletRail> {
                     final bool isSelected = widget.selectedIndex == idx;
 
                     return NavigationRailDestination(
-                      icon: Icon(item.icon),
-                      selectedIcon: Icon(item.activeIcon),
-                      label: Text(item.label),
+                      icon: MouseRegion(
+                        onEnter: (_) => setState(() => _hoveredIndex = idx),
+                        onExit: (_) => setState(() => _hoveredIndex = null),
+                        child: Icon(item.icon),
+                      ),
+                      selectedIcon: MouseRegion(
+                        onEnter: (_) => setState(() => _hoveredIndex = idx),
+                        onExit: (_) => setState(() => _hoveredIndex = null),
+                        child: Icon(item.activeIcon),
+                      ),
+                      label: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: (isSelected || isHovered || _extended) ? 1.0 : 0.0,
+                        child: Text(item.label),
+                      ),
                     );
                   }).toList(),
                 ),

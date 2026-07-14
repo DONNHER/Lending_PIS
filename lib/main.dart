@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/models/lending_models.dart';
 import 'package:capstone_application/services/api_service.dart';
 import 'package:capstone_application/services/local_cache_service.dart';
 import 'package:capstone_application/services/email_service.dart';

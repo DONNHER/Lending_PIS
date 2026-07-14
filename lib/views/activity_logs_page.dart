@@ -58,7 +58,7 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -106,7 +106,7 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
               _buildFilterDropdown(
                 label: 'Type',
                 value: viewModel.typeFilter,
-                items: ['All', 'Info', 'Warning', 'Error', 'Success'],
+                items: ['All', 'Info', 'Warning', 'Error', 'Success', 'Auth'],
                 onChanged: (val) {
                   if (val != null) viewModel.setTypeFilter(val);
                 },

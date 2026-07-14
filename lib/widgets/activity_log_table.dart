@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../app_theme.dart';
+import '../models/activity_log_model.dart';
 
 class ActivityLogTable extends StatelessWidget {
-  final List<dynamic> logs;
+  final List<ActivityLog> logs;
   final bool isLoading;
 
   const ActivityLogTable({
@@ -51,8 +52,8 @@ class ActivityLogTable extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final log = logs[index];
                     return InkWell(
-                      onTap: () {}, // Optional: Add detail view later
-                      hoverColor: const Color(0xFFC06C4D).withOpacity(0.05),
+                      onTap: () => _showLogDetails(context, log),
+                      hoverColor: const Color(0xFFC06C4D).withValues(alpha: 0.05),
                       child: _buildRow(log),
                     );
                   },
@@ -62,27 +63,16 @@ class ActivityLogTable extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(dynamic log) {
+  Widget _buildRow(ActivityLog log) {
     final dateFormat = DateFormat('MMM dd, HH:mm:ss');
     
-    DateTime createdAt;
-    try {
-      createdAt = log['created_at'] != null ? DateTime.parse(log['created_at']) : DateTime.now();
-    } catch (e) {
-      createdAt = DateTime.now();
-    }
-    
-    final userName = log['user'] != null 
-        ? '${log['user']['firstname']} ${log['user']['lastname']}' 
-        : 'System';
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text(userName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textDark))),
-          Expanded(flex: 2, child: Text(log['action'] ?? 'N/A', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textDark))),
-          Expanded(flex: 4, child: Text(log['details'] ?? 'No details', style: const TextStyle(fontSize: 11, color: AppTheme.textDark), maxLines: 2, overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 2, child: Text(log.userName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textDark))),
+          Expanded(flex: 2, child: Text(log.action, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textDark))),
+          Expanded(flex: 4, child: Text(log.details, style: const TextStyle(fontSize: 11, color: AppTheme.textDark), maxLines: 2, overflow: TextOverflow.ellipsis)),
           Expanded(
             flex: 2,
             child: Align(
@@ -90,27 +80,88 @@ class ActivityLogTable extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getTypeColor(log['type']).withOpacity(0.1),
+                  color: _getTypeColor(log.type).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  (log['type'] ?? 'INFO').toString().toUpperCase(),
-                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: _getTypeColor(log['type'])),
+                  log.type.toUpperCase(),
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: _getTypeColor(log.type)),
                 ),
               ),
             ),
           ),
-          Expanded(flex: 2, child: Text(dateFormat.format(createdAt), style: const TextStyle(fontSize: 11, color: AppTheme.textMuted))),
+          Expanded(flex: 2, child: Text(dateFormat.format(log.createdAt), style: const TextStyle(fontSize: 11, color: AppTheme.textMuted))),
         ],
       ),
     );
   }
 
-  Color _getTypeColor(dynamic type) {
-    final t = type.toString().toLowerCase();
+  void _showLogDetails(BuildContext context, ActivityLog log) {
+    final dateFormat = DateFormat('MMMM dd, yyyy - HH:mm:ss');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.history_rounded, color: _getTypeColor(log.type)),
+            const SizedBox(width: 12),
+            const Text('Log Details', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailItem('User', log.userName),
+            _detailItem('Action', log.action),
+            _detailItem('Type', log.type.toUpperCase(), color: _getTypeColor(log.type)),
+            _detailItem('Date', dateFormat.format(log.createdAt)),
+            const Divider(height: 32),
+            const Text('Details', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textMuted, fontSize: 12)),
+            const SizedBox(height: 8),
+            Text(log.details, style: const TextStyle(fontSize: 14, height: 1.5)),
+            
+            if (log.ipAddress != null || log.deviceInfo != null) ...[
+              const Divider(height: 32),
+              const Text('Technical Info', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textMuted, fontSize: 12)),
+              const SizedBox(height: 8),
+              if (log.ipAddress != null) _detailItem('IP Address', log.ipAddress!),
+              if (log.deviceInfo != null) _detailItem('Device Info', log.deviceInfo!),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailItem(String label, String value, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: AppTheme.textDark, fontSize: 14),
+          children: [
+            TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textMuted)),
+            TextSpan(text: value, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getTypeColor(String type) {
+    final t = type.toLowerCase();
     if (t == 'error' || t == 'critical') return Colors.red;
     if (t == 'warning') return Colors.orange;
     if (t == 'success') return Colors.green;
+    if (t == 'auth' || t == 'authentication') return Colors.purple;
     return Colors.blue;
   }
 }

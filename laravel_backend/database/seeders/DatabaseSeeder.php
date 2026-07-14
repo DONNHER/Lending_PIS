@@ -54,5 +54,8 @@ class DatabaseSeeder extends Seeder
                 'mfa_enabled' => false,
             ]
         );
+
+        // 4. ACTIVITY LOGS
+        $this->call(ActivityLogSeeder::class);
     }
 }

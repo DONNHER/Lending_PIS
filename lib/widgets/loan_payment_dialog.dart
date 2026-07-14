@@ -84,7 +84,15 @@ class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
         }
 
         if (viewModel.isLoading && loan == null) {
-          return const Dialog(child: SizedBox(height: 200, child: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)))));
+          return Dialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            child: const SizedBox(
+              height: 200,
+              width: 400,
+              child: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D))),
+            ),
+          );
         }
 
         if (loan == null) {
@@ -96,58 +104,163 @@ class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
         }
 
         final borrowerName = req?.shareholderName ?? 'Borrower';
-        final interestPortion = (loan.totalRepayable - loan.principalAmount).clamp(0.0, double.infinity);
+        final shareholderId = req?.shareholderId ?? 'N/A';
         final totalDue = loan.remainingBalance;
 
         return Dialog(
-          backgroundColor: const Color(0xFFFDF8F5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            constraints: const BoxConstraints(maxWidth: 450),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 30,
+                    offset: const Offset(0, 15),
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header / Close button
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text('Record Loan Payment', style: TextStyle(color: Color(0xFFC06C4D), fontSize: 13, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 4),
-                          Text(borrowerName, style: const TextStyle(color: Color(0xFF1F2937), fontSize: 24, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted),
+                            splashRadius: 24,
+                          ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.grey),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(flex: 2, child: _buildPaymentHistoryCard(viewModel, currencyFormat)),
-                        const SizedBox(width: 24),
-                        Expanded(flex: 2, child: _buildPaymentFormCard(viewModel, currencyFormat, loan, borrowerName)),
-                      ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildCombinedSummary(currencyFormat, loan, interestPortion, totalDue),
-                  const SizedBox(height: 32),
-                  if (viewModel.errorMessage != null) ...[
-                    Text(viewModel.errorMessage!, style: const TextStyle(color: AppTheme.error, fontSize: 13)),
+
+                    // Payment Icon & Title
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFC06C4D).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.payments_rounded, size: 40, color: Color(0xFFC06C4D)),
+                    ),
                     const SizedBox(height: 16),
+                    const Text(
+                      'Record Loan Payment',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF32211A),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Entry Fields
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Payment amount'),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _amountController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                            decoration: InputDecoration(
+                              hintText: '0.00',
+                              filled: true,
+                              fillColor: const Color(0xFFF9FAFB),
+                              prefixIcon: const Icon(Icons.account_balance_wallet_outlined, color: AppTheme.textMuted, size: 20),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFC06C4D))),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Outstanding: ${currencyFormat.format(totalDue)}',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 20),
+                          _buildLabel('Payment method'),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _method,
+                                isExpanded: true,
+                                items: LoanPaymentViewModel.paymentMethods.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                                onChanged: (v) => setState(() => _method = v ?? _method),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                          const SizedBox(height: 24),
+                          _detailRow('Borrower', borrowerName),
+                          _detailRow('Shareholder ID', shareholderId),
+                          _detailRow('Principal', currencyFormat.format(loan.principalAmount)),
+                        ],
+                      ),
+                    ),
+
+                    // Action Buttons
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: viewModel.isSubmitting ? null : () async {
+                                final amt = _parseAmount();
+                                if (amt == null || amt <= 0) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid amount')));
+                                  return;
+                                }
+
+                                final success = await viewModel.submitPayment(amount: amt, method: _method);
+                                if (success && context.mounted) {
+                                  var tx = viewModel.lastTransaction!;
+                                  if (tx.clientName == 'Unknown Client') tx = tx.copyWith(clientName: borrowerName);
+                                  if (tx.amount <= 0) tx = tx.copyWith(amount: amt);
+                                  if (tx.method == 'N/A') tx = tx.copyWith(method: _method);
+
+                                  await showDialog(context: context, builder: (context) => TransactionDetailDialog(transaction: tx));
+                                  if (context.mounted) Navigator.pop(context, true);
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFC06C4D),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              child: viewModel.isSubmitting 
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                  _buildActionButtons(context, viewModel, currencyFormat, borrowerName),
-                ],
+                ),
               ),
             ),
           ),
@@ -156,201 +269,18 @@ class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
     );
   }
 
-  Widget _buildPaymentFormCard(LoanPaymentViewModel viewModel, NumberFormat currencyFormat, LoanModel loan, String borrowerName) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildLabel(String text) => Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF32211A)));
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('Payment Processing', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF32211A))),
-          const SizedBox(height: 24),
-          _buildLabel('Payment amount'),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-            decoration: InputDecoration(
-              hintText: 'Enter amount',
-              filled: true,
-              fillColor: const Color(0xFFFDFDFD),
-              prefixIcon: const Icon(Icons.payments_outlined, color: AppTheme.textMuted, size: 20),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFC06C4D))),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Suggested: ${currencyFormat.format(viewModel.suggestedAmount)} · Max: ${currencyFormat.format(loan.remainingBalance)}',
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-          ),
-          const SizedBox(height: 24),
-          _buildLabel('Payment method'),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE5E7EB))),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _method,
-                isExpanded: true,
-                items: LoanPaymentViewModel.paymentMethods.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(fontSize: 13)))).toList(),
-                onChanged: (v) => setState(() => _method = v ?? _method),
-              ),
-            ),
-          ),
+          Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
         ],
       ),
     );
   }
-
-  Widget _buildPaymentHistoryCard(LoanPaymentViewModel viewModel, NumberFormat currencyFormat) {
-    final history = viewModel.paymentHistory;
-    final dateFormat = DateFormat('MMM dd, yyyy');
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Recent Payments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF32211A))),
-          const SizedBox(height: 16),
-          if (history.isEmpty)
-            const Expanded(child: Center(child: Text('No payments recorded.', style: TextStyle(color: AppTheme.textMuted, fontSize: 13))))
-          else
-            Expanded(
-              child: ListView.separated(
-                itemCount: history.length,
-                separatorBuilder: (context, index) => const Divider(height: 20, color: Color(0xFFF3F4F6)),
-                itemBuilder: (context, index) {
-                  final tx = history[index];
-                  return Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(color: const Color(0xFF80FF80).withValues(alpha: 0.1), shape: BoxShape.circle),
-                        child: const Icon(Icons.payments_rounded, color: Colors.green, size: 16),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(dateFormat.format(tx.date), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                            Text(tx.method, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                      Text(currencyFormat.format(tx.amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.green)),
-                    ],
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCombinedSummary(NumberFormat currencyFormat, LoanModel loan, double interestPortion, double totalDue) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: const Color(0xFF32211A), borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Ledger & Amortization Summary', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    _summaryRow('Principal', currencyFormat.format(loan.principalAmount)),
-                    const Divider(height: 16, color: Colors.white10),
-                    _summaryRow('Interest', currencyFormat.format(interestPortion)),
-                  ],
-                ),
-              ),
-              const VerticalDivider(color: Colors.white10, width: 48),
-              Expanded(
-                child: Column(
-                  children: [
-                    _summaryRow('Outstanding', currencyFormat.format(totalDue), valueColor: const Color(0xFFC06C4D)),
-                    const Divider(height: 16, color: Colors.white10),
-                    _summaryRow('Monthly Target', currencyFormat.format(loan.monthlyAmortization), valueColor: const Color(0xFFC06C4D)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryRow(String label, String value, {Color? valueColor}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        Text(value, style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons(BuildContext context, LoanPaymentViewModel viewModel, NumberFormat currencyFormat, String borrowerName) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
-        ),
-        const SizedBox(width: 16),
-        ElevatedButton(
-          onPressed: viewModel.isSubmitting ? null : () async {
-            final amt = _parseAmount();
-            if (amt == null || amt <= 0) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid amount')));
-              return;
-            }
-
-            final success = await viewModel.submitPayment(amount: amt, method: _method);
-            if (success && context.mounted) {
-              var tx = viewModel.lastTransaction!;
-              if (tx.clientName == 'Unknown Client') tx = tx.copyWith(clientName: borrowerName);
-              if (tx.amount <= 0) tx = tx.copyWith(amount: amt);
-              if (tx.method == 'N/A') tx = tx.copyWith(method: _method);
-
-              await showDialog(context: context, builder: (context) => TransactionDetailDialog(transaction: tx));
-              if (context.mounted) Navigator.pop(context, true); // Return true to signal refresh
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFC06C4D),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: viewModel.isSubmitting 
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLabel(String text) => Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textDark));
 }

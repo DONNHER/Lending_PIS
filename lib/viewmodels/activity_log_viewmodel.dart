@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:capstone_application/repositories/activity_log_repository.dart';
+import 'package:capstone_application/models/activity_log_model.dart';
 
 class ActivityLogViewModel extends ChangeNotifier {
   final ActivityLogRepository _activityLogRepository;
 
   bool _isLoading = false;
   bool _isInitialized = false;
-  List<dynamic> _logs = [];
-  List<dynamic> _filteredLogs = [];
+  List<ActivityLog> _allLogs = [];
+  List<ActivityLog> _displayLogs = [];
   
   // Pagination
   int _currentPage = 1;
@@ -23,7 +24,7 @@ class ActivityLogViewModel extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
-  List<dynamic> get logs => _filteredLogs;
+  List<ActivityLog> get logs => _displayLogs;
   
   int get currentPage => _currentPage;
   int get lastPage => _lastPage;
@@ -42,7 +43,7 @@ class ActivityLogViewModel extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      _logs = await _activityLogRepository.getLogs();
+      _allLogs = await _activityLogRepository.getLogs();
       _applyFilters();
       _isInitialized = true;
     } catch (e) {
@@ -54,39 +55,35 @@ class ActivityLogViewModel extends ChangeNotifier {
   }
 
   void _applyFilters() {
-    _filteredLogs = List.from(_logs);
+    List<ActivityLog> filtered = List.from(_allLogs);
 
     // Filter by Type
     if (_typeFilter != 'All') {
-      _filteredLogs = _filteredLogs.where((l) => 
-        (l['type'] ?? 'info').toString().toLowerCase() == _typeFilter.toLowerCase()
+      filtered = filtered.where((l) => 
+        l.type.toLowerCase() == _typeFilter.toLowerCase()
       ).toList();
     }
 
     // Sorting
     switch (_sortOrder) {
       case 'Newest':
-        _filteredLogs.sort((a, b) => 
-          DateTime.parse(b['created_at']).compareTo(DateTime.parse(a['created_at']))
-        );
+        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
       case 'Oldest':
-        _filteredLogs.sort((a, b) => 
-          DateTime.parse(a['created_at']).compareTo(DateTime.parse(b['created_at']))
-        );
+        filtered.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         break;
     }
 
-    _totalRows = _filteredLogs.length;
+    _totalRows = filtered.length;
     _lastPage = (_totalRows / _rowsPerPage).ceil();
     if (_lastPage == 0) _lastPage = 1;
     
     final startIndex = (_currentPage - 1) * _rowsPerPage;
-    if (startIndex < _filteredLogs.length) {
-      final endIndex = (startIndex + _rowsPerPage).clamp(0, _filteredLogs.length);
-      _filteredLogs = _filteredLogs.sublist(startIndex, endIndex);
+    if (startIndex < filtered.length) {
+      final endIndex = (startIndex + _rowsPerPage).clamp(0, filtered.length);
+      _displayLogs = filtered.sublist(startIndex, endIndex);
     } else {
-      _filteredLogs = [];
+      _displayLogs = [];
     }
   }
 

@@ -8,7 +8,7 @@ import '../widgets/kpi_card.dart';
 import '../widgets/lending_bar_chart.dart';
 import '../widgets/recent_loans_table.dart';
 import '../widgets/dashboard_header.dart';
-import 'loan_payment_page.dart';
+import '../widgets/loan_payment_dialog.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -244,10 +244,13 @@ class _DashboardBodyState extends State<_DashboardBody> {
           return;
         }
 
-        // 2. If it's a Loan Payment, go to Loan Payment Page
+        // 2. If it's a Loan Payment, open Loan Payment Dialog
         if (tx.type.contains('Payment') && refId != null && refId.isNotEmpty) {
           if (!context.mounted) return;
-          context.read<NavigationViewModel>().navigateToLoanPayment(loanId: refId);
+          showDialog(
+            context: context,
+            builder: (context) => LoanPaymentDialog(loanId: refId),
+          );
           return;
         }
         

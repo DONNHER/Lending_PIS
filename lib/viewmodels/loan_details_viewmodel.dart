@@ -36,20 +36,23 @@ class LoanDetailsViewModel extends ChangeNotifier {
   bool get isInitialized => _isInitialized;
   String? get errorMessage => _errorMessage;
 
-  Future<void> fetchLoanDetails(String loanId, {bool forceRefresh = false}) async {
+  Future<void> fetchLoanDetails(String loanId, {bool forceRefresh = false, LoanModel? initialLoan, LoanRequestModel? initialRequest}) async {
     _isLoading = true;
     _errorMessage = null;
     
     // Clear previous data if requested or switching loans
     if (forceRefresh || _currentLoanId != loanId) {
-      _loan = null;
-      _request = null;
+      _loan = initialLoan;
+      _request = initialRequest;
       _borrower = null;
       _paymentHistory = [];
-      _isInitialized = false;
+      _isInitialized = initialLoan != null || initialRequest != null;
     }
     
     _currentLoanId = loanId;
+    if (_isInitialized) {
+      _isLoading = false;
+    }
     notifyListeners();
 
     try {
@@ -80,10 +83,16 @@ class LoanDetailsViewModel extends ChangeNotifier {
         _borrower = await _shareholderRepository.getShareholderById(_loan!.shareholderId);
 
         // Use the actual loan UUID for transaction history lookup
-        final history = await _transactionRepository.getTransactionsByReferenceId(_loan!.id);
-        _paymentHistory = history.where((tx) =>
-            tx.type.toLowerCase().contains('payment')
-        ).toList();
+        try {
+          final history = await _transactionRepository.getTransactionsByReferenceId(_loan!.id);
+          _paymentHistory = history.where((tx) =>
+              tx.type.toLowerCase().contains('payment')
+          ).toList();
+        } catch (e) {
+          debugPrint('DEBUG [LoanDetailsViewModel]: Payment history fetch failed: $e');
+          _paymentHistory = [];
+          // Don't rethrow, allow the rest of the page to load
+        }
       } else {
         debugPrint('DEBUG [LoanDetailsViewModel]: Loan record NOT found. Fetching request details directly.');
         // FALLBACK: Load request data directly if loan doesn't exist yet (e.g., pending application)

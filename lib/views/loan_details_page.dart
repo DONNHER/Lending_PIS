@@ -3,20 +3,24 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/models/lending_models.dart';
 import 'package:capstone_application/viewmodels/loan_details_viewmodel.dart';
-import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
-import 'package:capstone_application/views/loan_payment_page.dart';
 import 'package:capstone_application/views/shareholder_detail_page.dart';
+
+import '../widgets/loan_payment_dialog.dart';
 
 class LoanDetailsPage extends StatefulWidget {
   final String loanId;
   final String shareholderId;
   final VoidCallback? onBack;
+  final LoanModel? initialLoan;
+  final LoanRequestModel? initialRequest;
 
   const LoanDetailsPage({
     super.key,
     required this.loanId,
     required this.shareholderId,
     this.onBack,
+    this.initialLoan,
+    this.initialRequest,
   });
 
   @override
@@ -28,7 +32,11 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LoanDetailsViewModel>().fetchLoanDetails(widget.loanId);
+      context.read<LoanDetailsViewModel>().fetchLoanDetails(
+        widget.loanId,
+        initialLoan: widget.initialLoan,
+        initialRequest: widget.initialRequest,
+      );
     });
   }
 
@@ -46,7 +54,9 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
         }
 
         final loan = viewModel.loan;
-        if (loan == null && !viewModel.isLoading) {
+        final request = viewModel.request;
+
+        if (loan == null && request == null && !viewModel.isLoading) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -64,11 +74,9 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
               ],
             ),
           );
-        } else if (loan == null) {
+        } else if (loan == null && request == null) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)));
         }
-
-        final request = viewModel.request;
 
         return PopScope(
           canPop: false,
@@ -94,7 +102,7 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
               ),
               title: InkWell(
                 onTap: () {
-                  final verifiedShareholderId = loan.shareholderId.isNotEmpty ? loan.shareholderId : widget.shareholderId;
+                  final verifiedShareholderId = (loan != null && loan.shareholderId.isNotEmpty) ? loan.shareholderId : widget.shareholderId;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -117,9 +125,25 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(request?.shareholderName ?? 'Unknown Borrower',
-                              style: const TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
-                          Text('Loan ID: ${loan.id}',
+                          Row(
+                            children: [
+                              Text(request?.shareholderName ?? 'Unknown Borrower',
+                                  style: const TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
+                              if (loan?.remainingBalance == 0 && (loan?.status == 'fully paid' || loan?.status == 'fully_paid')) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text('FULLY PAID',
+                                      style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Text('Loan ID: ${loan?.id ?? widget.loanId}',
                               style: const TextStyle(color: primaryBrown, fontSize: 13, fontWeight: FontWeight.w600)),
                         ],
                       ),
@@ -154,11 +178,11 @@ class _LoanDetailsPageState extends State<LoanDetailsPage> {
 }
 
 class _DetailsCard extends StatelessWidget {
-  final LoanModel loan;
+  final LoanModel? loan;
   final LoanRequestModel? request;
   final NumberFormat currencyFormat;
 
-  const _DetailsCard({required this.loan, this.request, required this.currencyFormat});
+  const _DetailsCard({this.loan, this.request, required this.currencyFormat});
 
   @override
   Widget build(BuildContext context) {
@@ -175,15 +199,27 @@ class _DetailsCard extends StatelessWidget {
         children: [
           const Text('Financial Summary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 24),
-          _InfoRow('Principal Amount', currencyFormat.format(loan.principalAmount)),
-          _InfoRow('Interest Rate', '${(loan.interestRate * 100).toStringAsFixed(1)}%'),
-          _InfoRow('Loan Tenure', '${loan.tenureMonths} Months'),
-          _InfoRow('Total Repayable', currencyFormat.format(loan.totalRepayable)),
-          _InfoRow('Disbursement Date', loan.releaseDate != null ? DateFormat('yyyy-MM-dd').format(loan.releaseDate!) : 'N/A'),
-          if (loan.nextRepaymentDate != null)
-            _InfoRow('Next Payment Due', DateFormat('yyyy-MM-dd').format(loan.nextRepaymentDate!), valueColor: primaryBrown),
-          _InfoRow('Processing Fee', currencyFormat.format(loan.processingFee)),
-          _InfoRow('Remaining Balance', currencyFormat.format(loan.remainingBalance), valueColor: Colors.red),
+          _InfoRow('Principal Amount', loan != null ? currencyFormat.format(loan!.principalAmount) : (request != null ? currencyFormat.format(request!.requestedAmount) : '...')),
+          _InfoRow('Interest Rate', loan != null ? '${(loan!.interestRate * 100).toStringAsFixed(1)}%' : (request != null ? '${(request!.interestRate * 100).toStringAsFixed(1)}%' : '...')),
+          _InfoRow('Loan Tenure', loan != null ? '${loan!.tenureMonths} Months' : (request != null ? '${request!.months} Months' : '...')),
+          if (loan != null) ...[
+            _InfoRow('Total Repayable', currencyFormat.format(loan!.totalRepayable)),
+            _InfoRow('Disbursement Date', loan!.releaseDate != null ? DateFormat('yyyy-MM-dd').format(loan!.releaseDate!) : 'N/A'),
+            if (loan!.nextRepaymentDate != null)
+              _InfoRow('Next Payment Due', DateFormat('yyyy-MM-dd').format(loan!.nextRepaymentDate!), valueColor: primaryBrown),
+            _InfoRow('Processing Fee', currencyFormat.format(loan!.processingFee)),
+            _InfoRow(
+              'Remaining Balance', 
+              currencyFormat.format(loan!.remainingBalance), 
+              valueColor: loan!.remainingBalance <= 0 ? Colors.green : Colors.red,
+              isBold: true,
+            ),
+          ] else ...[
+            const Center(child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )),
+          ],
           const Divider(height: 40),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
@@ -228,7 +264,10 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
-  const _InfoRow(this.label, this.value, {this.valueColor});
+  final bool isBold;
+
+  const _InfoRow(this.label, this.value, {this.valueColor, this.isBold = false});
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -236,7 +275,14 @@ class _InfoRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(color: Color(0xFF6B7280))),
-        Text(value, style: TextStyle(color: valueColor ?? const Color(0xFF1F2937), fontWeight: FontWeight.w600, fontSize: 15)),
+        Text(
+          value, 
+          style: TextStyle(
+            color: valueColor ?? const Color(0xFF1F2937), 
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600, 
+            fontSize: 15,
+          ),
+        ),
       ],
     ),
   );
@@ -245,10 +291,10 @@ class _InfoRow extends StatelessWidget {
 class _Sidebar extends StatelessWidget {
   final LoanDetailsViewModel viewModel;
   final NumberFormat currencyFormat;
-  final LoanModel loan;
+  final LoanModel? loan;
   final String loanId;
 
-  const _Sidebar({required this.viewModel, required this.currencyFormat, required this.loan, required this.loanId});
+  const _Sidebar({required this.viewModel, required this.currencyFormat, this.loan, required this.loanId});
 
   @override
   Widget build(BuildContext context) {
@@ -261,11 +307,19 @@ class _Sidebar extends StatelessWidget {
         children: [
           const Text('Quick Actions', style: TextStyle(color: Colors.white54)),
           const SizedBox(height: 16),
-          _ActionButton(Icons.payment_rounded, 'Record payment', () {
-            context.read<NavigationViewModel>().navigateToLoanPayment(
-              loanId: loan.id,
-              request: viewModel.request,
-            );
+          _ActionButton(Icons.payment_rounded, 'Record payment', () async {
+            if (loan != null) {
+              final refresh = await showDialog<bool>(
+                context: context,
+                builder: (context) => LoanPaymentDialog(
+                  loanId: loan!.id,
+                  initialRequest: viewModel.request,
+                ),
+              );
+              if (refresh == true && context.mounted) {
+                viewModel.fetchLoanDetails(loan!.id, forceRefresh: true);
+              }
+            }
           }),
           _ActionButton(Icons.print, 'Print statement', () => viewModel.handleAction('Print')),
           _ActionButton(Icons.edit, 'Edit details', () => viewModel.handleAction('Edit')),
@@ -273,7 +327,7 @@ class _Sidebar extends StatelessWidget {
           const Text('Payment History', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Expanded(
-            child: viewModel.paymentHistory.isEmpty
+            child: (viewModel.paymentHistory.isEmpty)
                 ? const Center(child: Text('No payments yet', style: TextStyle(color: Colors.white54)))
                 : ListView.builder(
               itemCount: viewModel.paymentHistory.length,

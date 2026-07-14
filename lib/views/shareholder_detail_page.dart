@@ -1,16 +1,16 @@
-import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../models/lending_models.dart';
+import '../viewmodels/navigation_viewmodel.dart';
 import '../viewmodels/shareholder_detail_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../repositories/user_repository.dart';
 import '../models/user_model.dart';
 import '../app_theme.dart';
 import '../widgets/activity_log_table.dart';
-import 'package:intl/intl.dart';
 import 'add_share_capital_page.dart';
 import 'loan_details_page.dart';
-
 import 'add_loan_page.dart';
 
 class ShareholderDetailPage extends StatefulWidget {
@@ -72,7 +72,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
       ),
       body: Consumer<ShareholderDetailViewModel>(
         builder: (context, viewModel, child) {
-          if (viewModel.isLoading) {
+          if (viewModel.isLoading && viewModel.shareholder == null) {
             return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
           }
 
@@ -180,7 +180,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: AppTheme.primary.withOpacity(0.1),
+            backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
             child: Text(
               person.firstName.isNotEmpty ? person.firstName[0] : '?',
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primary),
@@ -204,7 +204,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: (person.id.isEmpty ? Colors.blue : const Color(0xFF10B981)).withOpacity(0.1),
+                    color: (person.id.isEmpty ? Colors.blue : const Color(0xFF10B981)).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -241,10 +241,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
 
   Widget _buildLoanSection(BuildContext context, ShareholderDetailViewModel viewModel) {
     final currencyFormat = NumberFormat.currency(symbol: '₱');
-    final activeLoan = viewModel.loans.firstWhere(
-      (l) => l['status']?.toString().toLowerCase() == 'active',
-      orElse: () => null,
-    );
+    final activeLoanData = viewModel.activeLoan;
 
     return Container(
       decoration: BoxDecoration(
@@ -253,7 +250,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -272,17 +269,10 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                   'Loan Accounts',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
                 ),
-                if (activeLoan == null)
+                if (activeLoanData == null)
                   ElevatedButton.icon(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddLoanPage(
-                            shareholder: viewModel.shareholder!,
-                          ),
-                        ),
-                      ).then((_) => viewModel.loadShareholder(widget.shareholderId));
+                      context.read<NavigationViewModel>().navigateToLoanApplication(viewModel.shareholder!);
                     },
                     icon: const Icon(Icons.add_circle_outline, size: 16),
                     label: const Text('Request Loan'),
@@ -298,15 +288,11 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                 else
                   OutlinedButton.icon(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => LoanDetailsPage(
-                            loanId: activeLoan['id'],
-                            shareholderId: viewModel.shareholder!.id,
-                          ),
-                        ),
-                      ).then((_) => viewModel.loadShareholder(widget.shareholderId));
+                      context.read<NavigationViewModel>().navigateToLoanDetails(
+                        activeLoanData['id'],
+                        viewModel.shareholder!.id,
+                        loan: LoanModel.fromJson(activeLoanData),
+                      );
                     },
                     icon: const Icon(Icons.visibility_outlined, size: 16),
                     label: const Text('View Loan'),
@@ -332,8 +318,8 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                 itemCount: viewModel.loans.length,
                 separatorBuilder: (context, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
-                  final loan = viewModel.loans[index];
-                  final String rawId = loan['id']?.toString() ?? 'N/A';
+                  final lData = viewModel.loans[index];
+                  final String rawId = lData['id']?.toString() ?? 'N/A';
                   final String displayId = rawId.length > 8 ? rawId.substring(0, 8) : rawId;
                   
                   return ListTile(
@@ -343,7 +329,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     subtitle: Text(
-                      'Principal: ${currencyFormat.format(double.tryParse(loan['principal_amount'].toString()) ?? 0.0)}',
+                      'Principal: ${currencyFormat.format(double.tryParse(lData['principal_amount'].toString()) ?? 0.0)}',
                       style: const TextStyle(fontSize: 12),
                     ),
                     trailing: Row(
@@ -352,15 +338,15 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: (loan['status'] == 'active' ? Colors.green : Colors.orange).withOpacity(0.1),
+                            color: (lData['status'] == 'active' ? Colors.green : Colors.orange).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            loan['status'].toString().toUpperCase(),
+                            lData['status'].toString().toUpperCase(),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: loan['status'] == 'active' ? Colors.green : Colors.orange,
+                              color: lData['status'] == 'active' ? Colors.green : Colors.orange,
                             ),
                           ),
                         ),
@@ -368,14 +354,10 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                         const Icon(Icons.chevron_right, color: AppTheme.textMuted),
                       ],
                     ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LoanDetailsPage(
-                          loanId: loan['id'],
-                          shareholderId: viewModel.shareholder!.id,
-                        ),
-                      ),
+                    onTap: () => context.read<NavigationViewModel>().navigateToLoanDetails(
+                      lData['id'],
+                      viewModel.shareholder!.id,
+                      loan: LoanModel.fromJson(lData),
                     ),
                   );
                 },
@@ -470,7 +452,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                   ? Center(
                       child: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
                         child: const Icon(Icons.fullscreen_rounded, color: Colors.white, size: 24),
                       ),
                     )
@@ -532,7 +514,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -590,7 +572,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(width: 16),

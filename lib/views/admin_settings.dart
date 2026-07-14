@@ -65,222 +65,219 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      body: Column(
-        children: [
-          _buildCustomHeader(context),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => authViewModel.restoreSession(),
-              color: AppTheme.primary,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 700),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 24),
-                        Center(
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                onTap: authViewModel.isImpersonating 
-                                  ? null 
-                                  : () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const AdminEditAccountDetailsScreen()),
-                                  ),
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.05),
-                                            blurRadius: 15,
-                                            offset: const Offset(0, 5),
-                                          )
-                                        ],
-                                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 3),
-                                      ),
-                                      child: ClipOval(
-                                        child: authViewModel.avatarBytes != null
-                                            ? Image.memory(
-                                                authViewModel.avatarBytes!,
-                                                fit: BoxFit.cover,
-                                              )
-                                            : (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
-                                                ? Image.network(
-                                                    user.avatarUrl!,
-                                                    fit: BoxFit.cover,
-                                                    key: ValueKey(user.avatarUrl),
-                                                    errorBuilder: (context, error, stackTrace) => const Icon(
-                                                      Icons.person_rounded,
-                                                      size: 50,
-                                                      color: AppTheme.textMuted,
-                                                    ),
-                                                  )
-                                                : const Icon(
-                                                    Icons.person_rounded,
-                                                    size: 50,
-                                                    color: AppTheme.textMuted,
-                                                  ),
-                                      ),
-                                    ),
-                                    if (!authViewModel.isImpersonating)
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
-                                          child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
-                                        ),
-                                      ),
-                                  ],
-                                ),
+      appBar: _buildCustomHeader(context),
+      body: RefreshIndicator(
+        onRefresh: () => authViewModel.restoreSession(),
+        color: AppTheme.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    Center(
+                      child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: authViewModel.isImpersonating 
+                              ? null 
+                              : () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const AdminEditAccountDetailsScreen()),
                               ),
-                              const SizedBox(height: 16),
-                              Text(user.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(user.email, style: const TextStyle(fontSize: 14, color: AppTheme.textMuted)),
-                                  const SizedBox(width: 8),
-                                  _buildStatusBadge(user.status),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(20)),
-                                child: Text(user.role.name.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        
-                        if (authViewModel.isImpersonating)
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                            ),
-                            child: const Row(
+                            child: Stack(
                               children: [
-                                Icon(Icons.info_outline_rounded, color: Colors.orange, size: 20),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Profile editing is disabled during impersonation. Please exit the session to update your account.',
-                                    style: TextStyle(fontSize: 12, color: AppTheme.textDark, fontWeight: FontWeight.w500),
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 15,
+                                        offset: const Offset(0, 5),
+                                      )
+                                    ],
+                                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 3),
+                                  ),
+                                  child: ClipOval(
+                                    child: authViewModel.avatarBytes != null
+                                        ? Image.memory(
+                                            authViewModel.avatarBytes!,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
+                                            ? Image.network(
+                                                user.avatarUrl!,
+                                                fit: BoxFit.cover,
+                                                key: ValueKey(user.avatarUrl),
+                                                errorBuilder: (context, error, stackTrace) => const Icon(
+                                                  Icons.person_rounded,
+                                                  size: 50,
+                                                  color: AppTheme.textMuted,
+                                                ),
+                                              )
+                                            : const Icon(
+                                                Icons.person_rounded,
+                                                size: 50,
+                                                color: AppTheme.textMuted,
+                                              ),
                                   ),
                                 ),
+                                if (!authViewModel.isImpersonating)
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                                      child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
-                          
-                        _buildSection(
-                          context,
-                          title: 'Profile Settings',
-                          items: [
-                            _SettingsTile(
-                              icon: Icons.person_outline_rounded,
-                              title: 'Edit Account Details',
-                              onTap: authViewModel.isImpersonating 
-                                ? () {} // Disable tap
-                                : () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminEditAccountDetailsScreen())),
-                              trailing: authViewModel.isImpersonating ? const SizedBox.shrink() : null,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        _buildSection(
-                          context,
-                          title: 'Preferences',
-                          items: [
-                            _SettingsTile(
-                              icon: Icons.notifications_none_rounded,
-                              title: 'Notifications',
-                              trailing: Switch(
-                                value: _notificationsEnabled,
-                                onChanged: (value) => setState(() => _notificationsEnabled = value),
-                                thumbColor: const WidgetStatePropertyAll(AppTheme.primary),
-                              ),
-                              onTap: () => setState(() => _notificationsEnabled = !_notificationsEnabled),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        _buildSection(
-                          context,
-                          title: 'Lending Configuration',
-                          items: [
-                            _SettingsTile(
-                              icon: Icons.percent_rounded,
-                              title: 'Interest Rate Management',
-                              onTap: () {
-                                final nav = context.read<NavigationViewModel>();
-                                nav.clearAdminSettings();
-                                final index = nav.getFilteredNavItems().indexWhere((item) => item.route == '/update-interest');
-                                if (index != -1) nav.navigateTo(index);
-                              },
-                            ),
-                            _SettingsTile(
-                              icon: Icons.timer_outlined,
-                              title: 'Grace Period Settings',
-                              onTap: () {},
-                            ),
-                            _SettingsTile(
-                              icon: Icons.payments_outlined,
-                              title: 'Late Payment Penalties',
-                              onTap: () {},
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        _buildSection(
-                          context,
-                          title: 'Legal',
-                          items: [
-                            _SettingsTile(icon: Icons.description_outlined, title: 'Terms and Condition', onTap: () => _showTermsDialog(context)),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: OutlinedButton(
-                            onPressed: () => _showLogoutDialog(context, authViewModel),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red, width: 1.5),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              minimumSize: const Size.fromHeight(50),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [Icon(Icons.logout_rounded, size: 20), SizedBox(width: 8), Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold))],
-                            ),
+                          const SizedBox(height: 16),
+                          Text(user.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(user.email, style: const TextStyle(fontSize: 14, color: AppTheme.textMuted)),
+                              const SizedBox(width: 8),
+                              _buildStatusBadge(user.status),
+                            ],
                           ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(20)),
+                            child: Text(user.role.name.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    if (authViewModel.isImpersonating)
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                         ),
-                        const SizedBox(height: 40),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline_rounded, color: Colors.orange, size: 20),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Profile editing is disabled during impersonation. Please exit the session to update your account.',
+                                style: TextStyle(fontSize: 12, color: AppTheme.textDark, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                    _buildSection(
+                      context,
+                      title: 'Profile Settings',
+                      items: [
+                        _SettingsTile(
+                          icon: Icons.person_outline_rounded,
+                          title: 'Edit Account Details',
+                          onTap: authViewModel.isImpersonating 
+                            ? () {} // Disable tap
+                            : () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminEditAccountDetailsScreen())),
+                          trailing: authViewModel.isImpersonating ? const SizedBox.shrink() : null,
+                        ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                    _buildSection(
+                      context,
+                      title: 'Preferences',
+                      items: [
+                        _SettingsTile(
+                          icon: Icons.notifications_none_rounded,
+                          title: 'Notifications',
+                          trailing: Switch(
+                            value: _notificationsEnabled,
+                            onChanged: (value) => setState(() => _notificationsEnabled = value),
+                            thumbColor: const WidgetStatePropertyAll(AppTheme.primary),
+                          ),
+                          onTap: () => setState(() => _notificationsEnabled = !_notificationsEnabled),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSection(
+                      context,
+                      title: 'Lending Configuration',
+                      items: [
+                        _SettingsTile(
+                          icon: Icons.percent_rounded,
+                          title: 'Interest Rate Management',
+                          onTap: () {
+                            final nav = context.read<NavigationViewModel>();
+                            nav.clearAdminSettings();
+                            final index = nav.getFilteredNavItems().indexWhere((item) => item.route == '/update-interest');
+                            if (index != -1) nav.navigateTo(index);
+                          },
+                        ),
+                        _SettingsTile(
+                          icon: Icons.timer_outlined,
+                          title: 'Grace Period Settings',
+                          onTap: () {},
+                        ),
+                        _SettingsTile(
+                          icon: Icons.payments_outlined,
+                          title: 'Late Payment Penalties',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSection(
+                      context,
+                      title: 'Legal',
+                      items: [
+                        _SettingsTile(icon: Icons.description_outlined, title: 'Terms and Condition', onTap: () => _showTermsDialog(context)),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: OutlinedButton(
+                        onPressed: () => _showLogoutDialog(context, authViewModel),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red, width: 1.5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          minimumSize: const Size.fromHeight(50),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [Icon(Icons.logout_rounded, size: 20), SizedBox(width: 8), Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold))],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -294,29 +291,39 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     );
   }
 
-  Widget _buildCustomHeader(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.textDark, size: 20),
-            onPressed: () => context.read<NavigationViewModel>().clearAdminSettings(),
-          ),
-          const Expanded(
-            child: Text(
-              'Settings',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppTheme.textDark,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+  PreferredSizeWidget _buildCustomHeader(BuildContext context) {
+    const primaryBrown = Color(0xFFC06C4D);
+    const textDark = Color(0xFF1F2937);
+
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      toolbarHeight: 80,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: () => context.read<NavigationViewModel>().clearAdminSettings(),
+      ),
+      title: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8.0),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Color(0xFFC06C4D),
+              child: Icon(Icons.settings_rounded, color: Colors.white),
             ),
-          ),
-          const SizedBox(width: 48), // Spacer
-        ],
+            SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Account Settings',
+                    style: TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('System Settings',
+                    style: TextStyle(color: primaryBrown, fontSize: 13, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

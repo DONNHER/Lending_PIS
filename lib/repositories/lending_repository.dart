@@ -88,7 +88,7 @@ class LendingRepository {
   }) async {
     final response = await _apiService.post('/loans/$loanId/payments', body: {
       'amount': amount,
-      'payment_method': method,
+      'method': method,
     });
     if (response != null && response['data'] != null) {
       return TransactionModel.fromJson(response['data']);

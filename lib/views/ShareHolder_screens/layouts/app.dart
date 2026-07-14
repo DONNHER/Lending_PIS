@@ -10,6 +10,7 @@ import '../dashboard.dart';
 import '../transaction.dart';
 import '../settings.dart';
 import '../managements/loan_application.dart';
+import '../details_page/loan_request_approval.dart';
 
 class AppLayout extends StatefulWidget {
   const AppLayout({super.key});
@@ -82,14 +83,9 @@ class AppLayoutState extends State<AppLayout> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: const Color(0xFFFDF8F5),
       appBar: _buildAppBar(context),
-      body: navViewModel.isApplyingLoan
-          ? AddLoanPage(initialShareholder: navViewModel.loanInitialShareholder)
-          : IndexedStack(
-              index: _selectedIndex,
-              children: _screens,
-            ),
+      body: _buildBody(navViewModel),
       bottomNavigationBar: _CompactBottomNav(
         items: _navItems,
         selectedIndex: _selectedIndex,
@@ -100,6 +96,21 @@ class AppLayoutState extends State<AppLayout> {
           });
         },
       ),
+    );
+  }
+
+  Widget _buildBody(NavigationViewModel nav) {
+    if (nav.isApplyingLoan) {
+      return AddLoanPage(initialShareholder: nav.loanInitialShareholder);
+    }
+    
+    if (nav.isReviewingLoanRequest && nav.loanRequestIdToReview != null) {
+      return LoanRequestDetailsScreen(loanRequestId: nav.loanRequestIdToReview!);
+    }
+
+    return IndexedStack(
+      index: _selectedIndex,
+      children: _screens,
     );
   }
 

@@ -21,8 +21,32 @@ class TransactionModel {
     required this.date,
   });
 
+  TransactionModel copyWith({
+    String? id,
+    String? referenceId,
+    String? shareholderId,
+    String? type,
+    String? method,
+    String? clientName,
+    double? amount,
+    String? status,
+    DateTime? date,
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      referenceId: referenceId ?? this.referenceId,
+      shareholderId: shareholderId ?? this.shareholderId,
+      type: type ?? this.type,
+      method: method ?? this.method,
+      clientName: clientName ?? this.clientName,
+      amount: amount ?? this.amount,
+      status: status ?? this.status,
+      date: date ?? this.date,
+    );
+  }
+
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
-    String name = json['client_name'] ?? '';
+    String name = json['client_name'] ?? json['name'] ?? '';
     
     // Extract name from joined shareholder relationship if available
     if (name.isEmpty && json['shareholder'] != null) {
@@ -32,6 +56,14 @@ class TransactionModel {
       name = '$firstName $lastName'.trim();
     }
     
+    // If nested in a loan object
+    if (name.isEmpty && json['loan'] != null && json['loan']['shareholder'] != null) {
+      final sh = json['loan']['shareholder'];
+      final firstName = sh['first_name'] ?? sh['firstname'] ?? '';
+      final lastName = sh['last_name'] ?? sh['lastname'] ?? '';
+      name = '$firstName $lastName'.trim();
+    }
+
     if (name.isEmpty) name = 'Unknown Client';
 
     // Robust amount parsing
@@ -49,7 +81,7 @@ class TransactionModel {
       referenceId: json['reference_id']?.toString(),
       shareholderId: json['shareholder_id']?.toString() ?? json['user_id']?.toString(),
       type: json['type'] ?? 'Transaction',
-      method: json['method'] ?? 'N/A',
+      method: json['method'] ?? json['payment_method'] ?? 'N/A',
       clientName: name,
       amount: parsedAmount,
       status: json['status'] ?? 'Pending',

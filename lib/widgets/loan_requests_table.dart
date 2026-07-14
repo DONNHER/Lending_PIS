@@ -57,7 +57,7 @@ class LoanRequestsTable extends StatelessWidget {
                     final req = requests[index];
                     return InkWell(
                       onTap: () => onView(req),
-                      hoverColor: const Color(0xFFC06C4D).withOpacity(0.05),
+                      hoverColor: const Color(0xFFC06C4D).withValues(alpha: 0.05),
                       child: _buildRow(req),
                     );
                   },
@@ -77,6 +77,8 @@ class LoanRequestsTable extends StatelessWidget {
       case LoanStatus.approved: statusColor = Colors.blue; break;
       case LoanStatus.released: statusColor = const Color(0xFF10B981); break;
       case LoanStatus.rejected: statusColor = Colors.red; break;
+      case LoanStatus.fullyPaid: statusColor = Colors.green; break;
+      case LoanStatus.overdue: statusColor = Colors.redAccent; break;
       default: statusColor = Colors.grey;
     }
 

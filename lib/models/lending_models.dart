@@ -14,6 +14,7 @@ enum LoanStatus {
   cancelled,
   fullyPaid,
   active,
+  overdue,
 }
 
 class LendingChartData {
@@ -198,6 +199,7 @@ class LoanRequestModel {
       case 'cancelled': return LoanStatus.cancelled;
       case 'active': return LoanStatus.active;
       case 'fully_paid': return LoanStatus.fullyPaid;
+      case 'overdue': return LoanStatus.overdue;
       default: return LoanStatus.pending;
     }
   }

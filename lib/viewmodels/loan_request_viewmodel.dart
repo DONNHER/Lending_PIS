@@ -62,9 +62,11 @@ class LoanRequestViewModel extends ChangeNotifier {
 
     // Filter by Status
     if (_statusFilter != 'All') {
-      _filteredRequests = _filteredRequests.where((r) => 
-        r.status.name.toLowerCase() == _statusFilter.toLowerCase()
-      ).toList();
+      final normalizedFilter = _statusFilter.toLowerCase().replaceAll(' ', '');
+      _filteredRequests = _filteredRequests.where((r) {
+        final statusName = r.status.name.toLowerCase();
+        return statusName == normalizedFilter;
+      }).toList();
     }
 
     // Filter by Purpose

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../viewmodels/navigation_viewmodel.dart';
 import '../viewmodels/update_interest_viewmodel.dart';
 import '../app_theme.dart';
 
@@ -32,12 +33,15 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         toolbarHeight: 80,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => context.read<NavigationViewModel>().clearAdminSettings(),
+        ),
         title: const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8.0),
           child: Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 backgroundColor: Color(0xFFC06C4D),
                 child: Icon(Icons.percent_rounded, color: Colors.white),
               ),
@@ -74,19 +78,24 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(32.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: _MainContent(viewModel: viewModel),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: _MainContent(viewModel: viewModel),
+                    ),
+                    const SizedBox(width: 32),
+                    Expanded(
+                      flex: 1,
+                      child: _Sidebar(viewModel: viewModel),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 32),
-                Expanded(
-                  flex: 1,
-                  child: _Sidebar(viewModel: viewModel),
-                ),
-              ],
+              ),
             ),
           );
         },

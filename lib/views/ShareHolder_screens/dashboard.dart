@@ -6,15 +6,9 @@ import '../../app_theme.dart';
 import 'package:capstone_application/viewmodels/share_capital_viewmodel.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
-import 'managements/loan_application.dart';
-import 'details_page/loan_details.dart';
-import 'details_page/loan_request_approval.dart';
 
 class ShareCapitalScreen extends StatelessWidget {
   const ShareCapitalScreen({super.key});
-
-  static const Color textGrey = Color(0xFF9CA3AF);
-  static const Color borderGrey = Color(0xFFF3F4F6);
 
   @override
   Widget build(BuildContext context) {
@@ -61,20 +55,20 @@ class ShareCapitalScreen extends StatelessWidget {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1200),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 32),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildHeader(context, viewModel),
-                          const SizedBox(height: 24),
-                          _buildMainCapitalCard(context, viewModel),
+                          _DashboardHeader(),
+                          SizedBox(height: 24),
+                          _MainCapitalCard(),
                           
-                          const SizedBox(height: 32),
-                          const _AdsCarousel(),
-                          const SizedBox(height: 32),
+                          SizedBox(height: 32),
+                          _AdsCarousel(),
+                          SizedBox(height: 32),
 
-                          _buildLoanRequestsSection(context, viewModel),
+                          _LoanRequestsSection(),
                         ],
                       ),
                     ),
@@ -87,8 +81,14 @@ class ShareCapitalScreen extends StatelessWidget {
       },
     );
   }
+}
 
-  Widget _buildHeader(BuildContext context, ShareCapitalViewModel viewModel) {
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<ShareCapitalViewModel>();
     final hour = DateTime.now().hour;
     String timeGreeting = 'Good morning, ';
     if (hour >= 12 && hour < 17) timeGreeting = 'Good afternoon, ';
@@ -97,7 +97,7 @@ class ShareCapitalScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(timeGreeting, style: const TextStyle(fontSize: 14, color: textGrey)),
+        Text(timeGreeting, style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
         Text(
           viewModel.shareholderFirstName, 
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark),
@@ -105,8 +105,14 @@ class ShareCapitalScreen extends StatelessWidget {
       ],
     );
   }
+}
 
-  Widget _buildMainCapitalCard(BuildContext context, ShareCapitalViewModel viewModel) {
+class _MainCapitalCard extends StatelessWidget {
+  const _MainCapitalCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<ShareCapitalViewModel>();
     final currencyFormat = NumberFormat('#,##0.00');
     final dateFormat = DateFormat('MMM dd, yyyy');
 
@@ -124,7 +130,7 @@ class ShareCapitalScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFC06C4D).withOpacity(0.2), 
+            color: const Color(0xFFC06C4D).withValues(alpha: 0.2),
             blurRadius: 20, 
             offset: const Offset(0, 10)
           ),
@@ -178,6 +184,7 @@ class ShareCapitalScreen extends StatelessWidget {
                   ),
                 ),
                 _buildCardButton(
+                  context: context,
                   label: 'Apply Loan',
                   icon: Icons.assignment_outlined,
                   bgColor: Colors.white,
@@ -195,7 +202,31 @@ class ShareCapitalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLoanRequestsSection(BuildContext context, ShareCapitalViewModel viewModel) {
+  Widget _buildCardButton({required BuildContext context, required String label, IconData? icon, required Color bgColor, required Color textColor, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[Icon(icon, size: 14, color: textColor), const SizedBox(width: 8)],
+            Text(label, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoanRequestsSection extends StatelessWidget {
+  const _LoanRequestsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<ShareCapitalViewModel>();
     final currencyFormat = NumberFormat('#,##0.00');
     final dateFormat = DateFormat('MM/dd/yy');
 
@@ -258,7 +289,7 @@ class ShareCapitalScreen extends StatelessWidget {
               else if (viewModel.loanRequests.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(32),
-                  child: Center(child: Text('No loan requests found.', style: TextStyle(color: textGrey))),
+                  child: Center(child: Text('No loan requests found.', style: TextStyle(color: Color(0xFF9CA3AF)))),
                 )
               else
                 ...viewModel.loanRequests.map((req) {
@@ -299,7 +330,7 @@ class ShareCapitalScreen extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? const Color(0xFFC06C4D) : textGrey,
+            color: isSelected ? const Color(0xFFC06C4D) : const Color(0xFF9CA3AF),
           ),
         ),
       ),
@@ -343,7 +374,7 @@ class ShareCapitalScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: borderGrey)),
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
       ),
       child: Row(
         children: [
@@ -368,24 +399,6 @@ class ShareCapitalScreen extends StatelessWidget {
             )
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCardButton({required String label, IconData? icon, required Color bgColor, required Color textColor, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[Icon(icon, size: 14, color: textColor), const SizedBox(width: 8)],
-            Text(label, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w700)),
-          ],
-        ),
       ),
     );
   }
