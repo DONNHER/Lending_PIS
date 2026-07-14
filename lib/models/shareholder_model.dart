@@ -1,5 +1,6 @@
 class ShareholderModel {
   final String id;
+  final String? userId; // 🚀 Added userId for impersonation
   final String firstName;
   final String lastName;
   final String email;
@@ -12,6 +13,7 @@ class ShareholderModel {
 
   ShareholderModel({
     required this.id,
+    this.userId, // 🚀 Added userId
     required this.firstName,
     required this.lastName,
     required this.email,
@@ -30,6 +32,7 @@ class ShareholderModel {
   factory ShareholderModel.fromJson(Map<String, dynamic> json) {
     return ShareholderModel(
       id: json['id']?.toString() ?? '',
+      userId: json['user_id']?.toString(), // 🚀 Added userId
       firstName: json['first_name'] ?? json['firstname'] ?? '',
       lastName: json['last_name'] ?? json['lastname'] ?? '',
       email: json['email'] ?? '',
@@ -53,6 +56,7 @@ class ShareholderModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'user_id': userId, // 🚀 Added userId
       'first_name': firstName,
       'last_name': lastName,
       'email': email,

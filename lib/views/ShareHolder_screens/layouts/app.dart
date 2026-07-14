@@ -5,9 +5,11 @@ import 'package:capstone_application/models/nav_item_model.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import '../dashboard.dart';
 import '../transaction.dart';
 import '../settings.dart';
+import '../managements/loan_application.dart';
 
 class AppLayout extends StatefulWidget {
   const AppLayout({super.key});
@@ -63,6 +65,7 @@ class AppLayoutState extends State<AppLayout> {
   @override
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
+    final navViewModel = context.watch<NavigationViewModel>();
 
     // Redirect to login ONLY if Laravel authentication is missing
     if (authViewModel.status == AuthStatus.unauthenticated) {
@@ -81,14 +84,17 @@ class AppLayoutState extends State<AppLayout> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: _buildAppBar(context),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+      body: navViewModel.isApplyingLoan
+          ? AddLoanPage(initialShareholder: navViewModel.loanInitialShareholder)
+          : IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
+            ),
       bottomNavigationBar: _CompactBottomNav(
         items: _navItems,
         selectedIndex: _selectedIndex,
         onTap: (index) {
+          navViewModel.clearLoanApplication();
           setState(() {
             _selectedIndex = index;
           });

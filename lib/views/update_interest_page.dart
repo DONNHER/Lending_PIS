@@ -49,60 +49,39 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1000),
-              child: Column(
-                children: [
-                  _buildActionBar(viewModel),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildCurrentRateCard(context, viewModel),
-                          const SizedBox(height: 24),
-                          _buildFilterDropdown(
-                            label: 'Sort By',
-                            value: viewModel.sortOrder,
-                            items: ['Newest', 'Oldest'],
-                            onChanged: (val) {
-                              if (val != null) viewModel.setSortOrder(val);
-                            },
-                          ),
-                          const SizedBox(height: 32),
-                          const Text(
-                            'Rate History',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildHistoryTable(viewModel),
-                          const SizedBox(height: 32),
-                        ],
-                      ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildCurrentRateCard(context, viewModel),
+                    const SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Rate History',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                        ),
+                        _buildFilterDropdown(
+                          label: 'Sort By',
+                          value: viewModel.sortOrder,
+                          items: ['Newest', 'Oldest'],
+                          onChanged: (val) {
+                            if (val != null) viewModel.setSortOrder(val);
+                          },
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    _buildHistoryTable(viewModel),
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildActionBar(UpdateInterestViewModel viewModel) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      child: Row(
-        children: [
-          _buildFilterDropdown(
-            label: 'Sort By',
-            value: viewModel.sortOrder,
-            items: ['Newest', 'Oldest'],
-            onChanged: (val) {
-              if (val != null) viewModel.setSortOrder(val);
-            },
-          ),
-        ],
       ),
     );
   }

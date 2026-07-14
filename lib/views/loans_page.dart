@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 import '../viewmodels/loan_request_viewmodel.dart';
 import '../viewmodels/navigation_viewmodel.dart';
 import '../app_theme.dart';
+import '../models/lending_models.dart';
 import '../widgets/loan_requests_table.dart';
 import '../widgets/page_turner.dart';
 import 'loan_evaluation_page.dart';
 import 'loan_details_page.dart';
+import 'loan_approval_page.dart';
 
 class LoansPage extends StatefulWidget {
   const LoansPage({super.key});
@@ -29,10 +31,30 @@ class _LoansPageState extends State<LoansPage> {
     final nav = context.watch<NavigationViewModel>();
     
     if (nav.selectedLoanRequest != null) {
-      return LoanEvaluationPage(
-        request: nav.selectedLoanRequest!,
-        onBack: () => nav.clearLoanSelection(),
-      );
+      final request = nav.selectedLoanRequest!;
+      
+      if (request.status == LoanStatus.pending) {
+        return LoanEvaluationPage(
+          request: request,
+          onBack: () => nav.clearLoanSelection(),
+        );
+      } else if (request.status == LoanStatus.approved) {
+        return LoanApprovalPage(
+          initialRequest: request,
+          onBack: () => nav.clearLoanSelection(),
+        );
+      } else if (request.status == LoanStatus.released || request.status == LoanStatus.rejected) {
+        // Use the specific navigation method for loan details to ensure it doesn't fall back to evaluation
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          nav.navigateToLoanDetails(request.id, request.shareholderId);
+        });
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      } else {
+        return LoanEvaluationPage(
+          request: request,
+          onBack: () => nav.clearLoanSelection(),
+        );
+      }
     }
 
     if (nav.selectedLoanId != null) {

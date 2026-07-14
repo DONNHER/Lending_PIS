@@ -37,17 +37,11 @@ class LoanDetailsViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   Future<void> fetchLoanDetails(String loanId, {bool forceRefresh = false}) async {
-    // 🚀 GUARD: Skip fetching if we already have the data for THIS specific loan
-    if (_currentLoanId == loanId && _isInitialized && !forceRefresh) {
-      debugPrint('DEBUG [LoanDetailsViewModel]: Data for $loanId already cached. Skipping fetch.');
-      return;
-    }
-
     _isLoading = true;
     _errorMessage = null;
     
-    // If we're switching loans, clear the previous data to avoid UI flickering
-    if (_currentLoanId != loanId) {
+    // Clear previous data if requested or switching loans
+    if (forceRefresh || _currentLoanId != loanId) {
       _loan = null;
       _request = null;
       _borrower = null;
@@ -62,12 +56,22 @@ class LoanDetailsViewModel extends ChangeNotifier {
       debugPrint('DEBUG [LoanDetailsViewModel]: Fetching loan details for: $loanId');
 
       // 1. Try to fetch by the primary Loan ID (supports UUID)
-      _loan = await _lendingRepository.getLoanById(loanId);
+      try {
+        _loan = await _lendingRepository.getLoanById(loanId);
+      } catch (e) {
+        debugPrint('DEBUG [LoanDetailsViewModel]: Primary ID fetch failed, will try fallback.');
+        _loan = null;
+      }
 
       // 2. Fallback: Search by the Loan Request ID if primary ID lookup failed
       if (_loan == null) {
-        debugPrint('DEBUG [LoanDetailsViewModel]: Loan NOT found by ID. Trying as Loan Request ID...');
-        _loan = await _lendingRepository.getLoanByLoanRequestId(loanId);
+        debugPrint('DEBUG [LoanDetailsViewModel]: Loan NOT found by primary ID. Trying as Loan Request ID...');
+        try {
+          _loan = await _lendingRepository.getLoanByLoanRequestId(loanId);
+        } catch (e) {
+          debugPrint('DEBUG [LoanDetailsViewModel]: Fallback fetch also failed.');
+          _loan = null;
+        }
       }
 
       if (_loan != null) {

@@ -34,6 +34,7 @@ class ShareCapitalViewModel extends ChangeNotifier {
   LoanModel? get activeLoan => _activeLoan;
   List<LoanRequestModel> get loanRequests => _loanRequests;
   String get loanRequestFilter => _loanRequestFilter;
+  ShareholderModel? get currentShareholder => _currentShareholder;
 
   void setUserId(String id) {
     if (_userId != id) {

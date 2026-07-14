@@ -30,8 +30,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
       if (!mounted) return;
       final auth = context.read<AuthViewModel>();
       final viewModel = context.read<NotificationViewModel>();
-      if (auth.currentUser != null) {
-        viewModel.loadNotifications(userId: auth.currentUser!.id);
+      final shareholderId = auth.currentUser?.shareholder?.id;
+      if (shareholderId != null) {
+        viewModel.loadNotifications(shareholderId: shareholderId);
       }
     });
   }
@@ -76,8 +77,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
       body: Consumer2<NotificationViewModel, AuthViewModel>(
         builder: (context, viewModel, auth, _) {
-          if (auth.currentUser != null && viewModel.shareholderId == null && !viewModel.isLoading) {
-            Future.microtask(() => viewModel.loadNotifications(userId: auth.currentUser!.id));
+          final shareholderId = auth.currentUser?.shareholder?.id;
+          if (shareholderId != null && viewModel.shareholderId == null && !viewModel.isLoading) {
+            Future.microtask(() => viewModel.loadNotifications(shareholderId: shareholderId));
           }
 
           if (viewModel.isLoading && viewModel.notifications.isEmpty) {
@@ -90,7 +92,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
           if (viewModel.notifications.isEmpty) {
             return RefreshIndicator(
-              onRefresh: () => viewModel.loadNotifications(userId: auth.currentUser!.id, forceRefresh: true),
+              onRefresh: () => viewModel.loadNotifications(shareholderId: shareholderId!, forceRefresh: true),
               child: Stack(
                 children: [
                   ListView(),
@@ -101,7 +103,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => viewModel.loadNotifications(userId: auth.currentUser!.id, forceRefresh: true),
+            onRefresh: () => viewModel.loadNotifications(shareholderId: shareholderId!, forceRefresh: true),
             color: AppTheme.primary,
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -139,8 +141,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                if (auth.currentUser != null) {
-                  viewModel.loadNotifications(userId: auth.currentUser!.id, forceRefresh: true);
+                final shareholderId = auth.currentUser?.shareholder?.id;
+                if (shareholderId != null) {
+                  viewModel.loadNotifications(shareholderId: shareholderId, forceRefresh: true);
                 }
               },
               style: ElevatedButton.styleFrom(

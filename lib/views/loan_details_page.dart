@@ -194,7 +194,8 @@ class _DetailsCard extends StatelessWidget {
           _InfoRow('Principal Amount', currencyFormat.format(loan.principalAmount)),
           _InfoRow('Interest Rate', '${(loan.interestRate * 100).toStringAsFixed(1)}%'),
           _InfoRow('Loan Tenure', '${loan.tenureMonths} Months'),
-          _InfoRow('Disbursement Date', loan.disbursedAt != null ? DateFormat('yyyy-MM-dd').format(loan.disbursedAt!) : 'N/A'),
+          _InfoRow('Total Repayable', currencyFormat.format(loan.totalRepayable)),
+          _InfoRow('Disbursement Date', loan.releaseDate != null ? DateFormat('yyyy-MM-dd').format(loan.releaseDate!) : 'N/A'),
           if (loan.nextRepaymentDate != null)
             _InfoRow('Next Payment Due', DateFormat('yyyy-MM-dd').format(loan.nextRepaymentDate!), valueColor: primaryBrown),
           _InfoRow('Processing Fee', currencyFormat.format(loan.processingFee)),

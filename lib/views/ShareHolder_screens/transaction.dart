@@ -33,34 +33,42 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ShareholderTransactionViewModel>(
-      builder: (context, viewModel, child) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
-              child: Text("History",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-            ),
-            _buildFilterChips(viewModel),
-            
-            if (viewModel.selectedFilter == 'Loan Requests') ...[
-              const SizedBox(height: 4),
-              _buildRoleSelector(viewModel),
-            ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FA),
+      body: Consumer<ShareholderTransactionViewModel>(
+        builder: (context, viewModel, child) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
+                    child: Text("History",
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                  ),
+                  _buildFilterChips(viewModel),
+                  
+                  if (viewModel.selectedFilter == 'Loan Requests') ...[
+                    const SizedBox(height: 4),
+                    _buildRoleSelector(viewModel),
+                  ],
 
-            const SizedBox(height: 10),
-            _buildDateHeader(viewModel.selectedFilter == 'Loan Requests' 
-                ? "Recent Requests" 
-                : "Recent Transactions"),
-                
-            Expanded(
-              child: _buildBody(viewModel),
+                  const SizedBox(height: 10),
+                  _buildDateHeader(viewModel.selectedFilter == 'Loan Requests' 
+                      ? "Recent Requests" 
+                      : "Recent Transactions"),
+                      
+                  Expanded(
+                    child: _buildBody(viewModel),
+                  ),
+                ],
+              ),
             ),
-          ],
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

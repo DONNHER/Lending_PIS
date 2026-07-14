@@ -10,6 +10,7 @@ class LoanEvaluationViewModel extends ChangeNotifier {
   LoanRequestModel _request;
 
   bool _isLoading = false;
+  bool _isProcessing = false;
   String? _errorMessage;
   ShareholderModel? _shareholder;
 
@@ -22,6 +23,7 @@ class LoanEvaluationViewModel extends ChangeNotifier {
   }
 
   bool get isLoading => _isLoading;
+  bool get isProcessing => _isProcessing;
   String? get errorMessage => _errorMessage;
   LoanRequestModel get request => _request;
   ShareholderModel? get shareholder => _shareholder;
@@ -49,7 +51,7 @@ class LoanEvaluationViewModel extends ChangeNotifier {
   }
 
   Future<bool> updateStatus(LoanStatus status) async {
-    _isLoading = true;
+    _isProcessing = true;
     _errorMessage = null;
     notifyListeners();
 
@@ -57,17 +59,12 @@ class LoanEvaluationViewModel extends ChangeNotifier {
       await _lendingRepo.updateLoanRequestStatus(_request.id, status);
       _request = _request.copyWith(status: status);
       
-      if (status == LoanStatus.approved) {
-        // Send email notification if needed
-        // await _emailService.sendLoanStatusUpdate(shareholder?.email ?? '', status.name);
-      }
-      
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       return false;
     } finally {
-      _isLoading = false;
+      _isProcessing = false;
       notifyListeners();
     }
   }

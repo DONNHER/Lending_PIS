@@ -20,7 +20,7 @@ class AddLoanPage extends StatelessWidget {
         context.read<LendingRepository>(),
         context.read<ShareholderRepository>(),
         initialShareholder: shareholder,
-      ),
+      )..init(),
       child: const _AddLoanBody(),
     );
   }

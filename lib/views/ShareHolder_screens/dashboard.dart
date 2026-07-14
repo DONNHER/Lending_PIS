@@ -5,6 +5,7 @@ import 'dart:async';
 import '../../app_theme.dart';
 import 'package:capstone_application/viewmodels/share_capital_viewmodel.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'managements/loan_application.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/loan_request_approval.dart';
@@ -182,7 +183,8 @@ class ShareCapitalScreen extends StatelessWidget {
                   bgColor: Colors.white,
                   textColor: const Color(0xFFC06C4D),
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AddLoanPage()));
+                    final nav = context.read<NavigationViewModel>();
+                    nav.navigateToLoanApplication(viewModel.currentShareholder);
                   },
                 ),
               ],
@@ -262,13 +264,7 @@ class ShareCapitalScreen extends StatelessWidget {
                 ...viewModel.loanRequests.map((req) {
                   return InkWell(
                     onTap: () {
-                      // Navigate to loan request details/approval page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => LoanRequestDetailsScreen(loanRequestId: req.id),
-                        ),
-                      );
+                      context.read<NavigationViewModel>().navigateToLoanReview(req.id);
                     },
                     child: _buildRequestRow(
                         dateFormat.format(req.createdAt),

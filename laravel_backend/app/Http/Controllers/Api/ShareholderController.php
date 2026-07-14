@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
+use App\Models\Notification;
+
 class ShareholderController extends Controller
 {
     /**
@@ -228,6 +230,17 @@ class ShareholderController extends Controller
         try {
             $shareholder->update([
                 'total_share_capital' => $request->total_share_capital
+            ]);
+
+            // 🚀 Create Notification for the Shareholder
+            Notification::create([
+                'shareholder_id' => $shareholder->id,
+                'user_id' => $shareholder->user_id,
+                'title' => 'Share Capital Updated',
+                'content' => 'Your total share capital has been updated to ₱' . number_format($request->total_share_capital, 2) . '.',
+                'category' => 'transaction',
+                'type' => 'capital_updated',
+                'is_unread' => true,
             ]);
 
             return response()->json([

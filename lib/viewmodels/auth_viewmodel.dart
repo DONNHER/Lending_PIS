@@ -137,6 +137,46 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
+  String _mapAuthError(Object e) {
+    if (e is AuthException) {
+      final message = e.message.toLowerCase();
+      if (message.contains('invalid') || message.contains('incorrect') || message.contains('not match')) {
+        return 'The verification code is incorrect. Please check your email and try again.';
+      }
+      if (message.contains('expired')) {
+        return 'The verification code has expired. Please request a new one.';
+      }
+      if (message.contains('too many')) {
+        return 'Too many attempts. Please wait a moment before trying again.';
+      }
+      if (message.contains('network') || message.contains('connection')) {
+        return 'Connection error. Please check your internet and try again.';
+      }
+      return e.message;
+    }
+    return 'An unexpected error occurred. Please try again.';
+  }
+
+  Future<void> resendVerificationEmail(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _supabase.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
+      _errorMessage = 'Verification email resent successfully. Please check your inbox.';
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Manual resend error: $e');
+      _errorMessage = 'Failed to resend verification email: ${e.toString()}';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> login(String email, String password, {bool isAdminLogin = false}) async {
     _isLoading = true;
     _errorMessage = null;
@@ -166,14 +206,27 @@ class AuthViewModel extends ChangeNotifier {
 
           // Block if email is not confirmed
           if (e.message.toLowerCase().contains('email not confirmed')) {
-            _errorMessage = 'Account not verified. Please check your inbox and click "Verify this email" in your welcome email first.';
+            debugPrint('DEBUG: [AuthViewModel] Email not confirmed. Triggering resend...');
+            
+            try {
+              // 🚀 Automatically resend verification email if it was expired or never confirmed
+              await _supabase.auth.resend(
+                type: OtpType.signup,
+                email: email,
+              );
+              _errorMessage = 'Account not verified. A new verification link has been sent to your email. Please check your inbox.';
+            } catch (resendError) {
+              debugPrint('DEBUG: [AuthViewModel] Resend failed: $resendError');
+              _errorMessage = 'Account not verified. We tried to send a new link but failed. Please try again later.';
+            }
+
             _isLoading = false;
             notifyListeners();
             return false;
           }
           
           // Improved error message to show actual Supabase error for debugging
-          _errorMessage = 'Verification Error: ${e.message}';
+          _errorMessage = _mapAuthError(e);
           _isLoading = false;
           notifyListeners();
           return false;
@@ -195,7 +248,7 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         } catch (otpError) {
           debugPrint('DEBUG: [AuthViewModel] OTP Send Error: $otpError');
-          _errorMessage = 'Failed to send verification code. Please try again.';
+          _errorMessage = _mapAuthError(otpError);
           _isLoading = false;
           notifyListeners();
           return false;
@@ -346,7 +399,7 @@ class AuthViewModel extends ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('DEBUG: [AuthViewModel] All MFA verification attempts failed: $e');
-      _errorMessage = e.toString();
+      _errorMessage = _mapAuthError(e);
       return false;
     } finally {
       _isLoading = false;
@@ -363,7 +416,7 @@ class AuthViewModel extends ChangeNotifier {
       await _supabase.auth.signInWithOtp(email: email);
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = _mapAuthError(e);
       return false;
     } finally {
       _isLoading = false;
@@ -377,11 +430,10 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Use Supabase to send the reset email
-      await _supabase.auth.resetPasswordForEmail(email);
-      return true;
+      final response = await _authRepository.forgotPassword(email);
+      return response['success'] == true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
       _isLoading = false;
@@ -399,26 +451,15 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Verify OTP with Supabase
-      await _supabase.auth.verifyOTP(
-        email: email,
-        token: code,
-        type: OtpType.recovery,
-      );
-
-      // 2. Update password in Supabase
-      await _supabase.auth.updateUser(UserAttributes(password: password));
-      
-      // 3. Sync with Laravel
-      await _authRepository.resetPassword(
+      final response = await _authRepository.resetPassword(
         email: email,
         code: code,
         password: password,
       );
       
-      return true;
+      return response['success'] == true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
       _isLoading = false;
@@ -436,7 +477,9 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      String? avatarUrl = _currentUser?.avatarUrl;
+      // 🚀 Use original admin if impersonating to avoid updating shareholder profile
+      final effectiveUser = isImpersonating ? _originalAdminUser : _currentUser;
+      String? avatarUrl = effectiveUser?.avatarUrl;
 
       // 1. Handle Avatar Upload
       if (_avatarBytes != null) {
@@ -460,7 +503,12 @@ class AuthViewModel extends ChangeNotifier {
       );
 
       if (response['success'] == true) {
-        _currentUser = UserModel.fromJson(response['user']);
+        final updatedUser = UserModel.fromJson(response['user']);
+        if (isImpersonating) {
+          _originalAdminUser = updatedUser;
+        } else {
+          _currentUser = updatedUser;
+        }
         _avatarBytes = null;
         _removeAvatarRequested = false;
         notifyListeners();

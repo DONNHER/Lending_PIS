@@ -21,7 +21,10 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
   @override
   void initState() {
     super.initState();
-    final user = context.read<AuthViewModel>().currentUser;
+    final auth = context.read<AuthViewModel>();
+    // 🚀 Use original admin user if impersonating
+    final user = auth.isImpersonating ? auth.originalAdminUser : auth.currentUser;
+    
     _firstNameController = TextEditingController(text: user?.firstName ?? '');
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
@@ -52,7 +55,12 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
   @override
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
-    final user = authViewModel.currentUser;
+    
+    // 🚀 Use original admin user if impersonating
+    final user = authViewModel.isImpersonating 
+        ? authViewModel.originalAdminUser 
+        : authViewModel.currentUser;
+
     final hasAvatar = authViewModel.avatarBytes != null || 
                      (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty && !authViewModel.removeAvatarRequested);
 
@@ -87,8 +95,8 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
                           decoration: BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
-                            border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 4),
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5))],
+                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 4),
                           ),
                           child: ClipOval(
                             child: authViewModel.avatarBytes != null
@@ -154,7 +162,7 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,10 +328,10 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
           decoration: InputDecoration(
             hintText: hint,
             filled: true,
-            fillColor: enabled ? Colors.white : Colors.grey.withOpacity(0.05),
+            fillColor: enabled ? Colors.white : Colors.grey.withValues(alpha: 0.05),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
           ),
           validator: isRequired ? (value) => value == null || value.isEmpty ? 'Field required' : null : null,
         ),

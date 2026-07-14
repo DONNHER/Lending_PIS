@@ -7,6 +7,7 @@ import 'package:capstone_application/repositories/lending_repository.dart';
 import 'package:capstone_application/repositories/shareholder_repository.dart';
 import 'package:capstone_application/models/lending_models.dart';
 import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 
 class LoanRequestDetailsScreen extends StatefulWidget {
   final String loanRequestId;
@@ -117,7 +118,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.black87),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => context.read<NavigationViewModel>().clearLoanReview(),
             ),
             title: const Text("Request Review",
                 style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -315,7 +316,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     }
 
     final shareholderId = context.read<NotificationViewModel>().shareholderId;
-    final Map<String, dynamic> decisions = loan.comakerDecisions;
+    final decisions = loan.comakerDecisionsMap;
     final status = decisions[shareholderId ?? ''];
 
     if (status != null && status != ComakerStatus.pending) {

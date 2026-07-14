@@ -297,8 +297,9 @@ class CanteenApp extends StatelessWidget {
             context.read<NotificationRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && auth.currentUser?.role == UserRole.shareholder) {
-              model?.loadNotifications(userId: auth.currentUser!.id);
+            final shareholderId = auth.currentUser?.shareholder?.id;
+            if (auth.isAuthenticated && shareholderId != null) {
+              model?.loadNotifications(shareholderId: shareholderId);
             } else if (!auth.isAuthenticated) {
               model?.reset();
             }
@@ -365,14 +366,23 @@ class RootApp extends StatelessWidget {
       return const LoginPage();
     }
 
+    // 🚀 FIX: If impersonating, ALWAYS return AppShell so the overlay banner is visible
+    if (auth.isImpersonating) {
+      debugPrint('DEBUG: [RootApp] Impersonation active, returning AppShell for banner support');
+      return const AppShell();
+    }
+
     if (auth.currentUser?.role == UserRole.shareholder) {
       return const AppLayout();
     }
+
+    debugPrint('DEBUG: [RootApp] Role: ${auth.currentUser?.role}, Initialized: ${auth.isInitialized}');
 
     // For Admin/Cashier, show a global loader if the dashboard (main entry) 
     // hasn't finished its initial background fetch yet.
     return Consumer<DashboardViewModel>(
       builder: (context, dashboard, child) {
+        debugPrint('DEBUG: [RootApp] Dashboard isInitialized: ${dashboard.isInitialized}');
         if (!dashboard.isInitialized) {
           return Scaffold(
             backgroundColor: const Color(0xFFFDF8F5),

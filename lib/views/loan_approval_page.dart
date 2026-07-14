@@ -6,10 +6,13 @@ import 'package:capstone_application/models/lending_models.dart';
 import 'package:capstone_application/repositories/lending_repository.dart';
 import 'package:capstone_application/views/loan_details_page.dart';
 
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
+
 class LoanApprovalPage extends StatefulWidget {
   final LoanRequestModel initialRequest;
+  final VoidCallback? onBack;
 
-  const LoanApprovalPage({super.key, required this.initialRequest});
+  const LoanApprovalPage({super.key, required this.initialRequest, this.onBack});
 
   @override
   State<LoanApprovalPage> createState() => _LoanApprovalPageState();
@@ -33,15 +36,9 @@ class _LoanApprovalPageState extends State<LoanApprovalPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Loan disbursed successfully')),
         );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LoanDetailsPage(
-              loanId: loan.id,
-              shareholderId: loan.shareholderId,
-            ),
-          ),
-        );
+        
+        final nav = context.read<NavigationViewModel>();
+        nav.navigateToLoanDetails(loan.id, loan.shareholderId);
       } else {
         setState(() => _errorMessage = 'Disbursement failed. Please try again.');
       }
@@ -65,7 +62,7 @@ class _LoanApprovalPageState extends State<LoanApprovalPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.textDark),
-          onPressed: () => Navigator.pop(context),
+          onPressed: widget.onBack ?? () => Navigator.pop(context),
         ),
         title: const Text('Confirm Disbursement', 
           style: TextStyle(color: AppTheme.textDark, fontSize: 18, fontWeight: FontWeight.bold)),

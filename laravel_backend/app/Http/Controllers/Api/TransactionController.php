@@ -85,7 +85,27 @@ class TransactionController extends Controller
 
     public function store(Request $request)
     {
-        $transaction = Transaction::create($request->all());
+        $transaction = \App\Models\Transaction::create($request->all());
+
+        // 🚀 Notify Shareholder
+        $shareholder = \App\Models\Shareholder::find($transaction->shareholder_id);
+        if ($shareholder) {
+            \App\Models\Notification::create([
+                'shareholder_id' => $shareholder->id,
+                'user_id' => $shareholder->user_id,
+                'title' => 'New Transaction Recorded',
+                'content' => 'A new ' . $transaction->type . ' of ₱' . number_format($transaction->amount, 2) . ' has been recorded.',
+                'category' => 'transaction',
+                'type' => 'transaction_created',
+                'is_unread' => true,
+                'metadata' => [
+                    'transaction_id' => $transaction->id,
+                    'reference_id' => $transaction->reference_id,
+                    'type' => $transaction->type
+                ]
+            ]);
+        }
+
         return response()->json(['success' => true, 'data' => $transaction], 201);
     }
 }

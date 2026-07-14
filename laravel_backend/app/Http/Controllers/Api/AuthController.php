@@ -269,6 +269,7 @@ class AuthController extends Controller
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
+            'code' => 'required|string|size:6',
             'password' => $this->passwordPolicy,
         ], [
             'password.regex' => $this->passwordPolicyMessage
@@ -283,8 +284,15 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
+        // Verify OTP Code
+        if ($user->mfa_code !== $request->code || now()->gt($user->mfa_expires_at)) {
+            return response()->json(['success' => false, 'message' => 'Invalid or expired verification code.'], 400);
+        }
+
         try {
             $user->password = Hash::make($request->password);
+            $user->mfa_code = null;
+            $user->mfa_expires_at = null;
             $user->save();
             
             $this->notifyPasswordChange($user);

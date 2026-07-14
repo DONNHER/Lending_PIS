@@ -8,6 +8,8 @@ import 'package:capstone_application/repositories/shareholder_repository.dart';
 import 'package:capstone_application/viewmodels/loan_evaluation_viewmodel.dart';
 import 'package:capstone_application/views/loan_approval_page.dart';
 
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
+
 class LoanEvaluationPage extends StatelessWidget {
   final LoanRequestModel request;
   final VoidCallback? onBack;
@@ -30,28 +32,6 @@ class LoanEvaluationPage extends StatelessWidget {
 class _LoanEvaluationBody extends StatelessWidget {
   final VoidCallback? onBack;
   const _LoanEvaluationBody({this.onBack});
-
-  void _showProcessingDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const PopScope(
-        canPop: false,
-        child: AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: Color(0xFFC06C4D)),
-              SizedBox(height: 16),
-              Text("Processing Loan Request...", style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              Text("Please wait while we update the records.", style: TextStyle(fontSize: 12)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +102,7 @@ class _LoanEvaluationBody extends StatelessWidget {
         SizedBox(
           width: 150,
           child: OutlinedButton(
-            onPressed: viewModel.isLoading ? null : () => _handleStatusUpdate(context, viewModel, LoanStatus.rejected),
+            onPressed: (viewModel.isLoading || viewModel.isProcessing) ? null : () => _handleStatusUpdate(context, viewModel, LoanStatus.rejected),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.red,
               side: const BorderSide(color: Colors.red),
@@ -136,7 +116,7 @@ class _LoanEvaluationBody extends StatelessWidget {
         SizedBox(
           width: 220,
           child: ElevatedButton(
-            onPressed: viewModel.isLoading ? null : () => _handleStatusUpdate(context, viewModel, LoanStatus.approved),
+            onPressed: (viewModel.isLoading || viewModel.isProcessing) ? null : () => _handleStatusUpdate(context, viewModel, LoanStatus.approved),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFC06C4D),
               foregroundColor: Colors.white,
@@ -144,7 +124,13 @@ class _LoanEvaluationBody extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               elevation: 0,
             ),
-            child: const Text('Approve & Process', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: viewModel.isProcessing
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text('Approve & Process', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ),
       ],
@@ -173,13 +159,9 @@ class _LoanEvaluationBody extends StatelessWidget {
       return;
     }
 
-    _showProcessingDialog(context);
-
     try {
       final success = await viewModel.updateStatus(status);
       
-      if (context.mounted) Navigator.pop(context); // Close loading dialog
-
       if (success && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Loan request ${status.name} successfully')),
@@ -187,14 +169,14 @@ class _LoanEvaluationBody extends StatelessWidget {
 
         if (status == LoanStatus.approved) {
           final updatedRequest = viewModel.request.copyWith(status: LoanStatus.approved);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LoanApprovalPage(initialRequest: updatedRequest),
-            ),
-          );
+          final nav = context.read<NavigationViewModel>();
+          nav.navigateToLoanRequest(updatedRequest);
         } else {
-          Navigator.pop(context);
+          if (onBack != null) {
+            onBack!();
+          } else {
+            Navigator.pop(context);
+          }
         }
       } else if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -202,7 +184,6 @@ class _LoanEvaluationBody extends StatelessWidget {
         );
       }
     } catch (e) {
-      if (context.mounted) Navigator.pop(context);
       debugPrint('CRITICAL EXCEPTION during status update: $e');
     }
   }

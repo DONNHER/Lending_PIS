@@ -22,12 +22,23 @@ class AddLoanViewModel extends ChangeNotifier {
 
   final List<int> durationOptions = [1, 2, 3, 4, 5, 6, 12];
 
+  double _interestRate = 0.032; // Default fallback
+
   AddLoanViewModel(
     this._lendingRepository,
     this._shareholderRepository, {
     this.currentUserId,
     ShareholderModel? initialShareholder,
   }) : _selectedBorrower = initialShareholder;
+
+  Future<void> init() async {
+    try {
+      _interestRate = await _lendingRepository.getInterestRate();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching interest rate: $e');
+    }
+  }
 
   // Getters
   bool get isLoading => _isLoading;
@@ -40,7 +51,7 @@ class AddLoanViewModel extends ChangeNotifier {
   List<ShareholderModel> get borrowerSearchResults => _borrowerSearchResults;
   List<ShareholderModel> get coMakerSearchResults => _coMakerSearchResults;
 
-  double get interestRate => 0.03; // 3% monthly example
+  double get interestRate => _interestRate;
   double get totalInterest => _amount * interestRate * _months;
   double get processingFee => _amount * 0.05;
   double get netAmountToReceive => _amount - processingFee;
@@ -115,10 +126,11 @@ class AddLoanViewModel extends ChangeNotifier {
     try {
       await _lendingRepository.submitLoanRequest({
         'shareholder_id': _selectedBorrower!.id,
-        'amount': _amount,
+        'requested_amount': _amount,
+        'interest_rate': _interestRate,
         'months': _months,
         'purpose': _purpose,
-        'co_makers': _selectedCoMakers.map((s) => s.id).toList(),
+        'comaker_ids': _selectedCoMakers.map((s) => s.id).toList(),
       });
       return true;
     } catch (e) {

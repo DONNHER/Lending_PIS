@@ -16,13 +16,13 @@ class NotificationViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   int get unreadCount => _notifications.where((n) => n.isUnread).length;
 
-  Future<void> loadNotifications({required String userId, bool forceRefresh = false}) async {
+  Future<void> loadNotifications({required String shareholderId, bool forceRefresh = false}) async {
     _isLoading = true;
-    _shareholderId = userId;
+    _shareholderId = shareholderId;
     notifyListeners();
 
     try {
-      final List<NotificationModel> result = await _notificationRepository.getNotifications(userId);
+      final List<NotificationModel> result = await _notificationRepository.getNotifications(shareholderId);
       _notifications = result;
     } catch (e) {
       debugPrint('Error fetching notifications: $e');
@@ -36,7 +36,7 @@ class NotificationViewModel extends ChangeNotifier {
     try {
       await _notificationRepository.markAsRead(id);
       if (_shareholderId != null) {
-        await loadNotifications(userId: _shareholderId!, forceRefresh: true);
+        await loadNotifications(shareholderId: _shareholderId!, forceRefresh: true);
       }
     } catch (e) {
       debugPrint('Error marking as read: $e');
@@ -47,7 +47,7 @@ class NotificationViewModel extends ChangeNotifier {
     if (_shareholderId == null) return;
     try {
       await _notificationRepository.markAllAsRead(_shareholderId!);
-      await loadNotifications(userId: _shareholderId!, forceRefresh: true);
+      await loadNotifications(shareholderId: _shareholderId!, forceRefresh: true);
     } catch (e) {
       debugPrint('Error marking all as read: $e');
     }

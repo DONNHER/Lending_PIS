@@ -2,6 +2,9 @@ import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/shareholder_detail_viewmodel.dart';
+import '../viewmodels/auth_viewmodel.dart';
+import '../repositories/user_repository.dart';
+import '../models/user_model.dart';
 import '../app_theme.dart';
 import '../widgets/activity_log_table.dart';
 import 'package:intl/intl.dart';
@@ -44,12 +47,25 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
           style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
         ),
         actions: [
-          Consumer<ShareholderDetailViewModel>(
-            builder: (context, viewModel, _) => IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
-              onPressed: () => viewModel.loadShareholder(widget.shareholderId),
-              tooltip: 'Refresh',
-            ),
+          Consumer2<ShareholderDetailViewModel, AuthViewModel>(
+            builder: (context, viewModel, auth, _) {
+              final person = viewModel.shareholder;
+              return Row(
+                children: [
+                  if (person != null && person.userId != null && auth.currentUser?.role == UserRole.admin)
+                    IconButton(
+                      icon: const Icon(Icons.login_rounded, color: Color(0xFFC06C4D)),
+                      onPressed: () => _handleImpersonate(context, person.userId!, person.fullName),
+                      tooltip: 'Impersonate ${person.firstName}',
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC06C4D)),
+                    onPressed: () => viewModel.loadShareholder(widget.shareholderId),
+                    tooltip: 'Refresh',
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],
@@ -101,6 +117,55 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
         },
       ),
     );
+  }
+
+  Future<void> _handleImpersonate(BuildContext context, String userId, String fullName) async {
+    try {
+      final repo = context.read<UserRepository>();
+      // Before calling impersonate, let's fetch the actual user to check status
+      final user = await repo.getUserById(userId);
+      
+      if (user != null && user.status != UserStatus.active) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cannot impersonate ${user.status.name} accounts. Please activate the user first.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final response = await repo.impersonate(userId);
+      
+      if (!mounted) return;
+      
+      final authModel = context.read<AuthViewModel>();
+      await authModel.startImpersonation(response);
+      
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Now impersonating $fullName'),
+          backgroundColor: const Color(0xFFC06C4D),
+        ),
+      );
+
+      // Navigate to shareholder dashboard
+      final nav = context.read<NavigationViewModel>();
+      final route = authModel.dashboardRoute;
+      if (route != null) {
+        final navItems = nav.getFilteredNavItems();
+        final idx = navItems.indexWhere((it) => it.route == route);
+        if (idx != -1) nav.navigateTo(idx);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impersonation failed: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   Widget _buildHeader(BuildContext context, dynamic person) {
@@ -356,7 +421,32 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                           backgroundColor: Colors.white,
                           elevation: 0,
                         ),
-                        Image.network(person.idImageUrl!, fit: BoxFit.contain),
+                        Image.network(
+                          person.idImageUrl!, 
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            height: 200,
+                            width: double.infinity,
+                            color: Colors.grey[100],
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.broken_image_outlined, color: Colors.grey[400], size: 48),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Image failed to load',
+                                  style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Please check if the Supabase storage bucket is Public.',
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 10),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -371,15 +461,20 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
                   image: DecorationImage(
                     image: NetworkImage(person.idImageUrl!),
                     fit: BoxFit.cover,
+                    onError: (exception, stackTrace) {
+                      debugPrint('Error loading ID image: $exception');
+                    },
                   ),
                 ),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-                    child: const Icon(Icons.fullscreen_rounded, color: Colors.white, size: 24),
-                  ),
-                ),
+                child: person.idImageUrl != null 
+                  ? Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                        child: const Icon(Icons.fullscreen_rounded, color: Colors.white, size: 24),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
               ),
             ),
           ],
@@ -390,16 +485,23 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
 
   Widget _infoTile(IconData icon, String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 20, color: AppTheme.textMuted),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-            const SizedBox(height: 2),
-            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                softWrap: true,
+              ),
+            ],
+          ),
         ),
       ],
     );

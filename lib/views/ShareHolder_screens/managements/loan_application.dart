@@ -8,8 +8,39 @@ import 'package:capstone_application/viewmodels/add_loan_viewmodel.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/widgets/shareholder_search_selector.dart';
 
+import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
+import 'package:capstone_application/models/shareholder_model.dart';
+
 class AddLoanPage extends StatelessWidget {
-  const AddLoanPage({super.key});
+  final ShareholderModel? initialShareholder;
+  const AddLoanPage({super.key, this.initialShareholder});
+
+  Widget _buildCustomHeader(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppTheme.textDark),
+            onPressed: () => context.read<NavigationViewModel>().clearLoanApplication(),
+          ),
+          const Expanded(
+            child: Text(
+              'New Loan Request',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textDark,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48), // Spacer to balance the back button
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +51,8 @@ class AddLoanPage extends StatelessWidget {
         context.read<LendingRepository>(),
         context.read<ShareholderRepository>(),
         currentUserId: auth.currentUser?.id,
-      ),
+        initialShareholder: initialShareholder,
+      )..init(),
       child: const _AddLoanBody(),
     );
   }
@@ -34,6 +66,33 @@ class _AddLoanBody extends StatefulWidget {
 }
 
 class _AddLoanBodyState extends State<_AddLoanBody> {
+  Widget _buildCustomHeader(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppTheme.textDark),
+            onPressed: () => context.read<NavigationViewModel>().clearLoanApplication(),
+          ),
+          const Expanded(
+            child: Text(
+              'New Loan Request',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textDark,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48), // Spacer to balance the back button
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<AddLoanViewModel>();
@@ -42,19 +101,12 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDF8F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textDark),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('New Loan Request', style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 16)),
-        centerTitle: true,
-      ),
       body: SafeArea(
         child: Column(
           children: [
+            // Custom Header instead of AppBar to avoid double AppBars in shell
+            _buildCustomHeader(context),
+
             // Eligibility Banner
             if (!isEligible && viewModel.eligibilityMessage != null)
               Container(
@@ -104,7 +156,19 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
                           onSelected: (s) {
                             viewModel.setBorrower(s);
                           },
-                          selectedItem: null,
+                          selectedItem: viewModel.selectedBorrower != null
+                              ? Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Chip(
+                              label: Text(viewModel.selectedBorrower!.fullName,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                              onDeleted: () => viewModel.setBorrower(null),
+                              backgroundColor: const Color(0xFFF2E4D8),
+                              deleteIconColor: const Color(0xFFC06C4D),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          )
+                              : null,
                         ),
                         const SizedBox(height: 24),
 
@@ -181,13 +245,13 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
                               : null,
                         ),
                         const SizedBox(height: 32),
+                        _buildSummaryAndFooter(context, viewModel, currencyFormat, isEligible),
                       ],
                     ),
                   ),
                 ),
               ),
             ),
-            _buildSummaryAndFooter(context, viewModel, currencyFormat, isEligible),
           ],
         ),
       ),
@@ -282,61 +346,53 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
   Widget _buildSummaryAndFooter(BuildContext context, AddLoanViewModel viewModel, NumberFormat currencyFormat, bool isEligible) {
     final bool canSubmit = isEligible && viewModel.selectedBorrower != null && viewModel.selectedCoMakers.length >= 2;
 
-    return Container(
-      decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFE5E7EB)))),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Summary', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            _summaryRow('Base Loan', 'PHP ${currencyFormat.format(viewModel.amount)}'),
+            _summaryRow('Total Interest (${viewModel.months} mo)', 'PHP ${currencyFormat.format(viewModel.totalInterest)}'),
+            _summaryRow('5% Processing Fee', '-${currencyFormat.format(viewModel.processingFee)}'),
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Summary', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 12),
-                _summaryRow('Base Loan', 'PHP ${currencyFormat.format(viewModel.amount)}'),
-                _summaryRow('Total Interest (${viewModel.months} mo)', 'PHP ${currencyFormat.format(viewModel.totalInterest)}'),
-                _summaryRow('5% Processing Fee', '-${currencyFormat.format(viewModel.processingFee)}'),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total to Receive', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
-                    Text('₱ ${currencyFormat.format(viewModel.netAmountToReceive)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF32211A))),
-                  ],
-                ),
+                const Text('Total to Receive', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                Text('₱ ${currencyFormat.format(viewModel.netAmountToReceive)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF32211A))),
               ],
             ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton(
+          onPressed: (viewModel.isLoading || !canSubmit)
+              ? null
+              : () async {
+            final success = await viewModel.submitLoanRequest();
+            if (success && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loan request submitted successfully')));
+              context.read<NavigationViewModel>().clearLoanApplication();
+            } else if (viewModel.errorMessage != null && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.errorMessage!), backgroundColor: AppTheme.error));
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFC06C4D),
+            disabledBackgroundColor: Colors.grey.shade300,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 0,
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            child: ElevatedButton(
-              onPressed: (viewModel.isLoading || !canSubmit)
-                  ? null
-                  : () async {
-                final success = await viewModel.submitLoanRequest();
-                if (success && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loan request submitted successfully')));
-                  Navigator.pop(context);
-                } else if (viewModel.errorMessage != null && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.errorMessage!), backgroundColor: AppTheme.error));
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFC06C4D),
-                disabledBackgroundColor: Colors.grey.shade300,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              child: viewModel.isLoading
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(!isEligible ? 'Ineligible for New Loan' : (!canSubmit ? 'Confirm Borrower & 2 Co-makers' : 'Submit Request'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
-          ),
-        ],
-      ),
+          child: viewModel.isLoading
+              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Text(!isEligible ? 'Ineligible for New Loan' : (!canSubmit ? 'Confirm Borrower & 2 Co-makers' : 'Submit Request'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        ),
+      ],
     );
   }
 

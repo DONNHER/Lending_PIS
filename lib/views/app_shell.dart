@@ -5,6 +5,11 @@ import 'package:capstone_application/views/transactions_page.dart';
 import 'package:capstone_application/views/update_interest_page.dart';
 import 'package:capstone_application/views/admin_settings.dart';
 import 'package:capstone_application/views/ShareHolder_screens/dashboard.dart';
+import 'package:capstone_application/views/ShareHolder_screens/transaction.dart';
+import 'package:capstone_application/views/ShareHolder_screens/settings.dart';
+import 'package:capstone_application/views/ShareHolder_screens/managements/loan_application.dart';
+import 'package:capstone_application/views/ShareHolder_screens/details_page/loan_request_approval.dart';
+import 'package:capstone_application/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/app_theme.dart';
@@ -23,10 +28,22 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isTablet = constraints.maxWidth >= 600;
-        return isTablet ? _buildTabletLayout() : _buildPhoneLayout();
+    return Consumer2<AuthViewModel, NavigationViewModel>(
+      builder: (context, auth, nav, _) {
+        return Column(
+          children: [
+            if (auth.isImpersonating) 
+              _buildImpersonationBanner(context, auth, nav),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isTablet = constraints.maxWidth >= 600;
+                  return isTablet ? _buildTabletLayout() : _buildPhoneLayout();
+                },
+              ),
+            ),
+          ],
+        );
       },
     );
   }
@@ -35,6 +52,7 @@ class _AppShellState extends State<AppShell> {
     return Consumer2<NavigationViewModel, AuthViewModel>(
       builder: (context, nav, auth, _) {
         final filteredItems = nav.getFilteredNavItems();
+        debugPrint('DEBUG: [AppShell] Phone Layout - Filtered Items: ${filteredItems.length}, Selected Index: ${nav.selectedIndex}');
         
         if (filteredItems.isEmpty) {
           return const Scaffold(
@@ -69,6 +87,7 @@ class _AppShellState extends State<AppShell> {
     return Consumer2<NavigationViewModel, AuthViewModel>(
       builder: (context, nav, auth, _) {
         final filteredItems = nav.getFilteredNavItems();
+        debugPrint('DEBUG: [AppShell] Tablet Layout - Filtered Items: ${filteredItems.length}, Selected Index: ${nav.selectedIndex}');
 
         if (filteredItems.isEmpty) {
           return const Scaffold(
@@ -78,22 +97,15 @@ class _AppShellState extends State<AppShell> {
 
         return Scaffold(
           body: SafeArea(
-            child: Column(
+            child: Row(
               children: [
-                if (auth.isImpersonating) _buildImpersonationBanner(context, auth, nav),
-                Expanded(
-                  child: Row(
-                    children: [
-                      _TabletRail(
-                        items: filteredItems,
-                        selectedIndex: nav.selectedIndex,
-                        onDestinationSelected: nav.navigateTo,
-                      ),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: _buildPage(filteredItems, nav.selectedIndex)),
-                    ],
-                  ),
+                _TabletRail(
+                  items: filteredItems,
+                  selectedIndex: nav.selectedIndex,
+                  onDestinationSelected: nav.navigateTo,
                 ),
+                const VerticalDivider(width: 1),
+                Expanded(child: _buildPage(filteredItems, nav.selectedIndex)),
               ],
             ),
           ),
@@ -104,7 +116,11 @@ class _AppShellState extends State<AppShell> {
 
   AppBar _buildPhoneAppBar(BuildContext context) {
     final auth = context.read<AuthViewModel>();
-    final user = auth.currentUser;
+    
+    // 🚀 Use original admin user if impersonating
+    final user = auth.isImpersonating ? auth.originalAdminUser : auth.currentUser;
+    final displayUser = auth.currentUser; // Always show current impersonated user avatar if desired, or admin's?
+    // Let's stick with showing the active session user's avatar in the small icon
 
     return AppBar(
       backgroundColor: Colors.white,
@@ -142,7 +158,17 @@ class _AppShellState extends State<AppShell> {
         Padding(
           padding: const EdgeInsets.only(right: 12),
           child: GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminSettingsScreen())),
+            onTap: () {
+              final nav = context.read<NavigationViewModel>();
+              if (user?.role == UserRole.admin) {
+                nav.navigateToAdminSettings();
+              } else {
+                // For non-admins (like Cashier) in AppShell, maybe show a snackbar or separate page
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile settings coming soon for your role.'))
+                );
+              }
+            },
             child: Container(
               width: 34,
               height: 34,
@@ -151,8 +177,8 @@ class _AppShellState extends State<AppShell> {
                 shape: BoxShape.circle,
               ),
               child: ClipOval(
-                child: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
-                    ? Image.network(user.avatarUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, color: AppTheme.primary, size: 18))
+                child: (displayUser?.avatarUrl != null && displayUser!.avatarUrl!.isNotEmpty)
+                    ? Image.network(displayUser.avatarUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, color: AppTheme.primary, size: 18))
                     : const Icon(Icons.person_rounded, color: AppTheme.primary, size: 18),
               ),
             ),
@@ -325,6 +351,19 @@ class _AppShellState extends State<AppShell> {
       return const Center(child: Text('Invalid page selection'));
     }
 
+    final nav = context.read<NavigationViewModel>();
+    if (nav.isApplyingLoan) {
+      return AddLoanPage(initialShareholder: nav.loanInitialShareholder);
+    }
+
+    if (nav.isReviewingLoanRequest && nav.loanRequestIdToReview != null) {
+      return LoanRequestDetailsScreen(loanRequestId: nav.loanRequestIdToReview!);
+    }
+    
+    if (nav.isViewingAdminSettings) {
+      return const AdminSettingsScreen();
+    }
+
     final route = items[selectedIndex].route;
 
     switch (route) {
@@ -342,6 +381,10 @@ class _AppShellState extends State<AppShell> {
         return const ActivityLogsPage();
       case '/shareholder-dashboard':
         return const ShareCapitalScreen();
+      case '/shareholder-transactions':
+        return const TransactionHistoryScreen();
+      case '/shareholder-profile':
+        return const SettingsScreen();
       default:
         return _placeholderPage(
           title: route
@@ -359,34 +402,46 @@ class _AppShellState extends State<AppShell> {
 
   Widget _buildImpersonationBanner(BuildContext context, AuthViewModel auth, NavigationViewModel nav) {
     return Container(
-      color: Colors.amber[100],
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'You are currently impersonating ${auth.currentUser?.fullName} (ID: ${auth.currentUser?.id.substring(0, 8)}...).',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
-            ),
+      color: const Color(0xFF32211A), // Dark brown
+      width: double.infinity,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              const Text('⚠️', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Impersonating: ${auth.currentUser?.fullName} (ID: ${auth.currentUser?.id.substring(0, 8)})',
+                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 32,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await auth.stopImpersonation();
+                    nav.setUserRole(UserRole.admin);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    elevation: 0,
+                    minimumSize: const Size(80, 32),
+                  ),
+                  child: const Text('Exit Session', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              await auth.stopImpersonation();
-              // Back to users management
-              final items = nav.getFilteredNavItems();
-              final idx = items.indexWhere((it) => it.route == '/users');
-              if (idx != -1) nav.navigateTo(idx);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-            ),
-            child: const Text('Exit Session'),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -583,17 +638,16 @@ class _TabletRailState extends State<_TabletRail> {
                   extended: _extended,
                   selectedIndex: widget.selectedIndex,
                   onDestinationSelected: widget.onDestinationSelected,
-                  labelType: _extended
-                      ? NavigationRailLabelType.none
-                      : NavigationRailLabelType.all,
+                  labelType: NavigationRailLabelType.none, // Labels are handled by the 'extended' property
                   unselectedLabelTextStyle: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.transparent, // Hide by default
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textMuted,
                   ),
                   selectedLabelTextStyle: const TextStyle(
-                    fontSize: 10,
+                    fontSize: 13,
                     color: AppTheme.primary,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                   leading: const SizedBox.shrink(),
                   trailing: Expanded(
@@ -622,7 +676,18 @@ class _TabletRailState extends State<_TabletRail> {
                                 Icons.person_outline_rounded,
                                 color: AppTheme.textMuted,
                               ),
-                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminSettingsScreen())),
+                              onPressed: () {
+                                final auth = context.read<AuthViewModel>();
+                                final effectiveUser = auth.isImpersonating ? auth.originalAdminUser : auth.currentUser;
+                                
+                                if (effectiveUser?.role == UserRole.admin) {
+                                  context.read<NavigationViewModel>().navigateToAdminSettings();
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Access restricted to Administrators.'))
+                                  );
+                                }
+                              },
                               tooltip: 'Account Settings',
                             ),
                           ],
@@ -637,23 +702,9 @@ class _TabletRailState extends State<_TabletRail> {
                     final bool isSelected = widget.selectedIndex == idx;
 
                     return NavigationRailDestination(
-                      icon: MouseRegion(
-                        onEnter: (_) => setState(() => _hoveredIndex = idx),
-                        onExit: (_) => setState(() => _hoveredIndex = null),
-                        child: Icon(item.icon),
-                      ),
+                      icon: Icon(item.icon),
                       selectedIcon: Icon(item.activeIcon),
-                      label: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 200),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                          color: (isSelected || isHovered)
-                              ? AppTheme.primary
-                              : Colors.transparent,
-                        ),
-                        child: Text(item.label),
-                      ),
+                      label: Text(item.label),
                     );
                   }).toList(),
                 ),

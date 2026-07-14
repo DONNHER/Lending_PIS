@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/models/nav_item_model.dart';
-
+import 'package:capstone_application/models/shareholder_model.dart';
 import 'package:capstone_application/models/lending_models.dart';
 
 class NavigationViewModel extends ChangeNotifier {
@@ -11,6 +11,13 @@ class NavigationViewModel extends ChangeNotifier {
   LoanRequestModel? _selectedLoanRequest;
   String? _selectedLoanId;
   String? _selectedLoanShareholderId;
+  
+  // 🚀 Added for in-shell loan application and admin settings
+  bool _isApplyingLoan = false;
+  bool _isViewingAdminSettings = false;
+  bool _isReviewingLoanRequest = false; // 🚀 Added
+  String? _loanRequestIdToReview; // 🚀 Added
+  ShareholderModel? _loanInitialShareholder;
 
   int get selectedIndex => _selectedIndex;
   UserRole? get currentUserRole => _currentUserRole;
@@ -18,6 +25,12 @@ class NavigationViewModel extends ChangeNotifier {
   LoanRequestModel? get selectedLoanRequest => _selectedLoanRequest;
   String? get selectedLoanId => _selectedLoanId;
   String? get selectedLoanShareholderId => _selectedLoanShareholderId;
+  
+  bool get isApplyingLoan => _isApplyingLoan;
+  bool get isViewingAdminSettings => _isViewingAdminSettings;
+  bool get isReviewingLoanRequest => _isReviewingLoanRequest; // 🚀 Added
+  String? get loanRequestIdToReview => _loanRequestIdToReview; // 🚀 Added
+  ShareholderModel? get loanInitialShareholder => _loanInitialShareholder;
 
   final List<NavItemModel> _allItems = [
     const NavItemModel(
@@ -62,6 +75,27 @@ class NavigationViewModel extends ChangeNotifier {
       route: '/activity-logs',
       allowedRoles: [UserRole.admin],
     ),
+    const NavItemModel(
+      label: 'Home',
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home_rounded,
+      route: '/shareholder-dashboard',
+      allowedRoles: [UserRole.shareholder],
+    ),
+    const NavItemModel(
+      label: 'Transaction',
+      icon: Icons.receipt_long_outlined,
+      activeIcon: Icons.receipt_long_rounded,
+      route: '/shareholder-transactions',
+      allowedRoles: [UserRole.shareholder],
+    ),
+    const NavItemModel(
+      label: 'Profile',
+      icon: Icons.person_outline_rounded,
+      activeIcon: Icons.person_rounded,
+      route: '/shareholder-profile',
+      allowedRoles: [UserRole.shareholder],
+    ),
   ];
 
   void setUserRole(UserRole role) {
@@ -74,6 +108,46 @@ class NavigationViewModel extends ChangeNotifier {
   void navigateTo(int index) {
     _selectedIndex = index;
     _clearSubViews();
+    _isApplyingLoan = false; 
+    _isViewingAdminSettings = false; // Reset settings view when switching tabs
+    notifyListeners();
+  }
+
+  void navigateToLoanApplication(ShareholderModel? shareholder) {
+    _isApplyingLoan = true;
+    _isViewingAdminSettings = false;
+    _loanInitialShareholder = shareholder;
+    notifyListeners();
+  }
+
+  void navigateToAdminSettings() {
+    _isViewingAdminSettings = true;
+    _isApplyingLoan = false;
+    notifyListeners();
+  }
+
+  void clearAdminSettings() {
+    _isViewingAdminSettings = false;
+    notifyListeners();
+  }
+
+  void clearLoanApplication() {
+    _isApplyingLoan = false;
+    _loanInitialShareholder = null;
+    notifyListeners();
+  }
+
+  void navigateToLoanReview(String requestId) {
+    _isReviewingLoanRequest = true;
+    _loanRequestIdToReview = requestId;
+    _isApplyingLoan = false;
+    _isViewingAdminSettings = false;
+    notifyListeners();
+  }
+
+  void clearLoanReview() {
+    _isReviewingLoanRequest = false;
+    _loanRequestIdToReview = null;
     notifyListeners();
   }
 
@@ -116,6 +190,11 @@ class NavigationViewModel extends ChangeNotifier {
     _selectedLoanRequest = null;
     _selectedLoanId = null;
     _selectedLoanShareholderId = null;
+    _isApplyingLoan = false;
+    _isViewingAdminSettings = false;
+    _isReviewingLoanRequest = false;
+    _loanInitialShareholder = null;
+    _loanRequestIdToReview = null;
   }
 
   void clearShareholderSelection() {
@@ -131,8 +210,11 @@ class NavigationViewModel extends ChangeNotifier {
   }
 
   List<NavItemModel> getFilteredNavItems() {
+    debugPrint('DEBUG: [NavigationViewModel] getFilteredNavItems for role: $_currentUserRole');
     if (_currentUserRole == null) return [];
-    return _allItems.where((item) => item.allowedRoles.contains(_currentUserRole)).toList();
+    final items = _allItems.where((item) => item.allowedRoles.contains(_currentUserRole)).toList();
+    debugPrint('DEBUG: [NavigationViewModel] Found ${items.length} items');
+    return items;
   }
 
   List<NavItemModel> getBottomNavItems() {

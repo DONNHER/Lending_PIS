@@ -58,7 +58,7 @@ class UserTable extends StatelessWidget {
                   separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
                   itemBuilder: (context, index) {
                     final user = users[index];
-                    return _buildRow(user);
+                    return _buildRow(context, user);
                   },
                 ),
         ),
@@ -66,7 +66,7 @@ class UserTable extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(UserModel user) {
+  Widget _buildRow(BuildContext context, UserModel user) {
     return InkWell(
       onTap: () => onView(user),
       hoverColor: const Color(0xFFC06C4D).withOpacity(0.05),
@@ -105,10 +105,25 @@ class UserTable extends StatelessWidget {
                 children: [
                   if (onImpersonate != null && user.role != UserRole.admin)
                     IconButton(
-                      icon: const Icon(Icons.login_rounded, size: 18, color: Color(0xFFC06C4D)),
-                      onPressed: () => onImpersonate!(user),
+                      icon: Icon(
+                        Icons.login_rounded, 
+                        size: 18, 
+                        color: user.status == UserStatus.active ? const Color(0xFFC06C4D) : Colors.grey.withOpacity(0.5)
+                      ),
+                      onPressed: user.status == UserStatus.active 
+                          ? () => onImpersonate!(user) 
+                          : () {
+                              final scaffoldMessenger = ScaffoldMessenger.of(context);
+                              scaffoldMessenger.hideCurrentSnackBar();
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Cannot impersonate ${user.status.name} accounts. Please activate the user first.'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            },
                       visualDensity: VisualDensity.compact,
-                      tooltip: 'Impersonate',
+                      tooltip: user.status == UserStatus.active ? 'Impersonate' : 'Cannot impersonate ${user.status.name} user',
                     ),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.blue),

@@ -99,7 +99,11 @@ class LoanRequestModel {
   });
 
   int get tenureMonths => months;
-  List<LoanComaker> get comakerDecisions => effectiveComakers;
+  List<LoanComaker> get comakerDecisionsList => effectiveComakers;
+
+  Map<String, ComakerStatus> get comakerDecisionsMap {
+    return {for (var c in effectiveComakers) c.shareholderId: c.status};
+  }
 
   LoanRequestModel copyWith({
     String? id,
@@ -208,10 +212,13 @@ class LoanModel {
   final double remainingBalance;
   final double interestRate;
   final String status;
+  final DateTime? releaseDate;
   final DateTime? nextRepaymentDate;
   final int tenureMonths;
   final DateTime? disbursedAt;
   final double processingFee;
+  final double totalRepayableField;
+  final double totalAmountToPay;
 
   LoanModel({
     required this.id,
@@ -222,10 +229,13 @@ class LoanModel {
     required this.remainingBalance,
     required this.interestRate,
     required this.status,
+    this.releaseDate,
     this.nextRepaymentDate,
     this.tenureMonths = 0,
     this.disbursedAt,
     this.processingFee = 0.0,
+    this.totalRepayableField = 0.0,
+    this.totalAmountToPay = 0.0,
   });
 
   double get principalAmount => principal;
@@ -236,6 +246,7 @@ class LoanModel {
   }
 
   double get totalRepayable {
+    if (totalRepayableField > 0) return totalRepayableField;
     return principal * (1 + (interestRate * tenureMonths));
   }
 
@@ -244,19 +255,31 @@ class LoanModel {
       id: json['id']?.toString() ?? '',
       loanRequestId: json['loan_request_id']?.toString() ?? '',
       shareholderId: json['shareholder_id']?.toString() ?? '',
-      principal: (json['principal_amount'] ?? 0.0).toDouble(),
-      balance: (json['balance'] ?? 0.0).toDouble(),
-      remainingBalance: (json['remaining_balance'] ?? json['balance'] ?? 0.0).toDouble(),
-      interestRate: (json['interest_rate'] ?? 0.0).toDouble(),
-      status: json['status'] ?? 'active',
+      principal: _parseDouble(json['principal_amount']),
+      balance: _parseDouble(json['balance']),
+      remainingBalance: _parseDouble(json['remaining_balance'] ?? json['balance']),
+      interestRate: _parseDouble(json['interest_rate']),
+      status: json['status']?.toString() ?? 'active',
+      releaseDate: json['release_date'] != null 
+          ? DateTime.parse(json['release_date'].toString()) 
+          : null,
       nextRepaymentDate: json['next_repayment_date'] != null 
-          ? DateTime.parse(json['next_repayment_date']) 
+          ? DateTime.parse(json['next_repayment_date'].toString()) 
           : null,
       tenureMonths: json['months'] ?? json['tenure_months'] ?? 0,
       disbursedAt: json['disbursed_at'] != null 
-          ? DateTime.parse(json['disbursed_at']) 
+          ? DateTime.parse(json['disbursed_at'].toString()) 
           : null,
-      processingFee: (json['processing_fee'] ?? 0.0).toDouble(),
+      processingFee: _parseDouble(json['processing_fee']),
+      totalRepayableField: _parseDouble(json['total_repayable']),
+      totalAmountToPay: _parseDouble(json['total_amount_to_pay']),
     );
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 }
