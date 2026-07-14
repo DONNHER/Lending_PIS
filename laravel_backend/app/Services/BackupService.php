@@ -48,14 +48,37 @@ class BackupService
                 throw new Exception("Backup integrity verification failed for $filename");
             }
 
-            $this->notify('success', $type, $filename);
+            // 🚀 Upload to Supabase/Cloud Storage
+            $cloudUrl = $this->uploadToCloud($filename);
+
+            $this->notify('success', $type, $filename, null, $cloudUrl);
             $this->cleanup();
 
-            return ['success' => true, 'filename' => $filename];
+            return ['success' => true, 'filename' => $filename, 'cloud_url' => $cloudUrl];
         } catch (Exception $e) {
             Log::error("Backup Failed ($type): " . $e->getMessage());
             $this->notify('failure', $type, null, $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    protected function uploadToCloud($localPath)
+    {
+        try {
+            $filename = basename($localPath);
+            $cloudPath = 'backups/' . $filename;
+
+            // Uses the 's3' disk configured for Supabase in config/filesystems.php
+            $disk = Storage::disk('s3');
+            $stream = fopen($localPath, 'r+');
+            $disk->put($cloudPath, $stream);
+            fclose($stream);
+
+            Log::info("Backup uploaded to cloud storage: $cloudPath");
+            return $disk->url($cloudPath);
+        } catch (Exception $e) {
+            Log::error("Cloud upload failed: " . $e->getMessage());
+            return null; // Don't fail the whole backup if cloud upload fails, but notify
         }
     }
 
@@ -128,11 +151,11 @@ class BackupService
         return file_exists($filePath) && filesize($filePath) > 0;
     }
 
-    protected function notify($status, $type, $filePath = null, $error = null)
+    protected function notify($status, $type, $filePath = null, $error = null, $cloudUrl = null)
     {
         try {
             $adminEmail = env('MAIL_FROM_ADDRESS', 'noreply@lending-pis.com');
-            Mail::to($adminEmail)->send(new BackupNotificationMail($status, $type, $filePath, $error));
+            Mail::to($adminEmail)->send(new BackupNotificationMail($status, $type, $filePath, $error, $cloudUrl));
         } catch (\Exception $e) {
             Log::error("Failed to send backup notification: " . $e->getMessage());
         }

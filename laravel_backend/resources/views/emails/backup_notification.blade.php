@@ -10,8 +10,14 @@
 
     @if($status === 'success')
         <p>The backup was completed successfully.</p>
+        @if($cloudUrl)
+            <p><strong>Cloud Storage:</strong> <a href="{{ $cloudUrl }}">Download from Cloud</a></p>
+        @else
+            <p style="color: orange;">Note: Cloud upload was skipped or failed.</p>
+        @endif
+
         @if($filePath)
-            <p><strong>File Location:</strong> {{ $filePath }}</p>
+            <p><strong>Local Server Path:</strong> {{ $filePath }}</p>
         @endif
     @else
         <p style="color: red;"><strong>Error:</strong> {{ $error }}</p>

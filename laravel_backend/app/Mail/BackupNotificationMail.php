@@ -17,16 +17,18 @@ class BackupNotificationMail extends Mailable
     public $type;
     public $filePath;
     public $error;
+    public $cloudUrl;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($status, $type, $filePath = null, $error = null)
+    public function __construct($status, $type, $filePath = null, $error = null, $cloudUrl = null)
     {
         $this->status = $status;
         $this->type = $type;
         $this->filePath = $filePath;
         $this->error = $error;
+        $this->cloudUrl = $cloudUrl;
     }
 
     /**

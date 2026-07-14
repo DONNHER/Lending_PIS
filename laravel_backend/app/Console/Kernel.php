@@ -27,6 +27,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('backup:clean')->dailyAt('03:00')
             ->withoutOverlapping();
 
+        // 🚀 Weekly Database Backup (Requirement: Weekly at 2:00 AM)
+        $schedule->command('backup:weekly')->mondays()->at('02:00')
+            ->withoutOverlapping()
+            ->onFailure(fn() => \Log::error('Weekly automated backup failed.'))
+            ->onSuccess(fn() => \Log::info('Weekly automated backup completed.'));
+
         // 🚀 Maintenance Tasks
         $schedule->command('session:table')->daily(); // Placeholder for session cleanup if using DB
 
