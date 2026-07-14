@@ -49,10 +49,12 @@ class TransactionController extends Controller
     /**
      * Get transaction history for a specific reference (e.g. Loan History)
      */
-    public function history($referenceId)
+    public function getByReference($referenceId)
     {
         $transactions = Transaction::where('reference_id', $referenceId)
-            ->with('shareholder')
+            ->with(['shareholder' => function($q) {
+                $q->withTrashed();
+            }])
             ->latest('date')
             ->get();
             
