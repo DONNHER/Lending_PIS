@@ -33,6 +33,7 @@ class ActivityLog extends Model
         'description',
         'old_values',
         'new_values',
+        'stack_trace',
         'ip_address',
         'device_info',
         'is_suspicious',

@@ -66,29 +66,38 @@ class ShareholderController extends Controller
         if (!$shareholder) {
             $user = User::find($id);
             if ($user) {
+                $userData = [
+                    'id' => '',
+                    'user_id' => $user->id,
+                    'first_name' => $user->firstname,
+                    'last_name' => $user->lastname,
+                    'full_name' => "$user->firstname $user->lastname",
+                    'email' => $user->email,
+                    'contact_number' => '',
+                    'address' => '',
+                    'status' => $user->status,
+                    'total_share_capital' => 0,
+                    'creditscore' => 0,
+                    'role' => $user->role,
+                    'user' => $user
+                ];
+
+                $auditTrail = ActivityLog::where('user_id', $user->id)
+                    ->latest('created_at')
+                    ->limit(20)
+                    ->get();
+
                 return response()->json([
                     'success' => true,
-                    'data' => [
-                        'id' => '', 
-                        'user_id' => $user->id,
-                        'first_name' => $user->firstname,
-                        'last_name' => $user->lastname,
-                        'full_name' => "$user->firstname $user->lastname",
-                        'email' => $user->email,
-                        'contact_number' => '',
-                        'address' => '',
-                        'status' => $user->status,
-                        'total_share_capital' => 0,
-                        'creditscore' => 0,
-                        'role' => $user->role,
-                        'user' => $user
-                    ]
+                    'data' => $userData,
+                    'audit_trail' => $auditTrail
                 ]);
             }
             return response()->json(['success' => false, 'message' => 'Record not found'], 404);
         }
 
-        $auditTrail = ActivityLog::where('description', 'like', "%shareholders (ID: {$id})%")
+        $auditTrail = ActivityLog::where('shareholder_id', $shareholder->id)
+            ->orWhere('user_id', $shareholder->user_id)
             ->latest('created_at')
             ->limit(20)
             ->get();

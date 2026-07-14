@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\SecurityAlertMail;
 
 class AuthController extends Controller
 {
@@ -131,12 +132,72 @@ class AuthController extends Controller
         $request->validate(['email' => 'required|email', 'password' => 'required']);
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
+        // 🚀 1. Check if account is locked
+        if ($user->isLocked()) {
+            $minutes = now()->diffInMinutes($user->locked_until);
+            return response()->json([
+                'success' => false,
+                'message' => "Account is locked due to multiple failed attempts. Please try again in $minutes minutes."
+            ], 403);
+        }
+
+        // 🚀 2. CAPTCHA Validation (If required)
+        if ($user->failed_attempts >= 3) {
+            if (!$request->has('captcha_token') || $request->captcha_token !== 'verified') {
+                return response()->json([
+                    'success' => false,
+                    'captcha_required' => true,
+                    'message' => 'Security check required. Please complete the CAPTCHA.'
+                ], 403);
+            }
+        }
+
+        // 🚀 3. Authenticate
+        if (!Hash::check($request->password, $user->password)) {
+            // Increment failed attempts
+            $user->increment('failed_attempts');
+
+            // Check for lockout threshold
+            if ($user->failed_attempts >= 5) {
+                $user->update(['locked_until' => now()->addMinutes(15)]);
+
+                // Trigger Security Alert Email to Admin
+                try {
+                    $adminEmail = config('mail.admin_address', 'admin@test.com');
+                    Mail::to($adminEmail)->send(new SecurityAlertMail($user, $request->ip()));
+
+                    // Log the lockout as a critical event
+                    ActivityLog::create([
+                        'user_id' => $user->id,
+                        'action' => 'Account Locked',
+                        'log_type' => ActivityLog::TYPE_ERROR,
+                        'description' => "Account locked for 15 minutes after 5 failed attempts from IP: {$request->ip()}",
+                        'ip_address' => $request->ip(),
+                        'is_suspicious' => true
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error("Security alert email failed: " . $e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials',
+                'failed_attempts' => $user->failed_attempts,
+                'captcha_required' => $user->failed_attempts >= 3
+            ], 401);
+        }
+
+        // Reset failed attempts on success
+        $user->update(['failed_attempts' => 0, 'locked_until' => null]);
+
         if ($user->status === 'active') {
             $token = $user->createToken('auth_token')->plainTextToken;
+            $this->logAuth($user, 'User Login', $request);
             return response()->json([
                 'success' => true, 
                 'user' => $user->load('shareholder'), 
@@ -331,7 +392,9 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        $this->logAuth($user, 'User Logout', $request);
+        $user->currentAccessToken()->delete();
         return response()->json(['success' => true, 'message' => 'Logged out']);
     }
 }

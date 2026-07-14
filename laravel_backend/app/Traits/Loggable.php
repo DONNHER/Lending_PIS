@@ -84,8 +84,9 @@ trait Loggable
 
         ActivityLog::create([
             'user_id' => Auth::id(),
+            'shareholder_id' => $modelName === 'Shareholder' ? $model->id : ($model->shareholder_id ?? null),
             'action' => $action . ' ' . $modelName,
-            'log_type' => ActivityLog::TYPE_GENERAL, // Changed from TYPE_TRANSACTION as requested
+            'log_type' => ActivityLog::TYPE_TRANSACTION,
             'description' => $action . " record in " . $model->getTable() . " (ID: {$model->id})",
             'old_values' => $old,
             'new_values' => $new,
