@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Illuminate\Collection;
+use Illuminate\Support\Collection; // Ensure this is the only Collection import
 
 class ActivityLogsImport implements ToCollection, WithHeadingRow
 {
@@ -18,7 +18,7 @@ class ActivityLogsImport implements ToCollection, WithHeadingRow
     public function collection(Collection $rows)
     {
         foreach ($rows as $index => $row) {
-            // Mapping CSV headers ("User", "Action", "Type", "Details")
+            // Map CSV headers (Date, User, Action, Type, Details) to logic keys
             $mappedData = [
                 'name'        => $row['user'] ?? null,
                 'action'      => $row['action'] ?? null,
@@ -26,7 +26,7 @@ class ActivityLogsImport implements ToCollection, WithHeadingRow
                 'description' => $row['details'] ?? null,
             ];
 
-            // Validation: Changed 'user_email' to 'name' and rule to 'exists:users,name'
+            // Validation: Ensure the user 'name' exists in the users table
             $validator = Validator::make($mappedData, [
                 'name'        => 'required|string|exists:users,name',
                 'action'      => 'required|string',
@@ -50,7 +50,6 @@ class ActivityLogsImport implements ToCollection, WithHeadingRow
 
     private function createLog(array $data)
     {
-        // Lookup user by name as it appears in the CSV
         $user = User::where('name', $data['name'])->first();
 
         if ($user) {
