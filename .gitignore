@@ -47,3 +47,13 @@ app.*.map.json
 /android/app/release
 
 .artifacts/
+
+# Laravel Backend
+laravel_backend/vendor/
+laravel_backend/.env
+laravel_backend/storage/*.sql
+laravel_backend/storage/app/backups/
+laravel_backend/storage/logs/
+laravel_backend/storage/framework/sessions/
+laravel_backend/storage/framework/views/
+laravel_backend/storage/framework/cache/

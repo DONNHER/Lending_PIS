@@ -287,7 +287,17 @@ class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
                             onChanged: (val) => backupViewModel.updateSetting('backup_notify_success', val, 'boolean'),
                             activeColor: AppTheme.primary,
                           ),
-                          onTap: () => backupViewModel.updateSetting('backup_notify_success', !backupViewModel.notifySuccess, 'boolean'),
+                          onTap: () async {
+                            final success = await backupViewModel.updateSetting('backup_notify_success', !backupViewModel.notifySuccess, 'boolean');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(success ? 'Preference updated' : 'Update failed'),
+                                  backgroundColor: success ? Colors.green : Colors.red,
+                                ),
+                              );
+                            }
+                          },
                         ),
                         _SettingsTile(
                           icon: Icons.report_problem_outlined,
@@ -297,7 +307,17 @@ class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
                             onChanged: (val) => backupViewModel.updateSetting('backup_notify_failure', val, 'boolean'),
                             activeColor: AppTheme.primary,
                           ),
-                          onTap: () => backupViewModel.updateSetting('backup_notify_failure', !backupViewModel.notifyFailure, 'boolean'),
+                          onTap: () async {
+                            final success = await backupViewModel.updateSetting('backup_notify_failure', !backupViewModel.notifyFailure, 'boolean');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(success ? 'Preference updated' : 'Update failed'),
+                                  backgroundColor: success ? Colors.green : Colors.red,
+                                ),
+                              );
+                            }
+                          },
                         ),
                         _SettingsTile(
                           icon: Icons.backup_outlined,
@@ -475,9 +495,18 @@ class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
             ElevatedButton(
               onPressed: () async {
                 final timeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
-                await viewModel.updateSetting('backup_day', selectedDay, 'string');
-                await viewModel.updateSetting('backup_time', timeStr, 'string');
-                if (context.mounted) Navigator.pop(context);
+                final s1 = await viewModel.updateSetting('backup_day', selectedDay, 'string');
+                final s2 = await viewModel.updateSetting('backup_time', timeStr, 'string');
+                
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(s1 && s2 ? 'Schedule updated successfully' : 'Failed to update schedule'),
+                      backgroundColor: (s1 && s2) ? Colors.green : Colors.red,
+                    ),
+                  );
+                  Navigator.pop(context);
+                }
               },
               child: const Text('Save Schedule'),
             ),
