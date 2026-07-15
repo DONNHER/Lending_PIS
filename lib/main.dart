@@ -46,6 +46,7 @@ import 'package:capstone_application/viewmodels/shareholder_detail_viewmodel.dar
 
 import 'package:capstone_application/viewmodels/user_management_viewmodel.dart';
 import 'package:capstone_application/repositories/user_repository.dart';
+import 'package:capstone_application/viewmodels/import_export_viewmodel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -265,6 +266,9 @@ class CanteenApp extends StatelessWidget {
           create: (context) => ShareholderDetailViewModel(
             context.read<ShareholderRepository>(),
           ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ImportExportViewModel(apiService),
         ),
         ChangeNotifierProvider(create: (_) => ConsignmentProductsViewModel()),
         ChangeNotifierProvider(

@@ -25,35 +25,31 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
     final theme = Theme.of(context);
     final isMobile = MediaQuery.of(context).size.width < 900;
 
+    final nav = context.watch<NavigationViewModel>();
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         toolbarHeight: 80,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => context.read<NavigationViewModel>().clearAdminSettings(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: nav.isViewingAdminSettings
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => nav.clearAdminSettings(),
+              )
+            : null,
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                backgroundColor: theme.primaryColor,
-                child: const Icon(Icons.percent_rounded, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Interest Management',
-                      style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text('System Settings',
-                      style: TextStyle(color: theme.primaryColor, fontSize: 13, fontWeight: FontWeight.w600)),
-                ],
-              ),
+              Text('Interest Management',
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('System Settings',
+                  style: TextStyle(color: theme.primaryColor, fontSize: 13, fontWeight: FontWeight.w600)),
             ],
           ),
         ),

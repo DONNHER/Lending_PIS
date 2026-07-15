@@ -35,7 +35,8 @@ class _LoanEvaluationBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(symbol: '₱ ', decimalDigits: 2);
+    final currencyFormat =
+        NumberFormat.currency(symbol: '₱ ', decimalDigits: 2);
 
     return Consumer<LoanEvaluationViewModel>(
       builder: (context, viewModel, _) {
@@ -54,14 +55,16 @@ class _LoanEvaluationBody extends StatelessWidget {
               icon: const Icon(Icons.arrow_back, color: Color(0xFF32211A)),
               onPressed: onBack ?? () => Navigator.pop(context),
             ),
-            title: const Text(
-              'Loan Evaluation', 
-              style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
-            ),
+            title: const Text('Loan Evaluation',
+                style: TextStyle(
+                    color: Color(0xFF32211A),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
           ),
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
               child: Column(
                 children: [
                   Row(
@@ -95,63 +98,83 @@ class _LoanEvaluationBody extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, LoanEvaluationViewModel viewModel) {
+  Widget _buildActionButtons(
+      BuildContext context, LoanEvaluationViewModel viewModel) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        SizedBox(
-          width: 150,
-          child: OutlinedButton(
-            onPressed: (viewModel.isLoading || viewModel.isProcessing) ? null : () => _handleStatusUpdate(context, viewModel, LoanStatus.rejected),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              side: const BorderSide(color: Colors.red),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        Semantics(
+          label: 'Reject loan request',
+          child: SizedBox(
+            width: 150,
+            child: OutlinedButton(
+              onPressed: (viewModel.isLoading || viewModel.isProcessing)
+                  ? null
+                  : () => _handleStatusUpdate(
+                      context, viewModel, LoanStatus.rejected),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Reject',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
-            child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(width: 16),
-        SizedBox(
-          width: 220,
-          child: ElevatedButton(
-            onPressed: (viewModel.isLoading || viewModel.isProcessing) ? null : () => _handleStatusUpdate(context, viewModel, LoanStatus.approved),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC06C4D),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
+        Semantics(
+          label: 'Approve and process loan request',
+          child: SizedBox(
+            width: 220,
+            child: ElevatedButton(
+              onPressed: (viewModel.isLoading || viewModel.isProcessing)
+                  ? null
+                  : () => _handleStatusUpdate(
+                      context, viewModel, LoanStatus.approved),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC06C4D),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+              child: viewModel.isProcessing
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('Approve & Process',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
             ),
-            child: viewModel.isProcessing
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                : const Text('Approve & Process', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ),
       ],
     );
   }
 
-  Future<void> _handleStatusUpdate(BuildContext context, LoanEvaluationViewModel viewModel, LoanStatus status) async {
-    final allComakersApproved = viewModel.request.effectiveComakers.every(
-            (cm) => cm.status == ComakerStatus.approved
-    );
+  Future<void> _handleStatusUpdate(BuildContext context,
+      LoanEvaluationViewModel viewModel, LoanStatus status) async {
+    final allComakersApproved = viewModel.request.effectiveComakers
+        .every((cm) => cm.status == ComakerStatus.approved);
 
     if (status == LoanStatus.approved && !allComakersApproved) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Approval Restricted'),
-          content: const Text('This loan cannot be approved yet. All listed co-makers must approve the request before the final processing.'),
+          content: const Text(
+              'This loan cannot be approved yet. All listed co-makers must approve the request before the final processing.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Understood', style: TextStyle(color: Color(0xFFC06C4D))),
+              child: const Text('Understood',
+                  style: TextStyle(color: Color(0xFFC06C4D))),
             ),
           ],
         ),
@@ -161,14 +184,15 @@ class _LoanEvaluationBody extends StatelessWidget {
 
     try {
       final success = await viewModel.updateStatus(status);
-      
+
       if (success && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Loan request ${status.name} successfully')),
         );
 
         if (status == LoanStatus.approved) {
-          final updatedRequest = viewModel.request.copyWith(status: LoanStatus.approved);
+          final updatedRequest =
+              viewModel.request.copyWith(status: LoanStatus.approved);
           final nav = context.read<NavigationViewModel>();
           nav.navigateToLoanRequest(updatedRequest);
         } else {
@@ -188,7 +212,8 @@ class _LoanEvaluationBody extends StatelessWidget {
     }
   }
 
-  Widget _buildProfileSnapshot(LoanEvaluationViewModel viewModel, NumberFormat currencyFormat) {
+  Widget _buildProfileSnapshot(
+      LoanEvaluationViewModel viewModel, NumberFormat currencyFormat) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -201,7 +226,10 @@ class _LoanEvaluationBody extends StatelessWidget {
         children: [
           const Text(
             'Loan Application Profile & Evaluation Snapshot',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF32211A)),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF32211A)),
           ),
           const SizedBox(height: 24),
           Row(
@@ -211,9 +239,14 @@ class _LoanEvaluationBody extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoItem('Requested Amount', currencyFormat.format(viewModel.request.requestedAmount), isBold: true),
+                    _buildInfoItem(
+                        'Requested Amount',
+                        currencyFormat
+                            .format(viewModel.request.requestedAmount),
+                        isBold: true),
                     const SizedBox(height: 20),
-                    _buildInfoItem('Tenure', '${viewModel.request.tenureMonths} months'),
+                    _buildInfoItem(
+                        'Tenure', '${viewModel.request.tenureMonths} months'),
                     const SizedBox(height: 20),
                     _buildInfoItem('Purpose', viewModel.request.purpose),
                   ],
@@ -223,7 +256,8 @@ class _LoanEvaluationBody extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoItem('Interest Rate', '${(viewModel.request.interestRate * 100).toStringAsFixed(0)}% per annum'),
+                    _buildInfoItem('Interest Rate',
+                        '${(viewModel.request.interestRate * 100).toStringAsFixed(0)}% per annum'),
                     const SizedBox(height: 20),
                     _buildInfoItem(
                       'Credit Score',
@@ -252,7 +286,10 @@ class _LoanEvaluationBody extends StatelessWidget {
       children: [
         const Text(
           'Co-maker Responses',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF32211A)),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF32211A)),
         ),
         const SizedBox(height: 4),
         const Text(
@@ -261,7 +298,8 @@ class _LoanEvaluationBody extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         if (rows.isEmpty)
-          const Text('No co-makers required for this loan.', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13)),
+          const Text('No co-makers required for this loan.',
+              style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13)),
         ...rows.map((cm) {
           final name = viewModel.comakerName(cm.shareholderId);
           final label = switch (cm.status) {
@@ -280,16 +318,25 @@ class _LoanEvaluationBody extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
-                const Icon(Icons.person_outline, size: 18, color: AppTheme.textMuted),
+                const Icon(Icons.person_outline,
+                    size: 18, color: AppTheme.textMuted),
                 const SizedBox(width: 8),
-                Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                Expanded(
+                    child: Text(name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13))),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text(label,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -312,10 +359,14 @@ class _LoanEvaluationBody extends StatelessWidget {
         children: [
           const Text(
             'Risk Assessment & Recommendation',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF32211A)),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF32211A)),
           ),
           const SizedBox(height: 20),
-          const Text('Risk Level', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+          const Text('Risk Level',
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -325,11 +376,15 @@ class _LoanEvaluationBody extends StatelessWidget {
             ),
             child: Text(
               viewModel.riskLevel,
-              style: TextStyle(color: viewModel.riskColor, fontWeight: FontWeight.bold, fontSize: 12),
+              style: TextStyle(
+                  color: viewModel.riskColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12),
             ),
           ),
           const SizedBox(height: 20),
-          _buildInfoItem('Recommendation', viewModel.recommendation, isBold: true),
+          _buildInfoItem('Recommendation', viewModel.recommendation,
+              isBold: true),
           const SizedBox(height: 20),
           _buildInfoItem('Priority', 'Normal'),
         ],
@@ -337,7 +392,8 @@ class _LoanEvaluationBody extends StatelessWidget {
     );
   }
 
-  Widget _buildEvaluationMetrics(LoanEvaluationViewModel viewModel, NumberFormat currencyFormat) {
+  Widget _buildEvaluationMetrics(
+      LoanEvaluationViewModel viewModel, NumberFormat currencyFormat) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -350,26 +406,36 @@ class _LoanEvaluationBody extends StatelessWidget {
         children: [
           const Text(
             'Evaluation Metrics',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF32211A)),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF32211A)),
           ),
           const SizedBox(height: 20),
-          _buildMetricRow('Repayment Capacity', '${(viewModel.repaymentCapacity * 100).toInt()}%', valueColor: Colors.green),
+          _buildMetricRow('Repayment Capacity',
+              '${(viewModel.repaymentCapacity * 100).toInt()}%',
+              valueColor: Colors.green),
           const Divider(height: 24),
-          _buildMetricRow('Debt-to-Income', '${(viewModel.debtToIncome * 100).toInt()}%'),
+          _buildMetricRow(
+              'Debt-to-Income', '${(viewModel.debtToIncome * 100).toInt()}%'),
           const Divider(height: 24),
           _buildMetricRow('Collateral Value', currencyFormat.format(0)),
           const Divider(height: 24),
-          _buildMetricRow('Final Score', '${viewModel.finalScore.toStringAsFixed(0)}/10', isBold: true, valueColor: const Color(0xFFC06C4D)),
+          _buildMetricRow(
+              'Final Score', '${viewModel.finalScore.toStringAsFixed(0)}/10',
+              isBold: true, valueColor: const Color(0xFFC06C4D)),
         ],
       ),
     );
   }
 
-  Widget _buildInfoItem(String label, String value, {bool isBold = false, Color? valueColor}) {
+  Widget _buildInfoItem(String label, String value,
+      {bool isBold = false, Color? valueColor}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
         const SizedBox(height: 4),
         Text(
           value,
@@ -383,11 +449,13 @@ class _LoanEvaluationBody extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricRow(String label, String value, {bool isBold = false, Color? valueColor}) {
+  Widget _buildMetricRow(String label, String value,
+      {bool isBold = false, Color? valueColor}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+        Text(label,
+            style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
         Text(
           value,
           style: TextStyle(

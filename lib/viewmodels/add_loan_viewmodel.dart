@@ -10,6 +10,7 @@ class AddLoanViewModel extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _errorMessage;
+  bool _hasInteracted = false;
 
   double _amount = 1000.0;
   int _months = 1;
@@ -43,6 +44,13 @@ class AddLoanViewModel extends ChangeNotifier {
   // Getters
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get hasInteracted => _hasInteracted;
+  bool get hasDraftData =>
+      _selectedBorrower != null ||
+      _amount != 1000.0 ||
+      _months != 1 ||
+      _purpose != 'Educational' ||
+      _selectedCoMakers.isNotEmpty;
   double get amount => _amount;
   int get months => _months;
   String get purpose => _purpose;
@@ -59,25 +67,40 @@ class AddLoanViewModel extends ChangeNotifier {
 
   bool get isEligible => true; // Placeholder
   String? get eligibilityMessage => null;
+  String? get borrowerValidationMessage =>
+      (!hasInteracted || _selectedBorrower != null)
+          ? null
+          : 'Select a borrower to continue.';
+  String? get coMakerValidationMessage =>
+      (!hasInteracted || _selectedCoMakers.length >= 2)
+          ? null
+          : 'Select 2 co-makers to continue.';
+  String? get amountValidationMessage => (!hasInteracted || _amount >= 500)
+      ? null
+      : 'The minimum loan amount is ₱500.';
 
   // Setters & Actions
   void setAmount(double value) {
     _amount = value;
+    _hasInteracted = true;
     notifyListeners();
   }
 
   void setMonths(int value) {
     _months = value;
+    _hasInteracted = true;
     notifyListeners();
   }
 
   void setPurpose(String value) {
     _purpose = value;
+    _hasInteracted = true;
     notifyListeners();
   }
 
   void setBorrower(ShareholderModel? borrower) {
     _selectedBorrower = borrower;
+    _hasInteracted = true;
     notifyListeners();
   }
 
@@ -86,8 +109,9 @@ class AddLoanViewModel extends ChangeNotifier {
       _borrowerSearchResults = [];
     } else {
       final results = await _shareholderRepository.getShareholders();
-      _borrowerSearchResults = results.where((s) => 
-        s.fullName.toLowerCase().contains(query.toLowerCase())).toList();
+      _borrowerSearchResults = results
+          .where((s) => s.fullName.toLowerCase().contains(query.toLowerCase()))
+          .toList();
     }
     notifyListeners();
   }
@@ -97,18 +121,36 @@ class AddLoanViewModel extends ChangeNotifier {
       _coMakerSearchResults = [];
     } else {
       final results = await _shareholderRepository.getShareholders();
-      _coMakerSearchResults = results.where((s) => 
-        s.fullName.toLowerCase().contains(query.toLowerCase())).toList();
+      _coMakerSearchResults = results
+          .where((s) => s.fullName.toLowerCase().contains(query.toLowerCase()))
+          .toList();
     }
     notifyListeners();
   }
 
   void toggleCoMaker(ShareholderModel coMaker) {
+    _hasInteracted = true;
     if (_selectedCoMakers.any((s) => s.id == coMaker.id)) {
       _selectedCoMakers.removeWhere((s) => s.id == coMaker.id);
     } else if (_selectedCoMakers.length < 2) {
       _selectedCoMakers.add(coMaker);
     }
+    notifyListeners();
+  }
+
+  void markFormInteracted() {
+    _hasInteracted = true;
+    notifyListeners();
+  }
+
+  void resetDraft() {
+    _amount = 1000.0;
+    _months = 1;
+    _purpose = 'Educational';
+    _selectedBorrower = null;
+    _selectedCoMakers.clear();
+    _hasInteracted = false;
+    _errorMessage = null;
     notifyListeners();
   }
 

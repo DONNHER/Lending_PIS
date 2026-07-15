@@ -27,7 +27,7 @@ class AddLoanPage extends StatelessWidget {
           ),
           const Expanded(
             child: Text(
-              'New Loan Request',
+              'Loan Request',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.textDark,
@@ -78,7 +78,7 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
           ),
           const Expanded(
             child: Text(
-              'New Loan Request',
+              'Loan Request',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.textDark,

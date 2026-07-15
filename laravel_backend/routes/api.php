@@ -87,6 +87,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/settings/backup', [BackupController::class, 'getSettings']);
         Route::post('/settings/backup', [BackupController::class, 'updateSettings']);
 
+        // 🚀 Import/Export Routes
+        Route::get('/export/{type}/{format}', [\App\Http\Controllers\Api\ImportExportController::class, 'export']);
+        Route::post('/import/{type}/preview', [\App\Http\Controllers\Api\ImportExportController::class, 'previewImport']);
+        Route::post('/import/{type}/confirm', [\App\Http\Controllers\Api\ImportExportController::class, 'confirmImport']);
+        Route::post('/import/error-report', [\App\Http\Controllers\Api\ImportExportController::class, 'downloadErrorReport']);
+        Route::post('/import/errors/download', [\App\Http\Controllers\Api\ImportExportController::class, 'downloadErrorReport']);
+
         Route::post('/activity-logs/cleanup', [ActivityLogController::class, 'cleanup']);
     });
 

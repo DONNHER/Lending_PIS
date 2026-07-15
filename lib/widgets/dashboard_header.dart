@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
 import '../models/shareholder_model.dart';
+import 'shareholder_search_overlay.dart';
 
 class DashboardHeader extends StatelessWidget {
   final String greeting;
@@ -54,87 +55,19 @@ class DashboardHeader extends StatelessWidget {
   }
 
   Widget _buildSearchField(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 400, // Fixed width similar to users_page
-          child: TextField(
-            onChanged: onSearch,
-            decoration: InputDecoration(
-              hintText: 'Search shareholders by name or email...',
-              prefixIcon: const Icon(Icons.search, color: Color(0xFFC06C4D)),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFC06C4D), width: 2),
-              ),
-            ),
-          ),
-        ),
-        if (searchResults.isNotEmpty)
-          Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.transparent,
-            child: Container(
-              margin: const EdgeInsets.only(top: 8),
-              width: 400, // Match search field width
-              constraints: const BoxConstraints(maxHeight: 300),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: ListView.separated(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: searchResults.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final result = searchResults[index];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: const Color(0xFFC06C4D).withOpacity(0.1),
-                      child: Text(
-                        result.firstName.isNotEmpty ? result.firstName[0] : '?',
-                        style: const TextStyle(
-                          color: Color(0xFFC06C4D),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      result.fullName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: AppTheme.textDark,
-                      ),
-                    ),
-                    subtitle: Text(
-                      result.email,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                    ),
-                    onTap: () => onResultTap(result),
-                  );
-                },
-              ),
-            ),
-          ),
-      ],
+    return SizedBox(
+      width: 400,
+      child: ShareholderSearchOverlay(
+        hint: 'Search shareholders by name or email...',
+        results: searchResults,
+        navigateToDetail: true,
+        onSearch: onSearch,
+        onSelected: (shareholder) {
+          if (shareholder != null) {
+            onResultTap(shareholder);
+          }
+        },
+      ),
     );
   }
 }

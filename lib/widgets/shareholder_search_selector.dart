@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../app_theme.dart';
 import '../models/shareholder_model.dart';
+import 'shareholder_search_overlay.dart';
 
 class ShareholderSearchSelector extends StatelessWidget {
   final String hint;
@@ -27,36 +29,19 @@ class ShareholderSearchSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (selectedItem != null) selectedItem!,
-        TextField(
-          onChanged: onSearch,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: const Icon(Icons.search),
-          ),
+        ShareholderSearchOverlay(
+          hint: hint,
+          results: results,
+          initialValue: initialValue,
+          navigateToDetail: navigateToDetail,
+          onSearch: onSearch,
+          onSelected: (shareholder) {
+            onSelected(shareholder);
+            if (shareholder == null) {
+              onSearch('');
+            }
+          },
         ),
-        if (results.isNotEmpty)
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ListView.builder(
-              itemCount: results.length,
-              itemBuilder: (context, index) {
-                final shareholder = results[index];
-                return ListTile(
-                  title: Text(shareholder.fullName),
-                  subtitle: Text(shareholder.email),
-                  onTap: () {
-                    onSelected(shareholder);
-                    onSearch('');
-                  },
-                );
-              },
-            ),
-          ),
       ],
     );
   }

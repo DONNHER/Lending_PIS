@@ -84,7 +84,7 @@ class AppLayoutState extends State<AppLayout> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDF8F5),
-      appBar: _buildAppBar(context),
+      appBar: _buildAppBar(context, navViewModel),
       body: _buildBody(navViewModel),
       bottomNavigationBar: _CompactBottomNav(
         items: _navItems,
@@ -114,7 +114,40 @@ class AppLayoutState extends State<AppLayout> {
     );
   }
 
-  AppBar _buildAppBar(BuildContext context) {
+  AppBar _buildAppBar(BuildContext context, NavigationViewModel navViewModel) {
+    if (navViewModel.isApplyingLoan) {
+      return AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+        titleSpacing: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textDark),
+              onPressed: () => navViewModel.clearLoanApplication(),
+            ),
+            const Expanded(
+              child: Text(
+                'Loan Request',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: AppTheme.textDark,
+                ),
+              ),
+            ),
+          ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: const Color(0xFFF0F1F5)),
+        ),
+      );
+    }
+
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,

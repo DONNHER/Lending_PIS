@@ -12,7 +12,8 @@ class LoanApprovalPage extends StatefulWidget {
   final LoanRequestModel initialRequest;
   final VoidCallback? onBack;
 
-  const LoanApprovalPage({super.key, required this.initialRequest, this.onBack});
+  const LoanApprovalPage(
+      {super.key, required this.initialRequest, this.onBack});
 
   @override
   State<LoanApprovalPage> createState() => _LoanApprovalPageState();
@@ -36,11 +37,12 @@ class _LoanApprovalPageState extends State<LoanApprovalPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Loan disbursed successfully')),
         );
-        
+
         final nav = context.read<NavigationViewModel>();
         nav.navigateToLoanDetails(loan.id, loan.shareholderId);
       } else {
-        setState(() => _errorMessage = 'Disbursement failed. Please try again.');
+        setState(
+            () => _errorMessage = 'Disbursement failed. Please try again.');
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -53,7 +55,8 @@ class _LoanApprovalPageState extends State<LoanApprovalPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(symbol: '₱ ', decimalDigits: 2);
+    final currencyFormat =
+        NumberFormat.currency(symbol: '₱ ', decimalDigits: 2);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDF8F5),
@@ -64,8 +67,11 @@ class _LoanApprovalPageState extends State<LoanApprovalPage> {
           icon: const Icon(Icons.arrow_back, color: AppTheme.textDark),
           onPressed: widget.onBack ?? () => Navigator.pop(context),
         ),
-        title: const Text('Confirm Disbursement', 
-          style: TextStyle(color: AppTheme.textDark, fontSize: 18, fontWeight: FontWeight.bold)),
+        title: const Text('Confirm Disbursement',
+            style: TextStyle(
+                color: AppTheme.textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -82,16 +88,28 @@ class _LoanApprovalPageState extends State<LoanApprovalPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Approved Loan Summary', 
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF32211A))),
+                  const Text('Approved Loan Summary',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF32211A))),
                   const SizedBox(height: 24),
-                  _buildDetailRow('Borrower', widget.initialRequest.shareholderName),
-                  _buildDetailRow('Requested Amount', currencyFormat.format(widget.initialRequest.requestedAmount), isBold: true),
-                  _buildDetailRow('Tenure', '${widget.initialRequest.tenureMonths} Months'),
-                  _buildDetailRow('Interest Rate', '${(widget.initialRequest.interestRate * 100).toStringAsFixed(1)}%'),
+                  _buildDetailRow(
+                      'Borrower', widget.initialRequest.shareholderName),
+                  _buildDetailRow(
+                      'Requested Amount',
+                      currencyFormat
+                          .format(widget.initialRequest.requestedAmount),
+                      isBold: true),
+                  _buildDetailRow(
+                      'Tenure', '${widget.initialRequest.tenureMonths} Months'),
+                  _buildDetailRow('Interest Rate',
+                      '${(widget.initialRequest.interestRate * 100).toStringAsFixed(1)}%'),
                   const Divider(height: 32),
-                  const Text('Final confirmation is required to release the funds to the shareholder.',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                  const Text(
+                      'Final confirmation is required to release the funds to the shareholder.',
+                      style:
+                          TextStyle(fontSize: 13, color: AppTheme.textMuted)),
                 ],
               ),
             ),
@@ -99,22 +117,33 @@ class _LoanApprovalPageState extends State<LoanApprovalPage> {
             if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),
-                child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                child: Text(_errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 13)),
               ),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _handleDisbursement,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC06C4D),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
+            Semantics(
+              label: 'Confirm and release funds',
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleDisbursement,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC06C4D),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text('Confirm & Release Funds',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
-                child: _isLoading
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Confirm & Release Funds', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],
@@ -129,11 +158,13 @@ class _LoanApprovalPageState extends State<LoanApprovalPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 14)),
-          Text(value, style: TextStyle(
-            color: AppTheme.textDark, 
-            fontSize: 14, 
-            fontWeight: isBold ? FontWeight.bold : FontWeight.w600)),
+          Text(label,
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+          Text(value,
+              style: TextStyle(
+                  color: AppTheme.textDark,
+                  fontSize: 14,
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.w600)),
         ],
       ),
     );

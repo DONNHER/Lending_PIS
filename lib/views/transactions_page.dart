@@ -5,6 +5,7 @@ import '../app_theme.dart';
 import '../widgets/transaction_table.dart';
 import '../widgets/page_turner.dart';
 import '../widgets/transaction_detail_dialog.dart';
+import '../widgets/import_export_buttons.dart';
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
@@ -31,8 +32,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
-          'Transactions', 
-          style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+            'Transactions',
+            style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
         ),
         actions: [
           Consumer<TransactionViewModel>(
@@ -59,7 +60,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -104,56 +105,60 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Widget _buildActionBar(TransactionViewModel viewModel) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _buildFilterDropdown(
-                label: 'Type',
-                value: viewModel.typeFilter,
-                items: ['All', 'Disbursement', 'Payment', 'Contribution'],
-                onChanged: (val) {
-                  if (val != null) viewModel.setTypeFilter(val);
-                },
+    return LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth - 48),
+              child: Row(
+                // Using spaceBetween spreads dropdowns and buttons safely across wide viewports
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Group dropdowns together in their own nested row
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildFilterDropdown(
+                        label: 'Type',
+                        value: viewModel.typeFilter,
+                        items: ['All', 'Disbursement', 'Payment', 'Contribution'],
+                        onChanged: (val) {
+                          if (val != null) viewModel.setTypeFilter(val);
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      _buildFilterDropdown(
+                        label: 'Status',
+                        value: viewModel.statusFilter,
+                        items: ['All', 'Successful', 'Pending', 'Failed'],
+                        onChanged: (val) {
+                          if (val != null) viewModel.setStatusFilter(val);
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      _buildFilterDropdown(
+                        label: 'Sort By',
+                        value: viewModel.sortOrder,
+                        items: ['Newest', 'Oldest', 'Highest Amount', 'Lowest Amount'],
+                        onChanged: (val) {
+                          if (val != null) viewModel.setSortOrder(val);
+                        },
+                      ),
+                    ],
+                  ),
+                  // Adds safety spacing when content overflows and starts scrolling horizontally
+                  const SizedBox(width: 24),
+                  ImportExportButtons(
+                    type: 'transactions',
+                    onRefresh: viewModel.refresh,
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              _buildFilterDropdown(
-                label: 'Status',
-                value: viewModel.statusFilter,
-                items: ['All', 'Successful', 'Pending', 'Failed'],
-                onChanged: (val) {
-                  if (val != null) viewModel.setStatusFilter(val);
-                },
-              ),
-              const SizedBox(width: 12),
-              _buildFilterDropdown(
-                label: 'Sort By',
-                value: viewModel.sortOrder,
-                items: ['Newest', 'Oldest', 'Highest Amount', 'Lowest Amount'],
-                onChanged: (val) {
-                  if (val != null) viewModel.setSortOrder(val);
-                },
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: viewModel.exportToCsv,
-                icon: const Icon(Icons.download_rounded, size: 18),
-                label: const Text('Export CSV'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC06C4D),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                  minimumSize: const Size(0, 40),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          );
+        }
     );
   }
 

@@ -6,6 +6,7 @@ import '../app_theme.dart';
 import '../models/lending_models.dart';
 import '../widgets/loan_requests_table.dart';
 import '../widgets/page_turner.dart';
+import '../widgets/import_export_buttons.dart';
 import 'loan_evaluation_page.dart';
 import 'loan_details_page.dart';
 import 'loan_approval_page.dart';
@@ -29,10 +30,10 @@ class _LoansPageState extends State<LoansPage> {
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavigationViewModel>();
-    
+
     if (nav.selectedLoanRequest != null) {
       final request = nav.selectedLoanRequest!;
-      
+
       if (request.status == LoanStatus.pending) {
         return LoanEvaluationPage(
           request: request,
@@ -74,8 +75,8 @@ class _LoansPageState extends State<LoansPage> {
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
-          'Loan Management', 
-          style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
+            'Loan Management',
+            style: TextStyle(color: Color(0xFF32211A), fontSize: 18, fontWeight: FontWeight.bold)
         ),
         actions: [
           Consumer<LoanRequestViewModel>(
@@ -102,7 +103,7 @@ class _LoansPageState extends State<LoansPage> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -144,56 +145,59 @@ class _LoansPageState extends State<LoansPage> {
   }
 
   Widget _buildActionBar(LoanRequestViewModel viewModel) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _buildFilterDropdown(
-                label: 'Status',
-                value: viewModel.statusFilter,
-                items: ['All', 'Pending', 'Approved', 'Released', 'Rejected', 'Fully Paid', 'Overdue'],
-                onChanged: (val) {
-                  if (val != null) viewModel.setStatusFilter(val);
-                },
+    return LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth - 48),
+              child: Row(
+                // Safe positioning across wide spaces without unbounded flex crashes
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildFilterDropdown(
+                        label: 'Status',
+                        value: viewModel.statusFilter,
+                        items: ['All', 'Pending', 'Approved', 'Released', 'Rejected', 'Fully Paid', 'Overdue'],
+                        onChanged: (val) {
+                          if (val != null) viewModel.setStatusFilter(val);
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      _buildFilterDropdown(
+                        label: 'Purpose',
+                        value: viewModel.purposeFilter,
+                        items: ['All', 'Educational', 'Medical', 'Emergency', 'Business', 'Others'],
+                        onChanged: (val) {
+                          if (val != null) viewModel.setPurposeFilter(val);
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      _buildFilterDropdown(
+                        label: 'Sort By',
+                        value: viewModel.sortOrder,
+                        items: ['Newest', 'Oldest', 'Highest Amount', 'Lowest Amount'],
+                        onChanged: (val) {
+                          if (val != null) viewModel.setSortOrder(val);
+                        },
+                      ),
+                    ],
+                  ),
+                  // Safe fixed separation boundary if layout hits scroll bounds
+                  const SizedBox(width: 24),
+                  ImportExportButtons(
+                    type: 'loans',
+                    onRefresh: viewModel.refresh,
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              _buildFilterDropdown(
-                label: 'Purpose',
-                value: viewModel.purposeFilter,
-                items: ['All', 'Educational', 'Medical', 'Emergency', 'Business', 'Others'],
-                onChanged: (val) {
-                  if (val != null) viewModel.setPurposeFilter(val);
-                },
-              ),
-              const SizedBox(width: 12),
-              _buildFilterDropdown(
-                label: 'Sort By',
-                value: viewModel.sortOrder,
-                items: ['Newest', 'Oldest', 'Highest Amount', 'Lowest Amount'],
-                onChanged: (val) {
-                  if (val != null) viewModel.setSortOrder(val);
-                },
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: viewModel.exportToCsv,
-                icon: const Icon(Icons.download_rounded, size: 18),
-                label: const Text('Export CSV'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC06C4D),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                  minimumSize: const Size(0, 40),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          );
+        }
     );
   }
 

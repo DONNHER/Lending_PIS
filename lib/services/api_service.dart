@@ -101,6 +101,24 @@ class ApiService {
     return _handleResponse(response, 'DELETE', url, triggerUnauthorized: triggerUnauthorized);
   }
 
+  Future<dynamic> uploadFile(String endpoint, String filePath, {bool triggerUnauthorized = true}) async {
+    final token = await getToken();
+    final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
+    
+    final request = http.MultipartRequest('POST', Uri.parse(url));
+    request.headers.addAll({
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+    
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+    
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    
+    return _handleResponse(response, 'POST (Multipart)', url, triggerUnauthorized: triggerUnauthorized);
+  }
+
   Future<dynamic> _handleResponse(http.Response response, String method, String url, {bool triggerUnauthorized = true}) async {
     // Log basic info for every response
     debugPrint('DEBUG: [ApiService] Response received for $method $url');
