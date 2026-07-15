@@ -1,3 +1,5 @@
+<?php
+
 use Illuminate\Support\Facades\File;
 
 Route::get('/PIS/{any?}', function ($any = null) {
