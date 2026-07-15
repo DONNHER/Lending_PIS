@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show Directory, File;
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -17,7 +18,11 @@ class ImportExportViewModel extends ChangeNotifier {
   Map<String, dynamic>? _previewData;
   List<dynamic> _errors = [];
   List<dynamic> _duplicates = [];
-  String? _selectedFilePath;
+
+  // 🎯 WEB FIX: Save file assets inside byte memory containers instead of file path links
+  Uint8List? _selectedFileBytes;
+  String? _selectedFileName;
+
   int _importedCount = 0;
   int _failedCount = 0;
   String? _lastImportMessage;
@@ -52,8 +57,6 @@ class ImportExportViewModel extends ChangeNotifier {
 
       if (kIsWeb) {
         debugPrint('[ImportExportViewModel] 🌐 WEB ENVIRONMENT: LAUNCHING WITH QUERY TOKEN');
-
-        // Append token as query parameter so it passes securely to the new browser tab session
         final String authenticatedUrl = token != null && token.isNotEmpty
             ? '$url?token=$token'
             : url;
@@ -92,14 +95,26 @@ class ImportExportViewModel extends ChangeNotifier {
   }
 
   Future<bool> previewImport(String type) async {
+    // 🎯 WEB FIX: Explicitly request withData: true so file picker fetches raw data stream bytes
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['xlsx', 'csv', 'txt'],
+      withData: true,
     );
 
-    if (result == null) return false;
+    if (result == null || result.files.isEmpty) return false;
 
-    _selectedFilePath = result.files.first.path;
+    final pickedFile = result.files.first;
+
+    // Ensure we have read the raw bytes safely
+    if (pickedFile.bytes == null) {
+      debugPrint('[ImportExportViewModel] ❌ ERROR: File bytes could not be loaded.');
+      return false;
+    }
+
+    _selectedFileBytes = pickedFile.bytes;
+    _selectedFileName = pickedFile.name;
+
     _isImporting = true;
     _previewData = null;
     _errors = [];
@@ -110,7 +125,12 @@ class ImportExportViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.uploadFile('/import/$type/preview', result.files.first.path!);
+      // Direct stream byte transmission
+      final response = await _apiService.uploadFileBytes(
+        endpoint: '/import/$type/preview',
+        bytes: _selectedFileBytes!,
+        fileName: _selectedFileName!,
+      );
 
       if (response['success'] == true) {
         _previewData = response;
@@ -129,15 +149,21 @@ class ImportExportViewModel extends ChangeNotifier {
   }
 
   Future<bool> confirmImport(String type, String filePath) async {
-    final resolvedPath = filePath.isNotEmpty ? filePath : _selectedFilePath;
-    if (resolvedPath == null || resolvedPath.isEmpty) {
+    if (_selectedFileBytes == null || _selectedFileName == null) {
+      debugPrint('[ImportExportViewModel] ❌ ERROR: No active file bytes selected for confirmation step.');
       return false;
     }
 
     _isImporting = true;
     notifyListeners();
+
     try {
-      final response = await _apiService.uploadFile('/import/$type/confirm', resolvedPath);
+      final response = await _apiService.uploadFileBytes(
+        endpoint: '/import/$type/confirm',
+        bytes: _selectedFileBytes!,
+        fileName: _selectedFileName!,
+      );
+
       final success = response['success'] == true;
       if (success) {
         _importedCount = response['imported_count'] ?? 0;
@@ -206,7 +232,8 @@ class ImportExportViewModel extends ChangeNotifier {
     _previewData = null;
     _errors = [];
     _duplicates = [];
-    _selectedFilePath = null;
+    _selectedFileBytes = null;
+    _selectedFileName = null;
     _importedCount = 0;
     _failedCount = 0;
     _lastImportMessage = null;

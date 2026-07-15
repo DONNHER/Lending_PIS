@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:typed_data'; // 🎯 Required for Uint8List
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart'; // 🎯 Required for MediaType
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Helper function for [compute] to decode JSON in a background isolate
@@ -60,7 +62,7 @@ class ApiService {
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
     final headers = _headers(token);
     debugPrint('DEBUG: [ApiService] Request POST $url with token: ${token?.substring(0, 10)}...');
-    
+
     final response = await http.post(
       Uri.parse(url),
       headers: headers,
@@ -72,7 +74,7 @@ class ApiService {
   Future<dynamic> put(String endpoint, {Map<String, dynamic>? body, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
-    
+
     final response = await http.post(
       Uri.parse(url),
       headers: _headers(token),
@@ -104,19 +106,52 @@ class ApiService {
   Future<dynamic> uploadFile(String endpoint, String filePath, {bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
-    
+
     final request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers.addAll({
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
-    
+
     request.files.add(await http.MultipartFile.fromPath('file', filePath));
-    
+
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
-    
+
     return _handleResponse(response, 'POST (Multipart)', url, triggerUnauthorized: triggerUnauthorized);
+  }
+
+  // 🎯 WEB & MOBILE COMPATIBLE FIX: Upload raw file bytes from browser memory directly
+  Future<dynamic> uploadFileBytes({
+    required String endpoint,
+    required Uint8List bytes,
+    required String fileName,
+    bool triggerUnauthorized = true,
+  }) async {
+    final token = await getToken();
+    final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
+
+    debugPrint('DEBUG: [ApiService] Request POST (Multipart Bytes) $url with token: ${token?.substring(0, 10)}...');
+
+    final request = http.MultipartRequest('POST', Uri.parse(url));
+    request.headers.addAll({
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file', // Matches your backend $request->file('file') parameter name
+        bytes,
+        filename: fileName,
+        contentType: MediaType('application', 'octet-stream'),
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    return _handleResponse(response, 'POST (Multipart Bytes)', url, triggerUnauthorized: triggerUnauthorized);
   }
 
   Future<dynamic> _handleResponse(http.Response response, String method, String url, {bool triggerUnauthorized = true}) async {
@@ -129,15 +164,15 @@ class ApiService {
     if (response.body.isEmpty) return null;
 
     final contentType = response.headers['content-type'] ?? '';
-    
+
     if (!contentType.contains('application/json') && !response.body.startsWith('{') && !response.body.startsWith('[')) {
       debugPrint('DEBUG: [ApiService] WARNING: Non-JSON response detected');
       throw Exception('Server returned an error (${response.statusCode}).');
     }
-    
+
     try {
       final dynamic decoded = await compute(_parseJson, response.body);
-      
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return decoded;
       } else {
@@ -162,7 +197,7 @@ class ApiService {
             errorMessage = decoded['message'];
           }
         }
-        
+
         throw Exception(errorMessage);
       }
     } catch (e) {

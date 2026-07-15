@@ -1,178 +1,100 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Exports\TransactionsExport;
+use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\UsersExport;
-use App\Imports\UsersImport;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Exception;
+use Barryvdh\DomPDF\Facade\Pdf;
 
-class ImportExportController extends Controller
+class ExportController extends Controller
 {
-    /**
-     * Export data in various formats.
-     */
-    public function export($type, $format)
+    public function export(Request $request, $type, $format)
     {
-        $export = null;
-        $fileName = $type . '_' . date('Ymd_His');
+        $type = strtolower($type);
+        $format = strtolower($format);
 
-        switch ($type) {
-            case 'users':
-                $export = new UsersExport();
-                break;
-            case 'loans':
-                $export = new \App\Exports\LoansExport();
-                break;
-            case 'transactions':
-                $export = new \App\Exports\TransactionsExport();
-                break;
-            case 'activity-logs':
-                $export = new \App\Exports\ActivityLogsExport();
-                break;
-            default:
-                return response()->json(['success' => false, 'message' => 'Invalid export type'], 400);
-        }
+        // 1. HANDLE EXCEL / CSV FORMATS
+        if (in_array($format, ['xlsx', 'csv'])) {
+            $filename = $type . '_export_' . now()->format('Ymd_His') . '.' . $format;
 
-        $extension = '';
-        $writerType = '';
-
-        switch (strtolower($format)) {
-            case 'xlsx':
-                $extension = '.xlsx';
-                $writerType = \Maatwebsite\Excel\Excel::XLSX;
-                break;
-            case 'csv':
-                $extension = '.csv';
-                $writerType = \Maatwebsite\Excel\Excel::CSV;
-                break;
-            case 'pdf':
-                $extension = '.pdf';
-                $writerType = \Maatwebsite\Excel\Excel::DOMPDF;
-                break;
-            default:
-                return response()->json(['success' => false, 'message' => 'Invalid format'], 400);
-        }
-
-        return Excel::download($export, $fileName . $extension, $writerType);
-    }
-
-    /**
-     * Preview import data and errors.
-     */
-    public function previewImport(Request $request, $type)
-    {
-        $request->validate([
-            'file' => 'required|mimes:xlsx,csv,txt'
-        ]);
-
-        $import = null;
-        switch ($type) {
-            case 'users':
-                $import = new UsersImport();
-                break;
-            case 'loans':
-                $import = new \App\Imports\LoansImport();
-                break;
-            case 'transactions':
-                $import = new \App\Imports\TransactionsImport();
-                break;
-            case 'activity-logs':
-                $import = new \App\Imports\ActivityLogsImport();
-                break;
-            default:
-                return response()->json(['success' => false, 'message' => 'Invalid import type'], 400);
-        }
-
-        try {
-            // We use toArray to get all data for preview/validation
-            $data = Excel::toArray($import, $request->file('file'));
-            $rows = $data[0]; // First sheet
-
-            $results = $import->validateData($rows);
-
-            return response()->json([
-                'success' => true,
-                'total_rows' => count($rows),
-                'valid_rows' => count($results['valid']),
-                'error_rows' => count($results['errors']),
-                'preview' => array_slice($rows, 0, 10), // Return first 10 rows for preview
-                'errors' => $results['errors'],
-                'duplicates' => $results['duplicates']
-            ]);
-        } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Confirm and perform the import.
-     */
-    public function confirmImport(Request $request, $type)
-    {
-        $request->validate([
-            'file' => 'required|mimes:xlsx,csv,txt'
-        ]);
-
-        try {
-            $import = null;
-            switch ($type) {
-                case 'users':
-                    $import = new UsersImport();
-                    break;
-                case 'loans':
-                    $import = new \App\Imports\LoansImport();
-                    break;
-                case 'transactions':
-                    $import = new \App\Imports\TransactionsImport();
-                    break;
-                case 'activity-logs':
-                    $import = new \App\Imports\ActivityLogsImport();
-                    break;
-                default:
-                    return response()->json(['success' => false, 'message' => 'Invalid import type'], 400);
+            if ($type === 'transactions') {
+                return Excel::download(new TransactionsExport, $filename);
             }
 
-            $data = Excel::toArray($import, $request->file('file'));
-            $rows = $data[0] ?? [];
-            $results = $import->validateData($rows);
+            // Fallback default catch-all for structural data frames if needed
+            return Excel::download(new TransactionsExport, $filename);
+        }
 
-            if (empty($results['valid'])) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'No valid rows were available to import',
-                    'imported_count' => 0,
-                    'failed_count' => count($results['errors']) + count($results['duplicates'])
+        // 2. HANDLE PROFESSIONAL PDF TEMPLATE LOGIC
+        if ($format === 'pdf') {
+            if ($type === 'transactions') {
+                $transactions = Transaction::with('shareholder.user')->orderBy('created_at', 'desc')->get();
+
+                $rows = [];
+                foreach ($transactions as $tx) {
+                    $rows[] = [
+                        'id' => $tx->id,
+                        'reference_id' => $tx->reference_id ?? 'N/A',
+                        'shareholder' => $tx->shareholder?->user?->fullName ?? 'N/A',
+                        'type' => strtoupper($tx->type ?? 'N/A'),
+                        'method' => strtoupper($tx->method ?? 'N/A'),
+                        'amount' => 'PHP ' . number_format($tx->amount, 2),
+                        'status' => strtoupper($tx->status),
+                        'date' => $tx->date ? $tx->date->toDateTimeString() : ($tx->created_at ? $tx->created_at->toDateTimeString() : now()->toDateTimeString()),
+                    ];
+                }
+
+                $pdf = Pdf::loadView('exports.report', [
+                    'title' => 'Transaction History Ledger',
+                    'subtitle' => 'System Export Audit Log',
+                    'generatedAt' => now()->toDateTimeString(),
+                    'headers' => ['ID', 'Reference ID', 'Shareholder', 'Type', 'Method', 'Amount', 'Status', 'Date'],
+                    'rows' => $rows,
+                    'summary' => [
+                        ['label' => 'Total Record Count', 'value' => count($rows)],
+                    ]
                 ]);
+
+                $pdf->setPaper('a4', 'portrait');
+                return $pdf->stream('transactions_' . now()->format('Ymd_His') . '.pdf');
             }
 
-            Excel::import($import, $request->file('file'));
+            if ($type === 'users') {
+                $users = User::orderBy('created_at', 'desc')->get();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Data imported successfully',
-                'imported_count' => count($results['valid']),
-                'failed_count' => count($results['errors']) + count($results['duplicates'])
-            ]);
-        } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                $rows = [];
+                foreach ($users as $user) {
+                    $rows[] = [
+                        'id' => $user->id,
+                        'reference_id' => $user->email, // Reuse fields safely matching view schema keys
+                        'shareholder' => $user->name,
+                        'type' => $user->role ?? 'USER',
+                        'method' => $user->status ?? 'ACTIVE',
+                        'amount' => $user->phone_number ?? 'N/A',
+                        'status' => $user->email_verified_at ? 'VERIFIED' : 'PENDING',
+                        'date' => $user->created_at ? $user->created_at->toDateTimeString() : now()->toDateTimeString(),
+                    ];
+                }
+
+                $pdf = Pdf::loadView('exports.report', [
+                    'title' => 'User Directory Report',
+                    'subtitle' => 'Account System Records Management',
+                    'generatedAt' => now()->toDateTimeString(),
+                    'headers' => ['User ID', 'Email Address', 'Full Name', 'Role System', 'Account Status', 'Phone Contact', 'Verification Status', 'Registration Date'],
+                    'rows' => $rows,
+                    'summary' => [
+                        ['label' => 'Total Registered Users', 'value' => count($rows)],
+                    ]
+                ]);
+
+                $pdf->setPaper('a4', 'portrait');
+                return $pdf->stream('users_' . now()->format('Ymd_His') . '.pdf');
+            }
         }
-    }
 
-    /**
-     * Download the error report for failed rows.
-     */
-    public function downloadErrorReport(Request $request)
-    {
-        $request->validate([
-            'errors' => 'required|array'
-        ]);
-
-        $export = new \App\Exports\ErrorsExport($request->errors);
-        return Excel::download($export, 'import_errors_' . date('Ymd_His') . '.xlsx');
+        return response()->json(['error' => 'Format or Type sequence execution pattern not supported'], 400);
     }
 }
