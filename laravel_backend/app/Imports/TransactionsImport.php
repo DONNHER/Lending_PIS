@@ -11,17 +11,15 @@ use Illuminate\Support\Collection;
 
 class TransactionsImport implements ToCollection, WithHeadingRow
 {
-    public $errors = []; // ADD THIS LINE
-    public $isPreview = false; // ADD THIS FLAG
+    public $errors = [];
+    public $isPreview = false;
 
     public function collection(Collection $rows)
     {
         $validated = $this->validateData($rows->toArray());
 
-        // Store errors to the property so the controller can read it
         $this->errors = $validated['errors'];
 
-        // Only create if NOT in preview mode
         if (!$this->isPreview) {
             foreach ($validated['valid'] as $row) {
                 $this->createTransaction($row);
@@ -36,13 +34,24 @@ class TransactionsImport implements ToCollection, WithHeadingRow
         $duplicates = [];
 
         foreach ($rows as $index => $row) {
-            $validator = Validator::make($row, [
+            // --- DATA MAPPING LAYER ---
+            // Maps your CSV headers/values to the system's expected format
+            $data = [
+                'shareholder_email' => $row['client_email'] ?? $row['client'] ?? null,
+                'reference_id'      => (string)($row['transaction_id'] ?? ''),
+                'type'              => $this->mapCsvType($row['type'] ?? ''),
+                'method'            => strtolower($row['method'] ?? ''),
+                'amount'            => $row['amount'] ?? 0,
+                'status'            => $this->mapCsvStatus($row['status'] ?? ''),
+            ];
+
+            $validator = Validator::make($data, [
                 'shareholder_email' => 'required|email|exists:users,email',
-                'reference_id' => 'required|string',
-                'type' => 'required|in:deposit,withdrawal,payment,fee',
-                'method' => 'required|in:cash,bank_transfer,online',
-                'amount' => 'required|numeric|min:0',
-                'status' => 'required|in:completed,pending,failed',
+                'reference_id'      => 'required|string',
+                'type'              => 'required|in:deposit,withdrawal,payment,fee',
+                'method'            => 'required|in:cash,bank_transfer,online',
+                'amount'            => 'required|numeric|min:0',
+                'status'            => 'required|in:completed,pending,failed',
             ]);
 
             if ($validator->fails()) {
@@ -54,8 +63,7 @@ class TransactionsImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            // Duplicate detection by reference_id
-            $existing = Transaction::where('reference_id', $row['reference_id'])->first();
+            $existing = Transaction::where('reference_id', $data['reference_id'])->first();
             if ($existing) {
                 $duplicates[] = [
                     'row' => $index + 2,
@@ -65,19 +73,23 @@ class TransactionsImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            $valid[] = $row;
+            $valid[] = $data;
         }
 
-        return [
-            'valid' => $valid,
-            'errors' => $errors,
-            'duplicates' => $duplicates
-        ];
+        return ['valid' => $valid, 'errors' => $errors, 'duplicates' => $duplicates];
     }
 
-    private function isValid($row)
-    {
-        return !empty($row['shareholder_email']) && !empty($row['reference_id']);
+    private function mapCsvType($type) {
+        $map = [
+            'loan repayment' => 'payment',
+            'capital contribution' => 'deposit',
+            'loan disbursement' => 'withdrawal'
+        ];
+        return $map[strtolower($type)] ?? 'fee';
+    }
+
+    private function mapCsvStatus($status) {
+        return strtolower($status) === 'successful' ? 'completed' : 'failed';
     }
 
     private function createTransaction($row)
@@ -89,12 +101,12 @@ class TransactionsImport implements ToCollection, WithHeadingRow
         if ($shareholder) {
             Transaction::create([
                 'shareholder_id' => $shareholder->id,
-                'reference_id' => $row['reference_id'],
-                'type' => strtolower($row['type']),
-                'method' => strtolower($row['method']),
-                'amount' => $row['amount'],
-                'status' => strtolower($row['status']),
-                'date' => now(),
+                'reference_id'   => $row['reference_id'],
+                'type'           => $row['type'],
+                'method'         => $row['method'],
+                'amount'         => $row['amount'],
+                'status'         => $row['status'],
+                'date'           => now(),
             ]);
         }
     }
