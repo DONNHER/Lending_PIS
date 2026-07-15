@@ -11,52 +11,34 @@ use Illuminate\Support\Collection;
 
 class LoansImport implements ToCollection, WithHeadingRow
 {
+    public $errors = [];
+    public $isPreview = false; // Add this flag
+
     public function collection(Collection $rows)
     {
-        $validated = $this->validateData($rows->toArray());
-
-        foreach ($validated['valid'] as $row) {
-            $this->createLoan($row);
-        }
-    }
-
-    public function validateData(array $rows)
-    {
-        $valid = [];
-        $errors = [];
-        $duplicates = [];
-
         foreach ($rows as $index => $row) {
-            $validator = Validator::make($row, [
+            $validator = Validator::make($row->toArray(), [
                 'shareholder_email' => 'required|email|exists:users,email',
                 'principal_amount' => 'required|numeric|min:0',
                 'interest_rate' => 'required|numeric|min:0',
                 'tenure_months' => 'required|integer|min:1',
-                'status' => 'required|in:active,paid,overdue,defaulteded',
+                'status' => 'required|in:active,paid,overdue,defaulted',
             ]);
 
             if ($validator->fails()) {
-                $errors[] = [
+                $this->errors[] = [
                     'row' => $index + 2,
                     'messages' => $validator->errors()->all(),
-                    'data' => $row
+                    'data' => $row->toArray()
                 ];
                 continue;
             }
 
-            $valid[] = $row;
+            // ONLY CREATE if NOT in preview mode
+            if (!$this->isPreview) {
+                $this->createLoan($row->toArray());
+            }
         }
-
-        return [
-            'valid' => $valid,
-            'errors' => $errors,
-            'duplicates' => $duplicates
-        ];
-    }
-
-    private function isValid($row)
-    {
-        return !empty($row['shareholder_email']) && isset($row['principal_amount']);
     }
 
     private function createLoan($row)
@@ -66,16 +48,17 @@ class LoansImport implements ToCollection, WithHeadingRow
         })->first();
 
         if ($shareholder) {
-            Loan::create([
-                'shareholder_id' => $shareholder->id,
-                'principal_amount' => $row['principal_amount'],
-                'interest_rate' => $row['interest_rate'],
-                'tenure_months' => $row['tenure_months'],
-                'remaining_balance' => $row['principal_amount'],
-                'status' => strtolower($row['status']),
-                'next_repayment_date' => now()->addMonth(),
-                'release_date' => now(),
-            ]);
+            return Loan::updateOrCreate(
+                ['shareholder_id' => $shareholder->id, 'principal_amount' => $row['principal_amount']],
+                [
+                    'interest_rate' => $row['interest_rate'],
+                    'tenure_months' => $row['tenure_months'],
+                    'remaining_balance' => $row['principal_amount'],
+                    'status' => strtolower($row['status']),
+                    'next_repayment_date' => now()->addMonth(),
+                    'release_date' => now(),
+                ]
+            );
         }
     }
 }

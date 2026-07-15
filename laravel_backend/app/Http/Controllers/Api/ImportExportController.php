@@ -7,100 +7,126 @@ use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 // Exports
 use App\Exports\TransactionsExport;
 use App\Exports\UsersExport;
 use App\Exports\LoansExport;
 use App\Exports\ActivityLogsExport;
-use App\Exports\ErrorsExport;
+
+// Imports
+use App\Imports\LoansImport;
+use App\Imports\TransactionsImport;
 
 // Models
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Loan;
-use App\Models\ActivityLog;
 
 class ImportExportController extends Controller
 {
+    /**
+     * Handle Exports (Excel/CSV/PDF)
+     */
     public function export(Request $request, $type, $format)
     {
         $type = strtolower(trim($type));
         $format = strtolower(trim($format));
         $filename = $type . '_report_' . now()->format('Ymd_His');
 
-        // 1. HANDLE EXCEL / CSV EXPORTS
         if (in_array($format, ['xlsx', 'csv'])) {
-            switch ($type) {
-                case 'transactions': return Excel::download(new TransactionsExport(), $filename . '.' . $format);
-                case 'users':        return Excel::download(new UsersExport(), $filename . '.' . $format);
-                case 'loans':        return Excel::download(new LoansExport(), $filename . '.' . $format);
-                case 'activitylogs': return Excel::download(new ActivityLogsExport(), $filename . '.' . $format);
-                default:
-                    return response()->json(['error' => "Export type [{$type}] not supported for Excel."], 400);
-            }
+            return match($type) {
+                'transactions' => Excel::download(new TransactionsExport(), $filename . '.' . $format),
+                'users'        => Excel::download(new UsersExport(), $filename . '.' . $format),
+                'loans'        => Excel::download(new LoansExport(), $filename . '.' . $format),
+                'activitylogs' => Excel::download(new ActivityLogsExport(), $filename . '.' . $format),
+                default        => response()->json(['error' => 'Format/Type not supported'], 400),
+            };
         }
 
-        // 2. HANDLE PDF EXPORTS
         if ($format === 'pdf') {
-            $viewName = 'reports.generic';
-
-            $data = [
-                'title' => ucwords(str_replace('-', ' ', $type)) . ' Report',
-                'subtitle' => 'System Audit & Ledger',
-                'generatedAt' => now()->toDateTimeString(),
-            ];
-
-            if ($type === 'transactions') {
-                $data['headers'] = ['ID', 'Reference', 'Shareholder', 'Type', 'Method', 'Amount', 'Status', 'Date'];
-                $data['rows'] = Transaction::with('shareholder.user')->orderBy('date', 'desc')->get()->map(fn($tx) => [
-                    'id' => $tx->id,
-                    'reference_id' => $tx->reference_id ?? 'N/A',
-                    'shareholder' => $tx->shareholder?->user?->fullName ?? 'N/A',
-                    'type' => strtoupper($tx->type ?? 'N/A'),
-                    'method' => strtoupper($tx->method ?? 'N/A'),
-                    'amount' => 'PHP ' . number_format($tx->amount ?? 0, 2),
-                    'status' => strtoupper($tx->status ?? 'N/A'),
-                    'date' => $tx->date ? Carbon::parse($tx->date)->format('Y-m-d') : 'N/A',
-                ])->toArray();
-                $data['summary'] = [['label' => 'Total Transactions', 'value' => count($data['rows'])]];
-            }
-            elseif ($type === 'users') {
-                $data['headers'] = ['ID', 'Username', 'Full Name', 'Email', 'Role', 'Status', 'Verified', 'Joined'];
-                $data['rows'] = User::orderBy('id', 'desc')->get()->map(fn($u) => [
-                    'id' => $u->id,
-                    'reference_id' => $u->username ?? 'N/A',
-                    'shareholder' => trim(($u->firstname ?? '') . ' ' . ($u->lastname ?? '')),
-                    'type' => $u->email,
-                    'method' => $u->role ?? 'USER',
-                    'amount' => $u->status ?? 'ACTIVE',
-                    'status' => $u->email_verified_at ? 'VERIFIED' : 'PENDING',
-                    'date' => $u->created_at?->format('Y-m-d') ?? 'N/A',
-                ])->toArray();
-                $data['summary'] = [['label' => 'Total Users', 'value' => count($data['rows'])]];
-            }
-            elseif ($type === 'loans') {
-                $data['headers'] = ['ID', 'Shareholder', 'Principal', 'Rate (%)', 'Tenure', 'Amortization', 'Balance', 'Status'];
-                $data['rows'] = Loan::with('shareholder.user')->orderBy('id', 'desc')->get()->map(fn($l) => [
-                    'id' => $l->id,
-                    'reference_id' => $l->shareholder?->user?->fullName ?? 'N/A',
-                    'shareholder' => number_format($l->principal_amount ?? 0, 2),
-                    'type' => $l->interest_rate . '%',
-                    'method' => $l->tenure_months . ' mos',
-                    'amount' => number_format($l->monthly_amortization ?? 0, 2),
-                    'status' => number_format($l->remaining_balance ?? 0, 2),
-                    'date' => strtoupper($l->status ?? 'PENDING'),
-                ])->toArray();
-                $data['summary'] = [['label' => 'Total Active Loans', 'value' => count($data['rows'])]];
-            }
-            else {
-                return response()->json(['error' => "PDF formatting for [{$type}] not implemented."], 400);
-            }
-
-            $pdf = Pdf::loadView($viewName, $data);
-            return $pdf->setPaper('a4', 'portrait')->stream($filename . '.pdf');
+            return $this->generatePdfReport($type, $filename);
         }
 
         return response()->json(['error' => 'Unsupported format.'], 400);
+    }
+
+    /**
+     * Preview Import (Dry Run)
+     */
+    public function previewImport(Request $request, $type)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,csv']);
+
+        $import = match($type) {
+            'loans'        => new LoansImport(),
+            'transactions' => new TransactionsImport(),
+            default        => null,
+        };
+
+        if (!$import) return response()->json(['message' => 'Type not supported'], 404);
+
+        try {
+            $import->isPreview = true; // Prevents DB writes
+            Excel::import($import, $request->file('file'));
+
+            return response()->json([
+                'success' => count($import->errors) === 0,
+                'errors' => $import->errors
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Import Preview Error [{$type}]: " . $e->getMessage());
+            return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Confirm Import (Final Save)
+     */
+    public function confirmImport(Request $request, $type)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,csv']);
+
+        $import = match($type) {
+            'loans'        => new LoansImport(),
+            'transactions' => new TransactionsImport(),
+            default        => null,
+        };
+
+        try {
+            $import->isPreview = false; // Allow DB writes
+            Excel::import($import, $request->file('file'));
+            return response()->json(['message' => 'Import completed successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Helper for PDF Generation
+     */
+    private function generatePdfReport($type, $filename)
+    {
+        $viewName = 'reports.generic';
+        $data = ['title' => ucwords(str_replace('-', ' ', $type)) . ' Report', 'generatedAt' => now()->toDateTimeString()];
+
+        if ($type === 'transactions') {
+            $data['headers'] = ['ID', 'Reference', 'Shareholder', 'Type', 'Method', 'Amount', 'Status', 'Date'];
+            $data['rows'] = Transaction::with('shareholder.user')->get()->map(fn($tx) => [
+                'id' => $tx->id, 'reference_id' => $tx->reference_id, 'shareholder' => $tx->shareholder?->user?->fullName ?? 'N/A',
+                'type' => strtoupper($tx->type), 'method' => strtoupper($tx->method), 'amount' => number_format($tx->amount, 2),
+                'status' => strtoupper($tx->status), 'date' => $tx->date
+            ])->toArray();
+        } elseif ($type === 'loans') {
+            $data['headers'] = ['ID', 'Principal', 'Interest', 'Tenure', 'Balance', 'Status'];
+            $data['rows'] = Loan::all()->map(fn($l) => [
+                'id' => $l->id, 'principal' => $l->principal_amount, 'interest' => $l->interest_rate,
+                'tenure' => $l->tenure_months, 'balance' => $l->remaining_balance, 'status' => $l->status
+            ])->toArray();
+        }
+
+        $pdf = Pdf::loadView($viewName, $data);
+        return $pdf->setPaper('a4', 'portrait')->stream($filename . '.pdf');
     }
 }
