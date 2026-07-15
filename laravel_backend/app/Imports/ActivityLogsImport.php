@@ -8,32 +8,30 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Illuminate\Support\Collection;
+use Illuminate\Collection;
 
 class ActivityLogsImport implements ToCollection, WithHeadingRow
 {
-    // Property to toggle between dry-run and save
     public $isPreview = false;
     public $errors = [];
 
     public function collection(Collection $rows)
     {
         foreach ($rows as $index => $row) {
-            // 1. Map CSV Headers to our internal logic
-            // CSV Headers: Date, User, Action, Type, Details, IP Address, Device
+            // Mapping CSV headers ("User", "Action", "Type", "Details")
             $mappedData = [
-                'user_email'  => $row['user'] ?? null,
+                'name'        => $row['user'] ?? null,
                 'action'      => $row['action'] ?? null,
                 'log_type'    => strtolower($row['type'] ?? ''),
                 'description' => $row['details'] ?? null,
             ];
 
-            // 2. Validate the mapped data
+            // Validation: Changed 'user_email' to 'name' and rule to 'exists:users,name'
             $validator = Validator::make($mappedData, [
-                'user_email' => 'required|email|exists:users,email',
-                'action'     => 'required|string',
-                'log_type'   => 'required|in:auth,transaction,error,access,general',
-                'description'=> 'required|string',
+                'name'        => 'required|string|exists:users,name',
+                'action'      => 'required|string',
+                'log_type'    => 'required|in:auth,transaction,error,access,general',
+                'description' => 'required|string',
             ]);
 
             if ($validator->fails()) {
@@ -44,7 +42,6 @@ class ActivityLogsImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            // 3. If NOT preview, save to database
             if (!$this->isPreview) {
                 $this->createLog($mappedData);
             }
@@ -53,7 +50,8 @@ class ActivityLogsImport implements ToCollection, WithHeadingRow
 
     private function createLog(array $data)
     {
-        $user = User::where('email', $data['user_email'])->first();
+        // Lookup user by name as it appears in the CSV
+        $user = User::where('name', $data['name'])->first();
 
         if ($user) {
             ActivityLog::create([
@@ -64,7 +62,7 @@ class ActivityLogsImport implements ToCollection, WithHeadingRow
                 'ip_address'  => request()->ip() ?? '127.0.0.1',
             ]);
         } else {
-            Log::warning("Import: User not found for " . $data['user_email']);
+            Log::warning("Import: User not found for name: " . $data['name']);
         }
     }
 }
