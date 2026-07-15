@@ -48,8 +48,9 @@ class BackupService
                 throw new Exception("Backup integrity verification failed for $filename");
             }
 
-            // 🚀 Upload to Supabase/Cloud Storage
-            $cloudUrl = $this->uploadToCloud($filename);
+            // 🚀 Cloud Upload disabled (Local Only)
+            // $cloudUrl = $this->uploadToCloud($filename);
+            $cloudUrl = null;
 
             $this->notify('success', $type, $filename, null, $cloudUrl);
             $this->cleanup();
@@ -62,25 +63,45 @@ class BackupService
         }
     }
 
+    /*
     protected function uploadToCloud($localPath)
     {
         try {
             $filename = basename($localPath);
-            $cloudPath = 'backups/' . $filename;
+            $bucketName = env('AWS_BUCKET', 'backups');
+            $supabaseUrl = str_replace('/storage/v1/s3', '', env('AWS_URL')); // Extract base URL
+            $serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY');
 
-            // Uses the 's3' disk configured for Supabase in config/filesystems.php
-            $disk = Storage::disk('s3');
-            $stream = fopen($localPath, 'r+');
-            $disk->put($cloudPath, $stream);
-            fclose($stream);
+            if (!$serviceRoleKey) {
+                throw new Exception("SUPABASE_SERVICE_ROLE_KEY is not set in .env");
+            }
 
-            Log::info("Backup uploaded to cloud storage: $cloudPath");
-            return $disk->url($cloudPath);
+            // Supabase storage endpoint URL structure
+            $url = "{$supabaseUrl}/storage/v1/object/{$bucketName}/backups/{$filename}";
+
+            $client = new \GuzzleHttp\Client();
+            $response = $client->request('POST', $url, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $serviceRoleKey,
+                    'apikey'        => $serviceRoleKey,
+                    'Content-Type'  => 'application/octet-stream', // Generic binary stream
+                ],
+                'body' => fopen($localPath, 'r') // Stream the file directly
+            ]);
+
+            if ($response->getStatusCode() === 200) {
+                Log::info("Backup uploaded to Supabase: backups/$filename");
+                // Construct the public URL (assuming the bucket is public or reachable)
+                return "{$supabaseUrl}/storage/v1/object/public/{$bucketName}/backups/{$filename}";
+            }
+
+            throw new Exception("Supabase upload failed with status code: " . $response->getStatusCode());
         } catch (Exception $e) {
-            Log::error("Cloud upload failed: " . $e->getMessage());
+            Log::error("Supabase cloud upload failed: " . $e->getMessage());
             return null; // Don't fail the whole backup if cloud upload fails, but notify
         }
     }
+    */
 
     protected function backupDatabase()
     {
