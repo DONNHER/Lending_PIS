@@ -4,18 +4,16 @@
     <meta charset="utf-8">
     <title>{{ $title ?? 'Report' }}</title>
     <style>
-        @page {
-            margin: 25mm 16mm 22mm 16mm;
-        }
+        @page { margin: 25mm 16mm 22mm 16mm; }
 
         body {
-            font-family: Helvetica, Arial, sans-serif;
+            /* 'DejaVu Sans' is the standard for DomPDF to ensure rendering consistency */
+            font-family: 'DejaVu Sans', Helvetica, Arial, sans-serif;
             color: #111827;
             font-size: 9pt;
             line-height: 1.45;
         }
 
-        /* Repeating Top Header Layout */
         .header {
             position: fixed;
             top: -20mm;
@@ -26,10 +24,7 @@
             padding-bottom: 5px;
         }
 
-        .brand-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .brand-table { width: 100%; border-collapse: collapse; }
 
         .brand-box {
             background: #1f2937;
@@ -41,18 +36,13 @@
             display: inline-block;
         }
 
-        .meta {
-            color: #6b7280;
-            font-size: 8pt;
-            margin-top: 5px;
-        }
+        .meta { color: #6b7280; font-size: 8pt; margin-top: 5px; }
 
-        /* Content Table Adjustments (Fixes word-wrapping bugs) */
         table.data-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
-            table-layout: fixed; /* 🎯 Prevents cells jumping out of bounds */
+            table-layout: fixed;
         }
 
         table.data-table th, table.data-table td {
@@ -60,7 +50,7 @@
             padding: 6px;
             text-align: left;
             vertical-align: middle;
-            word-wrap: break-word; /* 🎯 Forces long hashes or IDs to wrap safely */
+            word-wrap: break-word;
         }
 
         table.data-table th {
@@ -70,18 +60,10 @@
             text-transform: uppercase;
         }
 
-        /* Status colors mapping */
-        .badge {
-            font-weight: bold;
-            font-size: 8pt;
-        }
-        .text-success { color: #047857; }
-        .text-danger { color: #b91c1c; }
+        .text-success { color: #047857; font-weight: bold; }
+        .text-danger { color: #b91c1c; font-weight: bold; }
 
-        .summary {
-            margin-bottom: 15px;
-        }
-
+        .summary { margin-bottom: 15px; }
         .summary-item {
             display: inline-block;
             border: 1px solid #e5e7eb;
@@ -91,7 +73,6 @@
             min-width: 140px;
         }
 
-        /* Repeating Page Number Footer */
         .footer {
             position: fixed;
             bottom: -10mm;
@@ -103,14 +84,7 @@
             padding-top: 6px;
         }
 
-        .footer-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .page-number:before {
-            content: counter(page);
-        }
+        .page-number:before { content: counter(page); }
     </style>
 </head>
 <body>
@@ -142,35 +116,38 @@
             <thead>
                 <tr>
                     @foreach($headers as $header)
-                        <th style="@if($header == 'ID') width: 22%; @elif($header == 'Amount') width: 13%; @endif">{{ $header }}</th>
+                        {{-- FIXED: Changed @elif to @elseif --}}
+                        <th style="@if($header == 'ID') width: 15%; @elseif($header == 'Amount') width: 13%; @endif">
+                            {{ $header }}
+                        </th>
                     @endforeach
                 </tr>
             </thead>
             <tbody>
                 @foreach($rows as $row)
                     <tr>
-                        <td style="font-family: monospace; font-size: 7.5pt;">{{ $row['id'] }}</td>
-                        <td>{{ $row['reference_id'] }}</td>
-                        <td>{{ $row['shareholder'] }}</td>
-                        <td>{{ $row['type'] }}</td>
-                        <td>{{ $row['method'] }}</td>
-                        <td style="font-weight: bold;">{{ $row['amount'] }}</td>
-                        <td class="@if($row['status'] == 'SUCCESSFUL') text-success @else text-danger @endif">
-                            ● {{ $row['status'] }}
+                        <td style="font-family: monospace; font-size: 7.5pt;">{{ $row['id'] ?? 'N/A' }}</td>
+                        <td>{{ $row['reference_id'] ?? 'N/A' }}</td>
+                        <td>{{ $row['shareholder'] ?? 'N/A' }}</td>
+                        <td>{{ $row['type'] ?? 'N/A' }}</td>
+                        <td>{{ $row['method'] ?? 'N/A' }}</td>
+                        <td style="font-weight: bold;">{{ $row['amount'] ?? '0.00' }}</td>
+                        <td class="@if(isset($row['status']) && $row['status'] == 'SUCCESSFUL') text-success @else text-danger @endif">
+                            ● {{ $row['status'] ?? 'N/A' }}
                         </td>
-                        <td style="font-size: 8pt; color: #4b5563;">{{ $row['date'] }}</td>
+                        <td style="font-size: 8pt; color: #4b5563;">{{ $row['date'] ?? 'N/A' }}</td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
     @else
         <div style="padding: 20px; text-align: center; border: 1px dashed #d1d5db; border-radius: 6px;">
-            No transactional data available for this report criteria.
+            No data available for this report.
         </div>
     @endif
 
     <div class="footer">
-        <table class="footer-table">
+        <table style="width: 100%;">
             <tr>
                 <td>Confidential Business Document · Printed via Secure Administration Portal</td>
                 <td style="text-align: right;">Page <span class="page-number"></span></td>

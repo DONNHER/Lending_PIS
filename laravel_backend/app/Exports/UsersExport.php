@@ -11,7 +11,8 @@ class UsersExport implements FromCollection, WithHeadings, WithMapping
 {
     public function collection()
     {
-        return User::all();
+        // Order by ID descending so newly registered users appear at the top
+        return User::orderBy('id', 'desc')->get();
     }
 
     public function headings(): array
@@ -32,13 +33,14 @@ class UsersExport implements FromCollection, WithHeadings, WithMapping
     {
         return [
             $user->id,
-            $user->username,
+            $user->username ?? 'N/A',
             $user->email,
-            $user->firstname,
-            $user->lastname,
-            $user->role,
-            $user->status,
-            $user->created_at->toDateTimeString(),
+            $user->firstname ?? 'N/A',
+            $user->lastname ?? 'N/A',
+            strtoupper($user->role ?? 'USER'),
+            strtoupper($user->status ?? 'ACTIVE'),
+            // 🎯 SAFE WRAPPER: Avoids "Call to a member function toDateTimeString() on null"
+            $user->created_at ? $user->created_at->toDateTimeString() : 'N/A',
         ];
     }
 }

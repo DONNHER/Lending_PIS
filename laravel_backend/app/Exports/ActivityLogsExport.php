@@ -11,7 +11,8 @@ class ActivityLogsExport implements FromCollection, WithHeadings, WithMapping
 {
     public function collection()
     {
-        return ActivityLog::with('user')->get();
+        // 🎯 Eager load user and sort by id desc to see recent logs first
+        return ActivityLog::with('user')->orderBy('id', 'desc')->get();
     }
 
     public function headings(): array
@@ -30,15 +31,23 @@ class ActivityLogsExport implements FromCollection, WithHeadings, WithMapping
 
     public function map($log): array
     {
+        // 🎯 SAFE WRAPPER: Handle user name formatting safely based on your schema fields
+        $userName = 'System';
+        if ($log->user) {
+            $fullName = trim(($log->user->firstname ?? '') . ' ' . ($log->user->lastname ?? ''));
+            $userName = !empty($fullName) ? $fullName : ($log->user->username ?? $log->user->email);
+        }
+
         return [
             $log->id,
-            $log->user?->fullName ?? 'System',
-            $log->action,
-            strtoupper($log->log_type),
-            $log->description,
-            $log->ip_address,
+            $userName,
+            $log->action ?? 'N/A',
+            strtoupper($log->log_type ?? 'INFO'),
+            $log->description ?? 'N/A',
+            $log->ip_address ?? 'N/A',
             $log->is_suspicious ? 'YES' : 'NO',
-            $log->created_at->toDateTimeString(),
+            // 🎯 SAFE WRAPPER: Protects against null timestamp crashes
+            $log->created_at ? $log->created_at->toDateTimeString() : 'N/A',
         ];
     }
 }

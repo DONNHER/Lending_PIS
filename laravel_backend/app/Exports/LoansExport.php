@@ -6,12 +6,14 @@ use App\Models\Loan;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Carbon\Carbon;
 
 class LoansExport implements FromCollection, WithHeadings, WithMapping
 {
     public function collection()
     {
-        return Loan::with('shareholder.user')->get();
+        // Sort by newest loans first
+        return Loan::with('shareholder.user')->orderBy('id', 'desc')->get();
     }
 
     public function headings(): array
@@ -32,17 +34,26 @@ class LoansExport implements FromCollection, WithHeadings, WithMapping
 
     public function map($loan): array
     {
+        // 🎯 SAFE WRAPPER: Map the name out of schema properties safely
+        $shareholderName = 'N/A';
+        if ($loan->shareholder && $loan->shareholder->user) {
+            $user = $loan->shareholder->user;
+            $fullName = trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? ''));
+            $shareholderName = !empty($fullName) ? $fullName : ($user->username ?? $user->email);
+        }
+
         return [
             $loan->id,
-            $loan->shareholder?->user?->fullName ?? 'N/A',
-            $loan->principal_amount,
-            $loan->interest_rate,
-            $loan->tenure_months,
-            $loan->monthly_amortization,
-            $loan->remaining_balance,
-            strtoupper($loan->status),
-            $loan->next_repayment_date?->toDateString() ?? 'N/A',
-            $loan->release_date?->toDateTimeString() ?? 'N/A',
+            $shareholderName,
+            $loan->principal_amount ?? 0,
+            $loan->interest_rate ?? 0,
+            $loan->tenure_months ?? 0,
+            $loan->monthly_amortization ?? 0,
+            $loan->remaining_balance ?? 0,
+            strtoupper($loan->status ?? 'PENDING'),
+            // 🎯 SAFE WRAPPER: Check if timestamp exists and parse safely via Carbon instance
+            $loan->next_repayment_date ? Carbon::parse($loan->next_repayment_date)->toDateString() : 'N/A',
+            $loan->release_date ? Carbon::parse($loan->release_date)->toDateTimeString() : 'N/A',
         ];
     }
 }
