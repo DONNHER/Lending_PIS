@@ -1,16 +1,18 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\File;
 
-Route::get('/PIS/{any?}', function ($any = null) {
-    // 1. Define the path to your assets
-    $path = public_path('PIS/' . ($any ?? 'index.html'));
+// This maps a clean URL /PIS/login to your internal Flutter route #/admin-login
+Route::get('/PIS/login', function () {
+    return file_get_contents(public_path('PIS/index.html'));
+});
 
-    // 2. If it's a real file (like main.dart.js), serve it
+// Your existing catch-all
+Route::get('/PIS/{any?}', function ($any = null) {
+    $path = public_path('PIS/' . ($any ?? 'index.html'));
     if (File::exists($path) && !File::isDirectory($path)) {
         return response()->file($path);
     }
-
-    // 3. Otherwise, return index.html for Flutter routing
     return file_get_contents(public_path('PIS/index.html'));
 })->where('any', '.*');
