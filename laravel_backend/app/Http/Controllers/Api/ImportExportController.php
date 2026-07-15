@@ -18,6 +18,7 @@ use App\Exports\ActivityLogsExport;
 // Imports
 use App\Imports\LoansImport;
 use App\Imports\TransactionsImport;
+use App\Imports\UsersImport; // Added for User imports
 
 // Models
 use App\Models\Transaction;
@@ -31,7 +32,6 @@ class ImportExportController extends Controller
      */
     public function export(Request $request, $type = null, $format = null)
     {
-        // Fallback to route parameters if dependency injection missed them
         $type = strtolower(trim($type ?? $request->route('type')));
         $format = strtolower(trim($format ?? $request->route('format')));
         $filename = $type . '_report_' . now()->format('Ymd_His');
@@ -60,17 +60,12 @@ class ImportExportController extends Controller
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,csv']);
 
-        $import = match($type) {
-            'loans'        => new LoansImport(),
-            'transactions' => new TransactionsImport(),
-            default        => null,
-        };
+        $import = $this->getImportInstance($type);
 
         if (!$import) return response()->json(['message' => 'Type not supported'], 404);
 
         try {
-            // Set flag to skip DB creation
-            $import->isPreview = true;
+            $import->isPreview = true; // Prevents DB writes
             Excel::import($import, $request->file('file'));
 
             return response()->json([
@@ -91,11 +86,9 @@ class ImportExportController extends Controller
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,csv']);
 
-        $import = match($type) {
-            'loans'        => new LoansImport(),
-            'transactions' => new TransactionsImport(),
-            default        => null,
-        };
+        $import = $this->getImportInstance($type);
+
+        if (!$import) return response()->json(['message' => 'Type not supported'], 404);
 
         try {
             $import->isPreview = false; // Allow DB writes
@@ -105,6 +98,19 @@ class ImportExportController extends Controller
             Log::error("Import Confirmation Error [{$type}]: " . $e->getMessage());
             return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Helper to resolve Import classes
+     */
+    private function getImportInstance($type)
+    {
+        return match($type) {
+            'loans'        => new LoansImport(),
+            'transactions' => new TransactionsImport(),
+            'users'        => new UsersImport(),
+            default        => null,
+        };
     }
 
     /**
