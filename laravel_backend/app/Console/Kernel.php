@@ -18,22 +18,32 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // 🚀 Automated Backup System (Spatie)
-        $schedule->command('backup:run')->dailyAt('02:00')
-            ->withoutOverlapping()
-            ->onFailure(fn() => \Log::error('Daily backup failed.'))
-            ->onSuccess(fn() => \Log::info('Daily backup completed.'));
+        // 🚀 Dynamic Weekly Database Backup (Site Settings Controlled)
+        $backupDay = SiteSetting::get('backup_day', 'Monday');
+        $backupTime = SiteSetting::get('backup_time', '02:00');
 
-        $schedule->command('backup:clean')->dailyAt('03:00')
-            ->withoutOverlapping();
-
-        // 🚀 Weekly Database Backup (Requirement: Weekly at 2:00 AM)
-        $schedule->command('backup:weekly')->mondays()->at('02:00')
+        $schedule->command('backup:weekly')
+            ->days([$backupDay])
+            ->at($backupTime)
             ->withoutOverlapping()
             ->onFailure(fn() => \Log::error('Weekly automated backup failed.'))
             ->onSuccess(fn() => \Log::info('Weekly automated backup completed.'));
 
-        // 🚀 Maintenance Tasks
+        // 🚀 Monthly Full System Backup
+        $schedule->command('backup:full')->monthlyOn(1, '02:00')
+            ->withoutOverlapping()
+            ->onFailure(fn() => \Log::error('Monthly full system backup failed.'))
+            ->onSuccess(fn() => \Log::info('Monthly full system backup completed.'));
+
+        // 🚀 Automated Log Archival
+        $schedule->command('logs:archive')->dailyAt('04:00')
+            ->withoutOverlapping()
+            ->onFailure(fn() => \Log::error('Daily log archival failed.'))
+            ->onSuccess(fn() => \Log::info('Daily log archival completed.'));
+
+        // Standard Cleanup
+        $schedule->command('backup:clean')->dailyAt('03:00')
+            ->withoutOverlapping();
         $schedule->command('session:table')->daily(); // Placeholder for session cleanup if using DB
 
         $schedule->call(function () {

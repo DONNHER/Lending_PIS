@@ -137,7 +137,15 @@ class BackupService
                 if (!$file->isDir()) {
                     $filePath = $file->getRealPath();
                     $relativePath = substr($filePath, strlen($source) + 1);
-                    if ($isFull && (str_contains($relativePath, 'vendor') || str_contains($relativePath, 'storage/app/backups'))) continue;
+
+                    // 🚀 Optimized Exclusions for Full Backups
+                    if ($isFull && (
+                        str_contains($relativePath, 'vendor') ||
+                        str_contains($relativePath, 'node_modules') ||
+                        str_contains($relativePath, '.git') ||
+                        str_contains($relativePath, 'storage/app/backups')
+                    )) continue;
+
                     $zip->addFile($filePath, $relativePath);
                 }
             }
@@ -154,6 +162,16 @@ class BackupService
     protected function notify($status, $type, $filePath = null, $error = null, $cloudUrl = null)
     {
         try {
+            // 🚀 Check Site Settings for notification preference
+            $shouldNotify = $status === 'success'
+                ? SiteSetting::get('backup_notify_success', true)
+                : SiteSetting::get('backup_notify_failure', true);
+
+            if (!$shouldNotify) {
+                Log::info("Backup notification skipped based on site settings ($status).");
+                return;
+            }
+
             $adminEmail = env('MAIL_FROM_ADDRESS', 'noreply@lending-pis.com');
             Mail::to($adminEmail)->send(new BackupNotificationMail($status, $type, $filePath, $error, $cloudUrl));
         } catch (\Exception $e) {
