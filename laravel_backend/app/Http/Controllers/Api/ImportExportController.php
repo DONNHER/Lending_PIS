@@ -13,7 +13,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class ImportExportController extends Controller
 {
     /**
-     * Handle multi-format transactional and structural ledger data exports.
+     * Handle multi-format transactional data exports safely.
      */
     public function export(Request $request, $type, $format)
     {
@@ -28,14 +28,14 @@ class ImportExportController extends Controller
                 return Excel::download(new TransactionsExport, $filename);
             }
 
-            // Default fallback if you run other spreadsheets
             return Excel::download(new TransactionsExport, $filename);
         }
 
         // 2. HANDLE PROFESSIONAL PDF TEMPLATE LOGIC via DomPDF
         if ($format === 'pdf') {
             if ($type === 'transactions') {
-                $transactions = Transaction::with('shareholder.user')->orderBy('created_at', 'desc')->get();
+                // 🎯 FIX: Changed sorting column from 'created_at' to 'date' to fix pgsql database crash
+                $transactions = Transaction::with('shareholder.user')->orderBy('date', 'desc')->get();
 
                 $rows = [];
                 foreach ($transactions as $tx) {
@@ -47,11 +47,14 @@ class ImportExportController extends Controller
                         'method' => strtoupper($tx->method ?? 'N/A'),
                         'amount' => 'PHP ' . number_format($tx->amount, 2),
                         'status' => strtoupper($tx->status),
-                        'date' => $tx->date ? $tx->date->toDateTimeString() : ($tx->created_at ? $tx->created_at->toDateTimeString() : now()->toDateTimeString()),
+                        'date' => $tx->date ? $tx->date->toDateTimeString() : now()->toDateTimeString(),
                     ];
                 }
 
-                $pdf = Pdf::loadView('exports.report', [
+                // 🎯 FIX: Changed view string structure target name to match your file structure path fallback safely
+                $viewName = view()->exists('exports.report') ? 'exports.report' : 'exports.transactions-pdf';
+
+                $pdf = Pdf::loadView($viewName, [
                     'title' => 'Transaction History Ledger',
                     'subtitle' => 'System Export Audit Log',
                     'generatedAt' => now()->toDateTimeString(),
@@ -67,7 +70,8 @@ class ImportExportController extends Controller
             }
 
             if ($type === 'users') {
-                $users = User::orderBy('created_at', 'desc')->get();
+                // 🎯 FIX: Use sorting parameters safe for standard application default schemes
+                $users = User::orderBy('id', 'desc')->get();
 
                 $rows = [];
                 foreach ($users as $user) {
@@ -83,7 +87,9 @@ class ImportExportController extends Controller
                     ];
                 }
 
-                $pdf = Pdf::loadView('exports.report', [
+                $viewName = view()->exists('exports.report') ? 'exports.report' : 'exports.transactions-pdf';
+
+                $pdf = Pdf::loadView($viewName, [
                     'title' => 'User Directory Report',
                     'subtitle' => 'Account System Records Management',
                     'generatedAt' => now()->toDateTimeString(),
