@@ -83,6 +83,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::match(['PUT', 'POST'], '/admin/users/{id}/status', [UserController::class, 'updateStatus']);
         Route::match(['PUT', 'POST'], '/admin/users/{id}/address', [UserController::class, 'updateAddress']);
 
+        // 🚀 Backup Settings Routes
+        Route::get('/settings/backup', [BackupController::class, 'getSettings']);
+        Route::post('/settings/backup', [BackupController::class, 'updateSettings']);
+
         Route::post('/activity-logs/cleanup', [ActivityLogController::class, 'cleanup']);
     });
 

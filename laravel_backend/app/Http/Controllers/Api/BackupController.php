@@ -79,7 +79,7 @@ class BackupController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => "Manual " . strtoupper($type) . " backup completed successfully.",
-                    'file' => $result['filename']
+                    'file' => basename($result['filename'])
                 ]);
             } else {
                 return response()->json([
@@ -88,9 +88,10 @@ class BackupController extends Controller
                 ], 500);
             }
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Backup Controller Error: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => "Internal Server Error: " . $e->getMessage()
             ], 500);
         }
     }

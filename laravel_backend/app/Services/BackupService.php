@@ -93,7 +93,7 @@ class BackupService
         }
 
         $command = sprintf(
-            'PGPASSWORD=%s pg_dump -h %s -p %s -U %s %s > %s',
+            'PGPASSWORD=%s pg_dump -h %s -p %s -U %s %s > %s 2>&1',
             escapeshellarg($dbConfig['password']),
             escapeshellarg($dbConfig['host']),
             escapeshellarg($dbConfig['port']),
@@ -103,7 +103,11 @@ class BackupService
         );
 
         exec($command, $output, $returnVar);
-        if ($returnVar !== 0) throw new Exception("Database dump failed");
+        if ($returnVar !== 0) {
+            $errorDetail = implode("\n", $output);
+            Log::error("Database dump failed: " . $errorDetail);
+            throw new Exception("Database dump failed: " . $errorDetail);
+        }
 
         return $fullPath;
     }
