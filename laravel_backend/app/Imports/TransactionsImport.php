@@ -34,42 +34,33 @@ class TransactionsImport implements ToCollection, WithHeadingRow
         $duplicates = [];
 
         foreach ($rows as $index => $row) {
-            // --- DATA MAPPING LAYER ---
-            // Maps your CSV headers/values to the system's expected format
+            // Mapping Layer
             $data = [
-                'shareholder_email' => $row['client_email'] ?? $row['client'] ?? null,
-                'reference_id'      => (string)($row['transaction_id'] ?? ''),
-                'type'              => $this->mapCsvType($row['type'] ?? ''),
-                'method'            => strtolower($row['method'] ?? ''),
-                'amount'            => $row['amount'] ?? 0,
-                'status'            => $this->mapCsvStatus($row['status'] ?? ''),
+                'shareholder_name' => $row['client'] ?? null,
+                'reference_id'     => (string)($row['transaction_id'] ?? ''),
+                'type'             => $this->mapCsvType($row['type'] ?? ''),
+                'method'           => $this->mapCsvMethod($row['method'] ?? ''),
+                'amount'           => $row['amount'] ?? 0,
+                'status'           => $this->mapCsvStatus($row['status'] ?? ''),
             ];
 
             $validator = Validator::make($data, [
-                'shareholder_email' => 'required|email|exists:users,email',
-                'reference_id'      => 'required|string',
-                'type'              => 'required|in:deposit,withdrawal,payment,fee',
-                'method'            => 'required|in:cash,bank_transfer,online',
-                'amount'            => 'required|numeric|min:0',
-                'status'            => 'required|in:completed,pending,failed',
+                'shareholder_name' => 'required',
+                'reference_id'     => 'required|string',
+                'type'             => 'required|in:deposit,withdrawal,payment,fee',
+                'method'           => 'required|in:cash,bank_transfer,online',
+                'amount'           => 'required|numeric|min:0',
+                'status'           => 'required|in:completed,pending,failed',
             ]);
 
             if ($validator->fails()) {
-                $errors[] = [
-                    'row' => $index + 2,
-                    'messages' => $validator->errors()->all(),
-                    'data' => $row
-                ];
+                $errors[] = ['row' => $index + 2, 'messages' => $validator->errors()->all(), 'data' => $row];
                 continue;
             }
 
             $existing = Transaction::where('reference_id', $data['reference_id'])->first();
             if ($existing) {
-                $duplicates[] = [
-                    'row' => $index + 2,
-                    'message' => "Transaction with this Reference ID already exists",
-                    'data' => $row
-                ];
+                $duplicates[] = ['row' => $index + 2, 'message' => "Duplicate Ref ID", 'data' => $row];
                 continue;
             }
 
@@ -80,12 +71,14 @@ class TransactionsImport implements ToCollection, WithHeadingRow
     }
 
     private function mapCsvType($type) {
-        $map = [
-            'loan repayment' => 'payment',
-            'capital contribution' => 'deposit',
-            'loan disbursement' => 'withdrawal'
-        ];
+        $map = ['loan repayment' => 'payment', 'capital contribution' => 'deposit', 'loan disbursement' => 'withdrawal'];
         return $map[strtolower($type)] ?? 'fee';
+    }
+
+    private function mapCsvMethod($method) {
+        $m = strtolower($method);
+        if (str_contains($m, 'cash')) return 'cash';
+        return in_array($m, ['bank_transfer', 'online']) ? $m : 'cash';
     }
 
     private function mapCsvStatus($status) {
@@ -94,8 +87,9 @@ class TransactionsImport implements ToCollection, WithHeadingRow
 
     private function createTransaction($row)
     {
+        // Search by full name concatenation
         $shareholder = Shareholder::whereHas('user', function($q) use ($row) {
-            $q->where('email', $row['shareholder_email']);
+            $q->whereRaw("CONCAT(firstname, ' ', lastname) = ?", [$row['shareholder_name']]);
         })->first();
 
         if ($shareholder) {
