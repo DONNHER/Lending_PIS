@@ -31,7 +31,7 @@ class ActivityLogsExport implements FromCollection, WithHeadings, WithMapping
 
     public function map($log): array
     {
-        // 🎯 SAFE WRAPPER: Handle user name formatting safely based on your schema fields
+        // 🎯 SAFE WRAPPER: Handle user name formatting safely
         $userName = 'System';
         if ($log->user) {
             $fullName = trim(($log->user->firstname ?? '') . ' ' . ($log->user->lastname ?? ''));
@@ -46,7 +46,6 @@ class ActivityLogsExport implements FromCollection, WithHeadings, WithMapping
             $log->description ?? 'N/A',
             $log->ip_address ?? 'N/A',
             $log->is_suspicious ? 'YES' : 'NO',
-            // 🎯 SAFE WRAPPER: Protects against null timestamp crashes
             $log->created_at ? $log->created_at->toDateTimeString() : 'N/A',
         ];
     }
