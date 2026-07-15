@@ -1,14 +1,14 @@
 use Illuminate\Support\Facades\File;
 
 Route::get('/PIS/{any?}', function ($any = null) {
+    // 1. Define the path to your assets
     $path = public_path('PIS/' . ($any ?? 'index.html'));
 
-    // 1. If it's a real file (main.dart.js, favicon.png, etc.), serve it!
+    // 2. If it's a real file (like main.dart.js), serve it
     if (File::exists($path) && !File::isDirectory($path)) {
         return response()->file($path);
     }
 
-    // 2. If it's NOT a file (e.g., /PIS/login), serve index.html
-    // This allows Flutter's internal router to take over
+    // 3. Otherwise, return index.html for Flutter routing
     return file_get_contents(public_path('PIS/index.html'));
 })->where('any', '.*');
