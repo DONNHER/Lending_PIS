@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:capstone_application/repositories/lending_repository.dart';
 import 'package:capstone_application/models/lending_models.dart';
+import '../utils/csv_exporter.dart';
+import 'package:intl/intl.dart';
 
 class LoanRequestViewModel extends ChangeNotifier {
   final LendingRepository _lendingRepository;
@@ -140,4 +142,25 @@ class LoanRequestViewModel extends ChangeNotifier {
   }
 
   void refresh() => fetchLoanRequests(forceRefresh: true);
+
+  void exportToCsv() {
+    if (_loanRequests.isEmpty) return;
+
+    final headers = ['Date', 'Loan ID', 'Borrower', 'Amount', 'Months', 'Purpose', 'Status'];
+    final rows = _loanRequests.map((r) => [
+      "'${DateFormat('yyyy-MM-dd HH:mm:ss').format(r.createdAt)}",
+      r.id,
+      r.shareholderName,
+      r.requestedAmount.toStringAsFixed(2),
+      r.months.toString(),
+      r.purpose,
+      r.status.name.toUpperCase(),
+    ]).toList();
+
+    CsvExporter.exportToCsv(
+      headers: headers,
+      rows: rows,
+      fileName: 'loan_requests_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}',
+    );
+  }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:capstone_application/repositories/lending_repository.dart';
+import '../utils/csv_exporter.dart';
+import 'package:intl/intl.dart';
 
 class UpdateInterestViewModel extends ChangeNotifier {
   final LendingRepository _lendingRepository;
@@ -120,4 +122,29 @@ class UpdateInterestViewModel extends ChangeNotifier {
   }
 
   void refresh() => loadData(forceRefresh: true);
+
+  void exportHistoryToCsv() {
+    if (_history.isEmpty) return;
+
+    final headers = ['Date', 'Old Rate', 'New Rate', 'Reason'];
+    final rows = _history.map((item) {
+      final dateStr = item['created_at'] ?? item['effective_date'] ?? DateTime.now().toIso8601String();
+      final date = DateTime.parse(dateStr);
+      final oldRate = (double.tryParse(item['old_rate'].toString()) ?? 0.0) * 100;
+      final newRate = (double.tryParse(item['new_rate'].toString()) ?? 0.0) * 100;
+      
+      return [
+        "'${DateFormat('yyyy-MM-dd HH:mm:ss').format(date)}",
+        '${oldRate.toStringAsFixed(1)}%',
+        '${newRate.toStringAsFixed(1)}%',
+        item['reason'] ?? 'N/A',
+      ];
+    }).toList();
+
+    CsvExporter.exportToCsv(
+      headers: headers,
+      rows: rows,
+      fileName: 'interest_rate_history_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}',
+    );
+  }
 }

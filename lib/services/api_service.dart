@@ -127,6 +127,11 @@ class ApiService {
           onUnauthorized?.call();
         }
 
+        // 🚀 SPECIAL HANDLING: Return full response for specific status codes (like 403 Forbidden for CAPTCHA/Lockout)
+        if (response.statusCode == 403 && decoded is Map && decoded.containsKey('captcha_required')) {
+          return decoded;
+        }
+
         String errorMessage = 'API Error ${response.statusCode}';
         if (decoded is Map) {
           if (decoded.containsKey('errors') && decoded['errors'] is Map) {

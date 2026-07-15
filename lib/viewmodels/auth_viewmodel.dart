@@ -32,6 +32,8 @@ class AuthViewModel extends ChangeNotifier {
   bool _isMfaRequired = false;
   String? _pendingMfaEmail;
   bool _agreeToTerms = false;
+  bool _isCaptchaRequired = false;
+  bool _isCaptchaVerified = false;
 
   Uint8List? _avatarBytes;
   bool _removeAvatarRequested = false;
@@ -55,6 +57,8 @@ class AuthViewModel extends ChangeNotifier {
   bool get rememberMe => _rememberMe;
   String? get rememberedEmail => _rememberedEmail;
   bool get isMfaRequired => _isMfaRequired;
+  bool get isCaptchaRequired => _isCaptchaRequired;
+  bool get isCaptchaVerified => _isCaptchaVerified;
   String? get pendingMfaEmail => _pendingMfaEmail;
   bool get agreeToTerms => _agreeToTerms;
 
@@ -99,6 +103,11 @@ class AuthViewModel extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  void setCaptchaVerified(bool value) {
+    _isCaptchaVerified = value;
     notifyListeners();
   }
 
@@ -184,8 +193,23 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _authRepository.login(email, password);
+      final response = await _authRepository.login(
+        email, 
+        password,
+        captchaToken: _isCaptchaVerified ? 'verified' : null,
+      );
       
+      debugPrint('DEBUG: [AuthViewModel] Login response: $response');
+
+      if (response['captcha_required'] == true) {
+        _isCaptchaRequired = true;
+        _isCaptchaVerified = false;
+        _errorMessage = 'Security check required. Please complete the CAPTCHA.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
       if (response['mfa_required'] == true) {
         // 🚀 STRICT CHECK: Ensure account is confirmed in Supabase
         try {
@@ -387,7 +411,7 @@ class AuthViewModel extends ChangeNotifier {
         debugPrint('DEBUG: [AuthViewModel] Magiclink OTP verification success.');
       }
 
-      if (res != null && res.session != null) {
+      if (res.session != null) {
         // 2. Tell Laravel that MFA is complete and get the Laravel token
         final response = await _authRepository.verifyMfa(email);
         if (response['success'] == true) {

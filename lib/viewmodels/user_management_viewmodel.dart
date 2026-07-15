@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../repositories/user_repository.dart';
 import '../models/user_model.dart';
+import '../utils/csv_exporter.dart';
+import 'package:intl/intl.dart';
 
 class UserManagementViewModel extends ChangeNotifier {
   final UserRepository _userRepository;
@@ -19,7 +21,7 @@ class UserManagementViewModel extends ChangeNotifier {
   // Filtering
   String _roleFilter = 'All';
   String _statusFilter = 'All';
-  String _sortOrder = 'Newest';
+  final String _sortOrder = 'Newest';
 
   UserManagementViewModel(this._userRepository);
 
@@ -98,4 +100,24 @@ class UserManagementViewModel extends ChangeNotifier {
   }
 
   void refresh() => fetchUsers(forceRefresh: true);
+
+  void exportToCsv() {
+    if (_users.isEmpty) return;
+
+    final headers = ['Full Name', 'Username', 'Email', 'Role', 'Status', 'User ID'];
+    final rows = _users.map((u) => [
+      u.fullName,
+      u.username,
+      u.email,
+      u.role.name.toUpperCase(),
+      u.status.name.toUpperCase(),
+      u.id,
+    ]).toList();
+
+    CsvExporter.exportToCsv(
+      headers: headers,
+      rows: rows,
+      fileName: 'users_audit_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}',
+    );
+  }
 }

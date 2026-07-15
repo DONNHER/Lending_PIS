@@ -10,8 +10,6 @@ import '../models/user_model.dart';
 import '../app_theme.dart';
 import '../widgets/activity_log_table.dart';
 import 'add_share_capital_page.dart';
-import 'loan_details_page.dart';
-import 'add_loan_page.dart';
 
 class ShareholderDetailPage extends StatefulWidget {
   final String shareholderId;
@@ -127,7 +125,8 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
       
       if (user != null && user.status != UserStatus.active) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Cannot impersonate ${user.status.name} accounts. Please activate the user first.'),
             backgroundColor: Colors.orange,
@@ -140,20 +139,22 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
       
       if (!mounted) return;
       
-      final authModel = context.read<AuthViewModel>();
+      final authModel = Provider.of<AuthViewModel>(context, listen: false);
+      final nav = Provider.of<NavigationViewModel>(context, listen: false);
+      final messenger = ScaffoldMessenger.of(context);
+
       await authModel.startImpersonation(response);
       
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Now impersonating $fullName'),
-          backgroundColor: const Color(0xFFC06C4D),
-        ),
-      );
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Now impersonating $fullName'),
+            backgroundColor: const Color(0xFFC06C4D),
+          ),
+        );
+      }
 
       // Navigate to shareholder dashboard
-      final nav = context.read<NavigationViewModel>();
       final route = authModel.dashboardRoute;
       if (route != null) {
         final navItems = nav.getFilteredNavItems();

@@ -103,10 +103,33 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
         children: [
           Row(
             children: [
+              Expanded(
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: TextField(
+                    onChanged: viewModel.setSearchQuery,
+                    decoration: InputDecoration(
+                      hintText: 'Search user, action, or details...',
+                      hintStyle: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                      prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFFC06C4D)),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 9),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
               _buildFilterDropdown(
                 label: 'Type',
                 value: viewModel.typeFilter,
-                items: ['All', 'Info', 'Warning', 'Error', 'Success', 'Auth'],
+                items: ['All', 'Info', 'Warning', 'Error', 'Success', 'Auth', 'Transaction', 'Access'],
                 onChanged: (val) {
                   if (val != null) viewModel.setTypeFilter(val);
                 },
@@ -119,6 +142,20 @@ class _ActivityLogsPageState extends State<ActivityLogsPage> {
                 onChanged: (val) {
                   if (val != null) viewModel.setSortOrder(val);
                 },
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: viewModel.exportToCsv,
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Export CSV'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC06C4D),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                  minimumSize: const Size(0, 40),
+                ),
               ),
             ],
           ),

@@ -10,9 +10,9 @@ import '../viewmodels/activity_log_viewmodel.dart';
 import '../viewmodels/update_interest_viewmodel.dart';
 import '../viewmodels/user_management_viewmodel.dart';
 import '../widgets/auth_text_field.dart';
-import 'registration_page.dart';
 import 'forgot_password_page.dart';
 import 'mfa_page.dart';
+import '../widgets/math_captcha.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -163,7 +163,7 @@ class _LoginContentState extends State<_LoginContent>
               height: 220,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primary.withOpacity(0.08),
+                color: AppTheme.primary.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -175,7 +175,7 @@ class _LoginContentState extends State<_LoginContent>
               height: 260,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primary.withOpacity(0.05),
+                color: AppTheme.primary.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -344,6 +344,13 @@ class _LoginContentState extends State<_LoginContent>
                                   ],
                                 ),
 
+                                if (viewModel.isCaptchaRequired) ...[
+                                  const SizedBox(height: 24),
+                                  MathCaptcha(
+                                    onVerified: viewModel.setCaptchaVerified,
+                                  ),
+                                ],
+
                                 const SizedBox(height: 28),
 
                                 // ── Sign in button ────────────────────
@@ -441,14 +448,14 @@ class _SignInButton extends StatelessWidget {
         height: 52,
         decoration: BoxDecoration(
           color: isLoading
-              ? AppTheme.primary.withOpacity(0.6)
+              ? AppTheme.primary.withValues(alpha: 0.6)
               : AppTheme.primary,
           borderRadius: BorderRadius.circular(14),
           boxShadow: isLoading
               ? []
               : [
                   BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.4),
+                    color: AppTheme.primary.withValues(alpha: 0.4),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),

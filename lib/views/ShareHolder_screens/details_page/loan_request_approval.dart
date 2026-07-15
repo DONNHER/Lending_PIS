@@ -124,8 +124,18 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
                 style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
             centerTitle: true,
           ),
-          body: _buildBody(snapshot, loan, borrower),
-          bottomNavigationBar: _buildBottomActionButtons(loan),
+          body: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: _buildBody(snapshot, loan, borrower),
+            ),
+          ),
+          bottomNavigationBar: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: _buildBottomActionButtons(loan),
+            ),
+          ),
         );
       },
     );
@@ -190,8 +200,8 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
   Widget _buildRequestHeader(double amount, dynamic loan) {
     return Container(
       width: double.infinity,
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      color: Colors.transparent,
+      padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
         children: [
           const Text("Requested Amount", style: TextStyle(color: textGrey, fontSize: 14)),
@@ -209,12 +219,38 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     String label = "PENDING REVIEW";
     Color color = Colors.blue;
 
-    if (loan.status == ComakerStatus.approved) {
-      label = "APPROVED";
-      color = Colors.green;
-    } else if (loan.status == ComakerStatus.rejected || loan.status == ComakerStatus.cancelled) {
-      label = loan.status == ComakerStatus.cancelled ? "CANCELLED" : "REJECTED";
-      color = accentRed;
+    if (loan is LoanRequestModel) {
+      switch (loan.status) {
+        case LoanStatus.approved:
+          label = "APPROVED";
+          color = Colors.green;
+          break;
+        case LoanStatus.released:
+        case LoanStatus.active:
+          label = "LIVE / RELEASED";
+          color = primaryGreen;
+          break;
+        case LoanStatus.rejected:
+          label = "REJECTED";
+          color = accentRed;
+          break;
+        case LoanStatus.cancelled:
+          label = "CANCELLED";
+          color = Colors.grey;
+          break;
+        case LoanStatus.fullyPaid:
+          label = "FULLY PAID";
+          color = Colors.teal;
+          break;
+        case LoanStatus.overdue:
+          label = "OVERDUE";
+          color = Colors.deepOrange;
+          break;
+        case LoanStatus.pending:
+          label = "PENDING REVIEW";
+          color = Colors.blue;
+          break;
+      }
     }
 
     return Container(

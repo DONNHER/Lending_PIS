@@ -12,6 +12,9 @@ class ActivityLogRepository {
     String? type,
     String? ipAddress,
     String? deviceInfo,
+    String? stackTrace,
+    Map<String, dynamic>? oldValues,
+    Map<String, dynamic>? newValues,
   }) async {
     try {
       await _apiService.post(
@@ -22,6 +25,9 @@ class ActivityLogRepository {
           'type': type ?? 'info',
           if (ipAddress != null) 'ip_address': ipAddress,
           if (deviceInfo != null) 'device_info': deviceInfo,
+          if (stackTrace != null) 'stack_trace': stackTrace,
+          if (oldValues != null) 'old_values': oldValues,
+          if (newValues != null) 'new_values': newValues,
         },
         triggerUnauthorized: false,
       );

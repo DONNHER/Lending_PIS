@@ -5,6 +5,8 @@ import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/app_theme.dart';
 import 'admin_edit_account_details.dart';
+import '../viewmodels/backup_settings_viewmodel.dart';
+import '../services/api_service.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -18,7 +20,27 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => BackupSettingsViewModel(context.read<ApiService>())..loadSettings(),
+      child: const _AdminSettingsBody(),
+    );
+  }
+}
+
+class _AdminSettingsBody extends StatefulWidget {
+  const _AdminSettingsBody();
+
+  @override
+  State<_AdminSettingsBody> createState() => _AdminSettingsBodyState();
+}
+
+class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
+  bool _notificationsEnabled = true;
+
+  @override
+  Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
+    final backupViewModel = context.watch<BackupSettingsViewModel>();
     
     // 🚀 Use original admin user if impersonating, otherwise use current user
     final user = authViewModel.isImpersonating 
@@ -249,6 +271,44 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                     const SizedBox(height: 24),
                     _buildSection(
                       context,
+                      title: 'Backup & Maintenance',
+                      items: [
+                        _SettingsTile(
+                          icon: Icons.calendar_month_rounded,
+                          title: 'Backup Schedule',
+                          subtitle: 'Every ${backupViewModel.backupDay} at ${backupViewModel.backupTime}',
+                          onTap: () => _showScheduleDialog(context, backupViewModel),
+                        ),
+                        _SettingsTile(
+                          icon: Icons.mark_email_unread_outlined,
+                          title: 'Email Notifications (Success)',
+                          trailing: Switch(
+                            value: backupViewModel.notifySuccess,
+                            onChanged: (val) => backupViewModel.updateSetting('backup_notify_success', val, 'boolean'),
+                            activeColor: AppTheme.primary,
+                          ),
+                          onTap: () => backupViewModel.updateSetting('backup_notify_success', !backupViewModel.notifySuccess, 'boolean'),
+                        ),
+                        _SettingsTile(
+                          icon: Icons.report_problem_outlined,
+                          title: 'Email Notifications (Failure)',
+                          trailing: Switch(
+                            value: backupViewModel.notifyFailure,
+                            onChanged: (val) => backupViewModel.updateSetting('backup_notify_failure', val, 'boolean'),
+                            activeColor: AppTheme.primary,
+                          ),
+                          onTap: () => backupViewModel.updateSetting('backup_notify_failure', !backupViewModel.notifyFailure, 'boolean'),
+                        ),
+                        _SettingsTile(
+                          icon: Icons.backup_outlined,
+                          title: 'Run Manual Backup',
+                          onTap: () => _showManualBackupDialog(context, backupViewModel),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSection(
+                      context,
                       title: 'Legal',
                       items: [
                         _SettingsTile(icon: Icons.description_outlined, title: 'Terms and Condition', onTap: () => _showTermsDialog(context)),
@@ -375,23 +435,129 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       ),
     );
   }
+
+  void _showScheduleDialog(BuildContext context, BackupSettingsViewModel viewModel) {
+    final List<String> days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    String selectedDay = viewModel.backupDay;
+    TimeOfDay selectedTime = TimeOfDay(
+      hour: int.parse(viewModel.backupTime.split(':')[0]),
+      minute: int.parse(viewModel.backupTime.split(':')[1]),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Backup Schedule'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedDay,
+                decoration: const InputDecoration(labelText: 'Weekly Day'),
+                items: days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                onChanged: (val) => setDialogState(() => selectedDay = val!),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                title: const Text('Preferred Time'),
+                subtitle: Text(selectedTime.format(context)),
+                trailing: const Icon(Icons.access_time_rounded),
+                onTap: () async {
+                  final time = await showTimePicker(context: context, initialTime: selectedTime);
+                  if (time != null) setDialogState(() => selectedTime = time);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final timeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+                await viewModel.updateSetting('backup_day', selectedDay, 'string');
+                await viewModel.updateSetting('backup_time', timeStr, 'string');
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Save Schedule'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showManualBackupDialog(BuildContext context, BackupSettingsViewModel viewModel) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Manual Backup'),
+        content: const Text('Choose the type of backup you want to trigger immediately.'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await viewModel.runManualBackup('db');
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(success ? 'Database backup started' : 'Backup failed'), backgroundColor: success ? Colors.green : Colors.red)
+                );
+              }
+            },
+            child: const Text('Database Only'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await viewModel.runManualBackup('full');
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(success ? 'Full system backup started' : 'Backup failed'), backgroundColor: success ? Colors.green : Colors.red)
+                );
+              }
+            },
+            child: const Text('Full System'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
+  final String? subtitle;
   final VoidCallback onTap;
   final Widget? trailing;
-  const _SettingsTile({required this.icon, required this.title, required this.onTap, this.trailing});
+  const _SettingsTile({required this.icon, required this.title, this.subtitle, required this.onTap, this.trailing});
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: AppTheme.primary, size: 20)),
-      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textDark)),
-      trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 22),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        onTap: onTap,
+        hoverColor: AppTheme.primary.withValues(alpha: 0.05),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppTheme.primary, size: 20),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textDark),
+        ),
+        subtitle: subtitle != null
+            ? Text(subtitle!, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted))
+            : null,
+        trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 22),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
     );
   }
 }

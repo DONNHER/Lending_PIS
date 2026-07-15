@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:capstone_application/repositories/transaction_repository.dart';
 import 'package:capstone_application/models/transaction_model.dart';
+import '../utils/csv_exporter.dart';
+import 'package:intl/intl.dart';
 
 class TransactionViewModel extends ChangeNotifier {
   final TransactionRepository _transactionRepository;
@@ -138,4 +140,25 @@ class TransactionViewModel extends ChangeNotifier {
   }
 
   void refresh() => fetchTransactions(forceRefresh: true);
+
+  void exportToCsv() {
+    if (_transactions.isEmpty) return;
+
+    final headers = ['Date', 'Transaction ID', 'Client', 'Type', 'Method', 'Amount', 'Status'];
+    final rows = _transactions.map((tx) => [
+      "'${DateFormat('yyyy-MM-dd HH:mm:ss').format(tx.date)}",
+      tx.id,
+      tx.clientName,
+      tx.type,
+      tx.method,
+      tx.amount.toStringAsFixed(2),
+      tx.status.toUpperCase(),
+    ]).toList();
+
+    CsvExporter.exportToCsv(
+      headers: headers,
+      rows: rows,
+      fileName: 'transactions_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}',
+    );
+  }
 }

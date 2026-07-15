@@ -13,6 +13,7 @@ import '../widgets/auth_text_field.dart';
 import 'registration_page.dart';
 import 'forgot_password_page.dart';
 import 'mfa_page.dart';
+import '../widgets/math_captcha.dart';
 
 class AdminLoginPage extends StatelessWidget {
   const AdminLoginPage({super.key});
@@ -154,7 +155,7 @@ class _AdminLoginContentState extends State<_AdminLoginContent>
               height: 220,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primary.withOpacity(0.08),
+                color: AppTheme.primary.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -166,7 +167,7 @@ class _AdminLoginContentState extends State<_AdminLoginContent>
               height: 260,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primary.withOpacity(0.05),
+                color: AppTheme.primary.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -314,6 +315,14 @@ class _AdminLoginContentState extends State<_AdminLoginContent>
                                     ),
                                   ],
                                 ),
+
+                                if (viewModel.isCaptchaRequired) ...[
+                                  const SizedBox(height: 24),
+                                  MathCaptcha(
+                                    onVerified: viewModel.setCaptchaVerified,
+                                  ),
+                                ],
+
                                 const SizedBox(height: 28),
                                 _SignInButton(
                                   isLoading: viewModel.isLoading,
@@ -356,7 +365,7 @@ class _AdminLoginContentState extends State<_AdminLoginContent>
                                     foregroundColor: AppTheme.primary,
                                     side: BorderSide(
                                       color: AppTheme.primary
-                                          .withOpacity(0.4),
+                                          .withValues(alpha: 0.4),
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius:
@@ -457,14 +466,14 @@ class _SignInButton extends StatelessWidget {
         height: 52,
         decoration: BoxDecoration(
           color: isLoading
-              ? AppTheme.primary.withOpacity(0.6)
+              ? AppTheme.primary.withValues(alpha: 0.6)
               : AppTheme.primary,
           borderRadius: BorderRadius.circular(14),
           boxShadow: isLoading
               ? []
               : [
                   BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.4),
+                    color: AppTheme.primary.withValues(alpha: 0.4),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),

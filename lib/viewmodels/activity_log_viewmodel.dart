@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:capstone_application/repositories/activity_log_repository.dart';
 import 'package:capstone_application/models/activity_log_model.dart';
+import '../utils/csv_exporter.dart';
+import 'package:intl/intl.dart';
 
 class ActivityLogViewModel extends ChangeNotifier {
   final ActivityLogRepository _activityLogRepository;
@@ -19,6 +21,7 @@ class ActivityLogViewModel extends ChangeNotifier {
   // Filtering
   String _typeFilter = 'All';
   String _sortOrder = 'Newest';
+  String _searchQuery = '';
 
   ActivityLogViewModel(this._activityLogRepository);
 
@@ -32,6 +35,7 @@ class ActivityLogViewModel extends ChangeNotifier {
   int get rowsPerPage => _rowsPerPage;
   String get typeFilter => _typeFilter;
   String get sortOrder => _sortOrder;
+  String get searchQuery => _searchQuery;
 
   Future<void> fetchLogs({int? page, int? perPage, bool forceRefresh = false}) async {
     if (_isLoading) return;
@@ -56,6 +60,17 @@ class ActivityLogViewModel extends ChangeNotifier {
 
   void _applyFilters() {
     List<ActivityLog> filtered = List.from(_allLogs);
+
+    // Search Query Filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((l) => 
+        l.userName.toLowerCase().contains(query) ||
+        l.action.toLowerCase().contains(query) ||
+        l.details.toLowerCase().contains(query) ||
+        l.type.toLowerCase().contains(query)
+      ).toList();
+    }
 
     // Filter by Type
     if (_typeFilter != 'All') {
@@ -113,5 +128,34 @@ class ActivityLogViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    _currentPage = 1;
+    _applyFilters();
+    notifyListeners();
+  }
+
   void refresh() => fetchLogs(forceRefresh: true);
+
+  void exportToCsv() {
+    if (_allLogs.isEmpty) return;
+
+    final headers = ['Date', 'User', 'Action', 'Type', 'Details', 'IP Address', 'Device'];
+    final rows = _allLogs.map((log) => [
+      // Force text format for Excel to prevent ### and automatic narrowing
+      "'${DateFormat('yyyy-MM-dd HH:mm:ss').format(log.createdAt)}",
+      log.userName,
+      log.action,
+      log.type.toUpperCase(),
+      log.details,
+      log.ipAddress ?? '',
+      log.deviceInfo ?? '',
+    ]).toList();
+
+    CsvExporter.exportToCsv(
+      headers: headers,
+      rows: rows,
+      fileName: 'activity_logs_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}',
+    );
+  }
 }

@@ -176,6 +176,20 @@ class _LoansPageState extends State<LoansPage> {
                   if (val != null) viewModel.setSortOrder(val);
                 },
               ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: viewModel.exportToCsv,
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Export CSV'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC06C4D),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                  minimumSize: const Size(0, 40),
+                ),
+              ),
             ],
           ),
         ],
