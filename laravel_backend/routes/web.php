@@ -1,31 +1,14 @@
-<?php
+use Illuminate\Support\Facades\File;
 
-use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-*/
-
-// API health check
-Route::get('/', function () {
-    return response()->json([
-        'status' => 'online',
-        'message' => 'Lending PIS Backend is Online',
-        'version' => '1.0.0',
-    ]);
-});
-
-// --- FLUTTER FRONTEND INTEGRATION ---
-
-// This handles /Dashboard (exactly) and /Dashboard/anything-else
 Route::get('/PIS/{any?}', function ($any = null) {
-    $path = public_path('PIS/index.html');
+    $path = public_path('PIS/' . ($any ?? 'index.html'));
 
-    if (!file_exists($path)) {
-        return "Error: index.html not found at $path";
+    // 1. If it's a real file (main.dart.js, favicon.png, etc.), serve it!
+    if (File::exists($path) && !File::isDirectory($path)) {
+        return response()->file($path);
     }
 
-    return file_get_contents($path);
+    // 2. If it's NOT a file (e.g., /PIS/login), serve index.html
+    // This allows Flutter's internal router to take over
+    return file_get_contents(public_path('PIS/index.html'));
 })->where('any', '.*');
