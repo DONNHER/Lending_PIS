@@ -11,21 +11,14 @@ use Illuminate\Support\Collection;
 
 class UsersImport implements ToCollection, WithHeadingRow
 {
-    // Required properties for the Controller to communicate with this class
     public $errors = [];
     public $isPreview = false;
 
-    /**
-     * Entry point for Excel import
-     */
     public function collection(Collection $rows)
     {
         $validated = $this->validateData($rows->toArray());
-
-        // Pass errors back to the controller's response
         $this->errors = $validated['errors'];
 
-        // Only persist to the database if NOT in preview mode
         if (!$this->isPreview) {
             foreach ($validated['valid'] as $row) {
                 $this->createUser($row);
@@ -33,66 +26,66 @@ class UsersImport implements ToCollection, WithHeadingRow
         }
     }
 
-    /**
-     * Validate data and identify errors/duplicates
-     */
     public function validateData(array $rows)
     {
         $valid = [];
         $errors = [];
 
         foreach ($rows as $index => $row) {
-            $validator = Validator::make($row, [
+            // Mapping CSV keys (which include spaces) to internal keys
+            $data = [
+                'username'  => $row['username'] ?? null,
+                'email'     => $row['email'] ?? null,
+                'firstname' => $row['first_name'] ?? null,
+                'lastname'  => $row['last_name'] ?? null,
+                'role'      => strtolower($row['role'] ?? ''),
+                'status'    => strtolower($row['status'] ?? ''),
+            ];
+
+            $validator = Validator::make($data, [
                 'username'  => 'required|string',
                 'email'     => 'required|email',
                 'firstname' => 'required|string',
                 'lastname'  => 'required|string',
-                'role'      => 'required|in:admin,staff,member',
-                'status'    => 'required|in:active,inactive,suspended',
+                'role'      => 'required|in:admin,staff,member,shareholder',
+                'status'    => 'required|in:active,inactive,suspended,pending',
             ]);
 
             if ($validator->fails()) {
                 $errors[] = [
-                    'row' => $index + 2, // Accounting for header row
+                    'row' => $index + 2,
                     'messages' => $validator->errors()->all(),
                     'data' => $row
                 ];
                 continue;
             }
 
-            // Duplicate detection logic
-            $existing = User::where('username', $row['username'])
-                ->orWhere('email', $row['email'])
-                ->first();
-
-            if ($existing) {
+            // Duplicate check
+            if (User::where('username', $data['username'])->orWhere('email', $data['email'])->exists()) {
                 $errors[] = [
                     'row' => $index + 2,
-                    'messages' => ["User with this username or email already exists (ID: {$existing->id})"],
+                    'messages' => ["Username or Email already exists."],
                     'data' => $row
                 ];
                 continue;
             }
 
-            $valid[] = $row;
+            $valid[] = $data;
         }
 
         return ['valid' => $valid, 'errors' => $errors];
     }
 
-    /**
-     * Create the user record
-     */
     private function createUser($row)
     {
         User::create([
             'username'  => $row['username'],
             'email'     => $row['email'],
-            'password'  => Hash::make('password123'), // Default password
+            'password'  => Hash::make('password123'),
             'firstname' => $row['firstname'],
             'lastname'  => $row['lastname'],
-            'role'      => strtolower($row['role']),
-            'status'    => strtolower($row['status']),
+            'role'      => $row['role'],
+            'status'    => $row['status'],
         ]);
     }
 }
