@@ -11,12 +11,21 @@ use Illuminate\Support\Collection;
 
 class TransactionsImport implements ToCollection, WithHeadingRow
 {
+    public $errors = []; // ADD THIS LINE
+    public $isPreview = false; // ADD THIS FLAG
+
     public function collection(Collection $rows)
     {
         $validated = $this->validateData($rows->toArray());
 
-        foreach ($validated['valid'] as $row) {
-            $this->createTransaction($row);
+        // Store errors to the property so the controller can read it
+        $this->errors = $validated['errors'];
+
+        // Only create if NOT in preview mode
+        if (!$this->isPreview) {
+            foreach ($validated['valid'] as $row) {
+                $this->createTransaction($row);
+            }
         }
     }
 

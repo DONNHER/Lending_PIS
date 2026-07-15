@@ -29,10 +29,11 @@ class ImportExportController extends Controller
     /**
      * Handle Exports (Excel/CSV/PDF)
      */
-    public function export(Request $request, $type, $format)
+    public function export(Request $request, $type = null, $format = null)
     {
-        $type = strtolower(trim($type));
-        $format = strtolower(trim($format));
+        // Fallback to route parameters if dependency injection missed them
+        $type = strtolower(trim($type ?? $request->route('type')));
+        $format = strtolower(trim($format ?? $request->route('format')));
         $filename = $type . '_report_' . now()->format('Ymd_His');
 
         if (in_array($format, ['xlsx', 'csv'])) {
@@ -68,12 +69,14 @@ class ImportExportController extends Controller
         if (!$import) return response()->json(['message' => 'Type not supported'], 404);
 
         try {
-            $import->isPreview = true; // Prevents DB writes
+            // Set flag to skip DB creation
+            $import->isPreview = true;
             Excel::import($import, $request->file('file'));
 
             return response()->json([
-                'success' => count($import->errors) === 0,
-                'errors' => $import->errors
+                'success' => empty($import->errors),
+                'errors' => $import->errors ?? [],
+                'count' => count($import->errors ?? [])
             ]);
         } catch (\Exception $e) {
             Log::error("Import Preview Error [{$type}]: " . $e->getMessage());
@@ -99,6 +102,7 @@ class ImportExportController extends Controller
             Excel::import($import, $request->file('file'));
             return response()->json(['message' => 'Import completed successfully']);
         } catch (\Exception $e) {
+            Log::error("Import Confirmation Error [{$type}]: " . $e->getMessage());
             return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 500);
         }
     }
