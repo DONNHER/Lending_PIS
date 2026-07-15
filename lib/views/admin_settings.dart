@@ -273,6 +273,27 @@ class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
                       context,
                       title: 'Backup & Maintenance',
                       items: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded, color: AppTheme.primary, size: 20),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Backups are stored locally on the server with a 30-day retention policy.',
+                                  style: TextStyle(fontSize: 12, color: AppTheme.textDark, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         _SettingsTile(
                           icon: Icons.calendar_month_rounded,
                           title: 'Backup Schedule',
@@ -521,15 +542,32 @@ class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Manual Backup'),
-        content: const Text('Choose the type of backup you want to trigger immediately.'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Choose the type of backup you want to trigger immediately.'),
+            SizedBox(height: 8),
+            Text(
+              'Note: The file will be saved locally on the server.',
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Starting database backup...'), duration: Duration(seconds: 2))
+              );
               final success = await viewModel.runManualBackup('db');
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(success ? 'Database backup started' : 'Backup failed'), backgroundColor: success ? Colors.green : Colors.red)
+                  SnackBar(
+                    content: Text(success ? 'Database backup successful (Saved Locally)' : 'Backup failed'), 
+                    backgroundColor: success ? Colors.green : Colors.red
+                  )
                 );
               }
             },
@@ -538,10 +576,16 @@ class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Starting full system backup...'), duration: Duration(seconds: 2))
+              );
               final success = await viewModel.runManualBackup('full');
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(success ? 'Full system backup started' : 'Backup failed'), backgroundColor: success ? Colors.green : Colors.red)
+                  SnackBar(
+                    content: Text(success ? 'Full system backup successful (Saved Locally)' : 'Backup failed'), 
+                    backgroundColor: success ? Colors.green : Colors.red
+                  )
                 );
               }
             },

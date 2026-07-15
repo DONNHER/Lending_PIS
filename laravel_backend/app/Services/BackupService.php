@@ -48,6 +48,10 @@ class BackupService
                 throw new Exception("Backup integrity verification failed for $filename");
             }
 
+            // 🚀 Log local backup success and size for verification
+            $fileSizeMB = round(filesize($filename) / 1024 / 1024, 2);
+            Log::info("LOCAL BACKUP SUCCESS: $filename ($fileSizeMB MB)");
+
             // 🚀 Cloud Upload disabled (Local Only)
             // $cloudUrl = $this->uploadToCloud($filename);
             $cloudUrl = null;
@@ -55,7 +59,7 @@ class BackupService
             $this->notify('success', $type, $filename, null, $cloudUrl);
             $this->cleanup();
 
-            return ['success' => true, 'filename' => $filename, 'cloud_url' => $cloudUrl];
+            return ['success' => true, 'filename' => $filename, 'cloud_url' => $cloudUrl, 'size' => $fileSizeMB];
         } catch (Exception $e) {
             Log::error("Backup Failed ($type): " . $e->getMessage());
             $this->notify('failure', $type, null, $e->getMessage());
@@ -207,12 +211,21 @@ class BackupService
     public function cleanup()
     {
         $retentionDays = 30;
+        Log::info("Running backup cleanup (Retention: $retentionDays days)");
         $files = Storage::disk('local')->files('backups');
+        $deletedCount = 0;
+
         foreach ($files as $file) {
             $lastModified = Storage::disk('local')->lastModified($file);
             if (now()->timestamp - $lastModified > ($retentionDays * 24 * 60 * 60)) {
+                Log::info("Deleting old backup: $file");
                 Storage::disk('local')->delete($file);
+                $deletedCount++;
             }
+        }
+
+        if ($deletedCount > 0) {
+            Log::info("Cleanup completed. Deleted $deletedCount old backup(s).");
         }
     }
 }
