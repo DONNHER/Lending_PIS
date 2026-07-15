@@ -48,63 +48,43 @@ class ImportExportViewModel extends ChangeNotifier {
       baseUrl = baseUrl.replaceAll(RegExp(r'/$'), '');
 
       final String url = '$baseUrl/api/export/$type/${exportConfig.format}';
-
-      debugPrint('[ImportExportViewModel] 🚀 TRIGGERING EXPORT DATA STRATEGY');
-      debugPrint('[ImportExportViewModel] 🎯 FIXED TARGET URL: $url');
-
       final String? token = await _apiService.getToken();
-      final Uri exportUri = Uri.parse(url);
-
-      debugPrint('[ImportExportViewModel] 🛰️ SENDING HTTP GET NETWORKING REQUEST...');
-      final response = await http.get(
-        exportUri,
-        headers: {
-          'Accept': exportConfig.mimeType,
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
-
-      debugPrint('[ImportExportViewModel] 🗳️ HTTP RESPONSE STATUS RECEIVED: ${response.statusCode}');
-
-      if (response.statusCode >= 400) {
-        debugPrint('[ImportExportViewModel] ❌ NETWORK ERROR CRASH ENCOUNTERED:');
-        debugPrint('[ImportExportViewModel] 📜 ERROR RESPONSE BODY COPIED: ${response.body}');
-        throw Exception('Export failed with status ${response.statusCode}');
-      }
-
-      final sanitizedType = type.replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '_');
-      final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-');
-      final fileName = '${sanitizedType}_$timestamp${exportConfig.extension}';
 
       if (kIsWeb) {
-        debugPrint('[ImportExportViewModel] 🌐 WEB ENVIRONMENT DETECTED: DOWNLOADING VIA BLOB STRATEGY');
+        debugPrint('[ImportExportViewModel] 🌐 WEB ENVIRONMENT: LAUNCHING WITH QUERY TOKEN');
 
-        // Web-safe download using data uri encoding without breaking mobile compilation
-        final base64Data = base64Encode(response.bodyBytes);
-        final dataUri = 'data:${exportConfig.mimeType};base64,$base64Data';
-        final encodedUri = Uri.parse(dataUri);
+        // Append token as query parameter so it passes securely to the new browser tab session
+        final String authenticatedUrl = token != null && token.isNotEmpty
+            ? '$url?token=$token'
+            : url;
 
-        if (await canLaunchUrl(encodedUri)) {
-          await launchUrl(encodedUri);
-        } else {
-          // Fallback to launching the streaming api endpoint link directly if standard blob generation fails
-          await launchUrl(exportUri, mode: LaunchMode.externalApplication);
-        }
+        final webUri = Uri.parse(authenticatedUrl);
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
       } else {
-        debugPrint('[ImportExportViewModel] 📱 MOBILE/DESKTOP NATIVE DETECTED: WRITING TO DISK');
+        debugPrint('[ImportExportViewModel] 📱 NATIVE APP: WRITING TO DISK LAYER');
+
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {
+            'Accept': exportConfig.mimeType,
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        );
+
+        if (response.statusCode >= 400) throw Exception('Export failed with status ${response.statusCode}');
+
+        final sanitizedType = type.replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '_');
+        final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-');
+        final fileName = '${sanitizedType}_$timestamp${exportConfig.extension}';
 
         final file = File('${Directory.systemTemp.path}/$fileName');
         await file.writeAsBytes(response.bodyBytes, flush: true);
 
         final fileUri = Uri.file(file.path);
-        if (await canLaunchUrl(fileUri)) {
-          await launchUrl(fileUri, mode: LaunchMode.externalApplication);
-        } else {
-          await launchUrl(exportUri, mode: LaunchMode.externalApplication);
-        }
+        await launchUrl(fileUri, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      debugPrint('[ImportExportViewModel] 🚨 FATAL SYSTEM EXPORT CRASH ROOT EXCEPTION: $e');
+      debugPrint('[ImportExportViewModel] 🚨 FATAL EXPORT CRASH: $e');
     } finally {
       _isExporting = false;
       notifyListeners();

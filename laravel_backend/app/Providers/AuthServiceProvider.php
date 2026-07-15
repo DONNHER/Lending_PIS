@@ -4,6 +4,8 @@ namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Http\Request;
+use Laravel\Sanctum\Sanctum;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -21,6 +23,12 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // 🎯 FIX: Allow Sanctum to fallback to url query strings (?token=...)
+        // when the traditional Authorization header is missing
+        Sanctum::getAccessTokenFromRequestUsing(function (Request $request) {
+            return $request->bearerToken()
+                ?? $request->query('token')
+                ?? $request->input('token');
+        });
     }
 }
