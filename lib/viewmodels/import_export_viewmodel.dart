@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show Directory, File;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -41,16 +42,12 @@ class ImportExportViewModel extends ChangeNotifier {
     try {
       final exportConfig = ExportFormatInfo.forFormat(format);
 
-      // Sanitizing base path string to prevent /api/api duplication issues
       String baseUrl = _apiService.baseUrl;
-      if (baseUrl.endsWith('/api')) {
-        baseUrl = baseUrl.substring(0, baseUrl.length - 4);
-      } else if (baseUrl.endsWith('/api/')) {
-        baseUrl = baseUrl.substring(0, baseUrl.length - 5);
-      }
+      if (baseUrl.endsWith('/api')) baseUrl = baseUrl.substring(0, baseUrl.length - 4);
+      if (baseUrl.endsWith('/api/')) baseUrl = baseUrl.substring(0, baseUrl.length - 5);
+      baseUrl = baseUrl.replaceAll(RegExp(r'/$'), '');
 
-      // Constructing clean unified URL
-      final String url = '${baseUrl.replaceAll(RegExp(r'/$'), '')}/api/export/$type/${exportConfig.format}';
+      final String url = '$baseUrl/api/export/$type/${exportConfig.format}';
 
       debugPrint('[ImportExportViewModel] 🚀 TRIGGERING EXPORT DATA STRATEGY');
       debugPrint('[ImportExportViewModel] 🎯 FIXED TARGET URL: $url');
@@ -78,16 +75,33 @@ class ImportExportViewModel extends ChangeNotifier {
       final sanitizedType = type.replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '_');
       final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-');
       final fileName = '${sanitizedType}_$timestamp${exportConfig.extension}';
-      final file = File('${Directory.systemTemp.path}/$fileName');
-      await file.writeAsBytes(response.bodyBytes, flush: true);
 
-      debugPrint('[ImportExportViewModel] 💾 DOWNLOAD SUCCESSFUL. TEMP FILE SAVED AT: ${file.path}');
+      if (kIsWeb) {
+        debugPrint('[ImportExportViewModel] 🌐 WEB ENVIRONMENT DETECTED: DOWNLOADING VIA BLOB STRATEGY');
 
-      final fileUri = Uri.file(file.path);
-      if (await canLaunchUrl(fileUri)) {
-        await launchUrl(fileUri, mode: LaunchMode.externalApplication);
+        // Web-safe download using data uri encoding without breaking mobile compilation
+        final base64Data = base64Encode(response.bodyBytes);
+        final dataUri = 'data:${exportConfig.mimeType};base64,$base64Data';
+        final encodedUri = Uri.parse(dataUri);
+
+        if (await canLaunchUrl(encodedUri)) {
+          await launchUrl(encodedUri);
+        } else {
+          // Fallback to launching the streaming api endpoint link directly if standard blob generation fails
+          await launchUrl(exportUri, mode: LaunchMode.externalApplication);
+        }
       } else {
-        await launchUrl(exportUri, mode: LaunchMode.externalApplication);
+        debugPrint('[ImportExportViewModel] 📱 MOBILE/DESKTOP NATIVE DETECTED: WRITING TO DISK');
+
+        final file = File('${Directory.systemTemp.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes, flush: true);
+
+        final fileUri = Uri.file(file.path);
+        if (await canLaunchUrl(fileUri)) {
+          await launchUrl(fileUri, mode: LaunchMode.externalApplication);
+        } else {
+          await launchUrl(exportUri, mode: LaunchMode.externalApplication);
+        }
       }
     } catch (e) {
       debugPrint('[ImportExportViewModel] 🚨 FATAL SYSTEM EXPORT CRASH ROOT EXCEPTION: $e');
@@ -189,12 +203,19 @@ class ImportExportViewModel extends ChangeNotifier {
       }
 
       final fileName = 'import_errors_${DateTime.now().toUtc().toIso8601String().replaceAll(':', '-')}.xlsx';
-      final file = File('${Directory.systemTemp.path}/$fileName');
-      await file.writeAsBytes(response.bodyBytes, flush: true);
 
-      final fileUri = Uri.file(file.path);
-      if (await canLaunchUrl(fileUri)) {
-        await launchUrl(fileUri, mode: LaunchMode.externalApplication);
+      if (kIsWeb) {
+        final base64Data = base64Encode(response.bodyBytes);
+        final dataUri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,$base64Data';
+        await launchUrl(Uri.parse(dataUri));
+      } else {
+        final file = File('${Directory.systemTemp.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes, flush: true);
+
+        final fileUri = Uri.file(file.path);
+        if (await canLaunchUrl(fileUri)) {
+          await launchUrl(fileUri, mode: LaunchMode.externalApplication);
+        }
       }
     } catch (e) {
       debugPrint('[ImportExportViewModel] 🚨 ERROR DUMP DOWNLOADING FAULT CONTEXT: $e');
