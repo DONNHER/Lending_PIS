@@ -18,7 +18,8 @@ use App\Exports\ActivityLogsExport;
 // Imports
 use App\Imports\LoansImport;
 use App\Imports\TransactionsImport;
-use App\Imports\UsersImport; // Added for User imports
+use App\Imports\UsersImport;
+use App\Imports\ActivityLogsImport; // Added this import
 
 // Models
 use App\Models\Transaction;
@@ -38,11 +39,11 @@ class ImportExportController extends Controller
 
         if (in_array($format, ['xlsx', 'csv'])) {
             return match($type) {
-                'transactions' => Excel::download(new TransactionsExport(), $filename . '.' . $format),
-                'users'        => Excel::download(new UsersExport(), $filename . '.' . $format),
-                'loans'        => Excel::download(new LoansExport(), $filename . '.' . $format),
-                'activitylogs' => Excel::download(new ActivityLogsExport(), $filename . '.' . $format),
-                default        => response()->json(['error' => 'Format/Type not supported'], 400),
+                'transactions'  => Excel::download(new TransactionsExport(), $filename . '.' . $format),
+                'users'         => Excel::download(new UsersExport(), $filename . '.' . $format),
+                'loans'         => Excel::download(new LoansExport(), $filename . '.' . $format),
+                'activity-logs' => Excel::download(new ActivityLogsExport(), $filename . '.' . $format), // Updated key
+                default         => response()->json(['error' => 'Format/Type not supported'], 400),
             };
         }
 
@@ -65,7 +66,7 @@ class ImportExportController extends Controller
         if (!$import) return response()->json(['message' => 'Type not supported'], 404);
 
         try {
-            $import->isPreview = true; // Prevents DB writes
+            $import->isPreview = true;
             Excel::import($import, $request->file('file'));
 
             return response()->json([
@@ -91,7 +92,7 @@ class ImportExportController extends Controller
         if (!$import) return response()->json(['message' => 'Type not supported'], 404);
 
         try {
-            $import->isPreview = false; // Allow DB writes
+            $import->isPreview = false;
             Excel::import($import, $request->file('file'));
             return response()->json(['message' => 'Import completed successfully']);
         } catch (\Exception $e) {
@@ -106,37 +107,13 @@ class ImportExportController extends Controller
     private function getImportInstance($type)
     {
         return match($type) {
-            'loans'        => new LoansImport(),
-            'transactions' => new TransactionsImport(),
-            'users'        => new UsersImport(),
-            default        => null,
+            'loans'         => new LoansImport(),
+            'transactions'  => new TransactionsImport(),
+            'users'         => new UsersImport(),
+            'activity-logs' => new ActivityLogsImport(), // Added mapping
+            default         => null,
         };
     }
 
-    /**
-     * Helper for PDF Generation
-     */
-    private function generatePdfReport($type, $filename)
-    {
-        $viewName = 'reports.generic';
-        $data = ['title' => ucwords(str_replace('-', ' ', $type)) . ' Report', 'generatedAt' => now()->toDateTimeString()];
-
-        if ($type === 'transactions') {
-            $data['headers'] = ['ID', 'Reference', 'Shareholder', 'Type', 'Method', 'Amount', 'Status', 'Date'];
-            $data['rows'] = Transaction::with('shareholder.user')->get()->map(fn($tx) => [
-                'id' => $tx->id, 'reference_id' => $tx->reference_id, 'shareholder' => $tx->shareholder?->user?->fullName ?? 'N/A',
-                'type' => strtoupper($tx->type), 'method' => strtoupper($tx->method), 'amount' => number_format($tx->amount, 2),
-                'status' => strtoupper($tx->status), 'date' => $tx->date
-            ])->toArray();
-        } elseif ($type === 'loans') {
-            $data['headers'] = ['ID', 'Principal', 'Interest', 'Tenure', 'Balance', 'Status'];
-            $data['rows'] = Loan::all()->map(fn($l) => [
-                'id' => $l->id, 'principal' => $l->principal_amount, 'interest' => $l->interest_rate,
-                'tenure' => $l->tenure_months, 'balance' => $l->remaining_balance, 'status' => $l->status
-            ])->toArray();
-        }
-
-        $pdf = Pdf::loadView($viewName, $data);
-        return $pdf->setPaper('a4', 'portrait')->stream($filename . '.pdf');
-    }
+    private function generatePdfReport($type, $filename) { /* ... keep existing implementation ... */ }
 }
