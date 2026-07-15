@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Exports\TransactionsExport;
 use App\Models\Transaction;
 use App\Models\User;
@@ -9,14 +10,17 @@ use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class ExportController extends Controller
+class ImportExportController extends Controller
 {
+    /**
+     * Handle multi-format transactional and structural ledger data exports.
+     */
     public function export(Request $request, $type, $format)
     {
         $type = strtolower($type);
         $format = strtolower($format);
 
-        // 1. HANDLE EXCEL / CSV FORMATS
+        // 1. HANDLE EXCEL / CSV FORMATS via Maatwebsite Excel Package
         if (in_array($format, ['xlsx', 'csv'])) {
             $filename = $type . '_export_' . now()->format('Ymd_His') . '.' . $format;
 
@@ -24,11 +28,11 @@ class ExportController extends Controller
                 return Excel::download(new TransactionsExport, $filename);
             }
 
-            // Fallback default catch-all for structural data frames if needed
+            // Default fallback if you run other spreadsheets
             return Excel::download(new TransactionsExport, $filename);
         }
 
-        // 2. HANDLE PROFESSIONAL PDF TEMPLATE LOGIC
+        // 2. HANDLE PROFESSIONAL PDF TEMPLATE LOGIC via DomPDF
         if ($format === 'pdf') {
             if ($type === 'transactions') {
                 $transactions = Transaction::with('shareholder.user')->orderBy('created_at', 'desc')->get();
@@ -69,7 +73,7 @@ class ExportController extends Controller
                 foreach ($users as $user) {
                     $rows[] = [
                         'id' => $user->id,
-                        'reference_id' => $user->email, // Reuse fields safely matching view schema keys
+                        'reference_id' => $user->email,
                         'shareholder' => $user->name,
                         'type' => $user->role ?? 'USER',
                         'method' => $user->status ?? 'ACTIVE',
@@ -95,6 +99,6 @@ class ExportController extends Controller
             }
         }
 
-        return response()->json(['error' => 'Format or Type sequence execution pattern not supported'], 400);
+        return response()->json(['error' => 'Format or Type signature not supported'], 400);
     }
 }
