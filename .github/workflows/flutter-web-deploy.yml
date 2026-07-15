@@ -1,36 +1,30 @@
-name: Flutter Web Build & Deploy to GitHub Pages
-
+name: Flutter Web Build & Deploy
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.27.0'
-        channel: 'stable'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: 'stable'
 
-    - name: Get dependencies
-      run: flutter pub get
+      - name: Get dependencies
+        run: flutter pub get
 
-    - name: Build web release
-      run: flutter build web --base-href "/Lending_system/" --release --no-tree-shake-icons
+      - name: Build web release
+        run: flutter build web --web-renderer html --no-wasm --base-href "/Lending_system/" --release --no-tree-shake-icons
 
-    - name: Deploy to GitHub Pages (Lending_system)
-      uses: peaceiris/actions-gh-pages@v4
-      with:
-        # Pushing to an external repository requires a Personal Access Token (PAT)
-        personal_token: ${{ secrets.GH_PAGES_TOKEN }}
-        external_repository: DONNHER/Lending_system
-        publish_dir: ./build/web
-        publish_branch: main
-        force_orphan: true
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          # Use GITHUB_TOKEN if deploying to the same repo
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          publish_branch: gh-pages
