@@ -344,6 +344,7 @@ class RootApp extends StatelessWidget {
       navigatorKey: AuthViewModel.navigatorKey, // Set the global navigator key
       title: 'Lending System',
       debugShowCheckedModeBanner: false,
+      initialRoute: '/', 
       theme: AppTheme.lightTheme,
       home: _getHome(auth),
       routes: {
