@@ -7,14 +7,11 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\Notification;
 use App\Models\Shareholder;
-use App\Mail\PasswordResetMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\SecurityAlertMail;
 
 class AuthController extends Controller
 {
@@ -166,22 +163,16 @@ class AuthController extends Controller
                 $user->update(['locked_until' => now()->addMinutes(15)]);
 
                 // Trigger Security Alert Email to Admin
-                try {
-                    $adminEmail = config('mail.admin_address', 'admin@test.com');
-                    Mail::to($adminEmail)->send(new SecurityAlertMail($user, $request->ip()));
-
-                    // Log the lockout as a critical event
-                    ActivityLog::create([
-                        'user_id' => $user->id,
-                        'action' => 'Account Locked',
-                        'log_type' => ActivityLog::TYPE_ERROR,
-                        'description' => "Account locked for 15 minutes after 5 failed attempts from IP: {$request->ip()}",
-                        'ip_address' => $request->ip(),
-                        'is_suspicious' => true
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error("Security alert email failed: " . $e->getMessage());
-                }
+                ActivityLog::create([
+                                    'user_id' => $user->id,
+                                    'action' => 'Account Locked',
+                                    'log_type' => ActivityLog::TYPE_ERROR,
+                                    'description' => "Account locked for 15 minutes after 5 failed attempts from IP: {$request->ip()}",
+                                    'ip_address' => $request->ip(),
+                                    'is_suspicious' => true
+                                ]);
+                                
+                                Log::warning("Account locked: {$user->email}");
             }
 
             return response()->json([
@@ -295,76 +286,28 @@ class AuthController extends Controller
     }
 
     public function forgotPassword(Request $request)
-    {
-        $request->validate(['email' => 'required|email']);
-        $user = User::where('email', $request->email)->first();
+{
+    $request->validate([
+        'email' => 'required|email'
+    ]);
 
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'No, this email is not registered in our system.'], 404);
-        }
+    $user = User::where('email', $request->email)->first();
 
-        try {
-            $code = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-            $user->update([
-                'mfa_code' => $code,
-                'mfa_expires_at' => now()->addMinutes(15)
-            ]);
-
-            Mail::to($user->email)->send(new PasswordResetMail($user, $code));
-
-            $this->logAuth($user, 'Password Reset Request', $request);
-
-            return response()->json(['success' => true, 'message' => 'Yes, a reset link has been sent to your email.']);
-        } catch (\Exception $e) {
-            Log::error('Mail sending failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send reset link: ' . $e->getMessage()
-            ], 500);
-        }
+    if (!$user) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No, this email is not registered in our system.'
+        ], 404);
     }
 
-    public function resetPassword(Request $request)
-    {
-        Log::info('Reset password attempt for: ' . $request->email);
+    $this->logAuth($user, 'Password Reset Request', $request);
 
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'code' => 'required|string|size:6',
-            'password' => $this->passwordPolicy,
-        ], [
-            'password.regex' => $this->passwordPolicyMessage
-        ]);
+    return response()->json([
+        'success' => true,
+        'message' => 'Password reset is handled by Supabase. Please use the Supabase reset password flow.'
+    ]);
+}
 
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-        }
-
-        $user = User::where('email', $request->email)->first();
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'User not found'], 404);
-        }
-
-        // Verify OTP Code
-        if ($user->mfa_code !== $request->code || now()->gt($user->mfa_expires_at)) {
-            return response()->json(['success' => false, 'message' => 'Invalid or expired verification code.'], 400);
-        }
-
-        try {
-            $user->password = Hash::make($request->password);
-            $user->mfa_code = null;
-            $user->mfa_expires_at = null;
-            $user->save();
-            
-            $this->notifyPasswordChange($user);
-
-            Log::info('Password reset successful for user: ' . $user->id);
-            return response()->json(['success' => true, 'message' => 'Password reset successfully']);
-        } catch (\Exception $e) {
-            Log::error('Reset password failed: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to reset password: ' . $e->getMessage()], 500);
-        }
-    }
 
     public function verifyMfa(Request $request)
     {
