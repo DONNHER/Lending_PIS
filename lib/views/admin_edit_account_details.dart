@@ -291,15 +291,16 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
-              if (dialogFormKey.currentState!.validate()) {
-                final success = await authViewModel.changePassword(
-                  currentPassword: currentPasswordController.text,
-                  newPassword: newPasswordController.text,
-                );
-                
-                if (context.mounted) {
-                  if (success) {
-  if (context.mounted) {
+  if (!dialogFormKey.currentState!.validate()) return;
+
+  final success = await authViewModel.changePassword(
+    currentPassword: currentPasswordController.text.trim(),
+    newPassword: newPasswordController.text.trim(),
+  );
+
+  if (!context.mounted) return;
+
+  if (success) {
     Navigator.pop(context);
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -317,11 +318,20 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/login',
-        (_) => false,
+        (route) => false,
       );
     }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          authViewModel.errorMessage ?? 'Failed to change password.',
+        ),
+        backgroundColor: AppTheme.error,
+      ),
+    );
   }
-}
+},
                 }
               }
             },
