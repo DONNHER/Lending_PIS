@@ -531,25 +531,49 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<bool> changePassword({
-    required String currentPassword,
-    required String newPassword,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  required String currentPassword,
+  required String newPassword,
+}) async {
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
 
-    try {
-      // Update in Supabase
-      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
+  try {
+    // Get the currently logged in user's email
+    final email = _supabase.auth.currentUser?.email;
+
+    if (email == null) {
+      _errorMessage = 'No authenticated user found.';
       return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
+
+    // Verify the current password
+    await _supabase.auth.signInWithPassword(
+      email: email,
+      password: currentPassword,
+    );
+
+    // Current password is correct, update to the new password
+    await _supabase.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+
+    return true;
+  } on AuthException catch (e) {
+    if (e.message.toLowerCase().contains('invalid login credentials')) {
+      _errorMessage = 'Current password is incorrect.';
+    } else {
+      _errorMessage = e.message;
+    }
+    return false;
+  } catch (e) {
+    _errorMessage = e.toString();
+    return false;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
+}
 
   Future<void> logout() async {
     try {
