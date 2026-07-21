@@ -299,11 +299,29 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
                 
                 if (context.mounted) {
                   if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password changed successfully'), backgroundColor: Colors.green));
-                    Navigator.pop(context);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authViewModel.errorMessage ?? 'Failed to change password'), backgroundColor: AppTheme.error));
-                  }
+  if (context.mounted) {
+    Navigator.pop(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Password changed successfully. Please log in again.',
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    await authViewModel.logout();
+
+    if (context.mounted) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (_) => false,
+      );
+    }
+  }
+}
                 }
               }
             },
