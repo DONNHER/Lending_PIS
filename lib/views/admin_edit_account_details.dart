@@ -248,99 +248,127 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
     );
   }
 
-  void _showResetPasswordDialog(BuildContext context, AuthViewModel authViewModel) {
-    final currentPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    final dialogFormKey = GlobalKey<FormState>();
+  void _showResetPasswordDialog(
+  BuildContext context,
+  AuthViewModel authViewModel,
+) {
+  final currentPasswordController = TextEditingController();
+  final newPasswordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+  final dialogFormKey = GlobalKey<FormState>();
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Password'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Form(
-          key: dialogFormKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: currentPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password'),
-                validator: (value) => value == null || value.isEmpty ? 'Field required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New Password'),
-                validator: (value) => value == null || value.length < 8 ? 'Min 8 characters required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm New Password'),
-                validator: (value) => value != newPasswordController.text ? 'Passwords do not match' : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-  if (!dialogFormKey.currentState!.validate()) return;
-
-  final success = await authViewModel.changePassword(
-    currentPassword: currentPasswordController.text.trim(),
-    newPassword: newPasswordController.text.trim(),
-  );
-
-  if (!context.mounted) return;
-
-  if (success) {
-    Navigator.pop(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Password changed successfully. Please log in again.',
-        ),
-        backgroundColor: Colors.green,
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Change Password'),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
-    );
-
-    await authViewModel.logout();
-
-    if (context.mounted) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/login',
-        (route) => false,
-      );
-    }
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          authViewModel.errorMessage ?? 'Failed to change password.',
-        ),
-        backgroundColor: AppTheme.error,
-      ),
-    );
-  }
-},
+      content: Form(
+        key: dialogFormKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: currentPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Current Password',
+              ),
+              validator: (value) =>
+                  value == null || value.isEmpty
+                      ? 'Current password is required'
+                      : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: newPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'New Password',
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'New password is required';
                 }
-              }
-            },
-            child: const Text('Change'),
-          ),
-        ],
+                if (value.length < 8) {
+                  return 'Minimum 8 characters required';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: confirmPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Confirm New Password',
+              ),
+              validator: (value) {
+                if (value != newPasswordController.text) {
+                  return 'Passwords do not match';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
       ),
-    );
-  }
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            if (!dialogFormKey.currentState!.validate()) return;
+
+            final success = await authViewModel.changePassword(
+              currentPassword: currentPasswordController.text.trim(),
+              newPassword: newPasswordController.text.trim(),
+            );
+
+            if (!context.mounted) return;
+
+            if (success) {
+              Navigator.pop(context);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Password changed successfully. Please log in again.',
+                  ),
+                  backgroundColor: Colors.green,
+                ),
+              );
+
+              await authViewModel.logout();
+
+              if (!context.mounted) return;
+
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/login',
+                (route) => false,
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    authViewModel.errorMessage ??
+                        'Failed to change password.',
+                  ),
+                  backgroundColor: AppTheme.error,
+                ),
+              );
+            }
+          },
+          child: const Text('Change'),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildTextField(String label, TextEditingController controller, {String? hint, bool enabled = true, bool isRequired = true}) {
     return Column(
