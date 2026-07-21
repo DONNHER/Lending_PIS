@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
@@ -15,16 +14,10 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _otpController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
-  bool _codeSent = false;
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeAnim;
 
-  int _resendCooldown = 0;
-  Timer? _cooldownTimer;
 
   @override
   void initState() {
@@ -36,76 +29,38 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
 
   @override
   void dispose() {
-    _cooldownTimer?.cancel();
     _emailController.dispose();
-    _otpController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
     _animCtrl.dispose();
     super.dispose();
   }
 
-  void _startCooldown() {
-    setState(() => _resendCooldown = 60);
-    _cooldownTimer?.cancel();
-    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_resendCooldown == 0) {
-        timer.cancel();
-      } else {
-        setState(() => _resendCooldown--);
-      }
-    });
-  }
+  Future<void> _handleSendResetLink() async {
+  if (!_formKey.currentState!.validate()) return;
 
-  Future<void> _handleSendOtp() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      _showSnackbar('Please enter your email address', isError: true);
-      return;
-    }
+  final viewModel = context.read<AuthViewModel>();
 
-    debugPrint('DEBUG: [ForgotPasswordPage] Sending code to: $email');
+  final success = await viewModel.forgotPassword(
+    _emailController.text.trim(),
+  );
 
-    final viewModel = context.read<AuthViewModel>();
-    final success = await viewModel.forgotPassword(email);
+  if (!mounted) return;
 
-    debugPrint('DEBUG: [ForgotPasswordPage] Success: $success');
-
-    if (success && mounted) {
-      _showSnackbar('Verification code sent to your email', isError: false);
-      setState(() {
-        _codeSent = true;
-      });
-      _startCooldown();
-      _animCtrl.forward(from: 0);
-    } else if (mounted && viewModel.errorMessage != null) {
-      debugPrint('DEBUG: [ForgotPasswordPage] Error showing snackbar: ${viewModel.errorMessage}');
-      _showSnackbar(viewModel.errorMessage!, isError: true);
-    }
-  }
-
-  Future<void> _handleResetPassword() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_newPasswordController.text != _confirmPasswordController.text) {
-      _showSnackbar('Passwords do not match', isError: true);
-      return;
-    }
-
-    final viewModel = context.read<AuthViewModel>();
-    final success = await viewModel.resetPassword(
-      email: _emailController.text.trim(),
-      code: _otpController.text.trim(),
-      password: _newPasswordController.text,
+  if (success) {
+    _showSnackbar(
+      'Password reset link sent. Please check your email.',
+      isError: false,
     );
 
-    if (success && mounted) {
-      _showSnackbar('Password reset successfully! You can now login.', isError: false);
-      Navigator.pop(context);
-    } else if (mounted && viewModel.errorMessage != null) {
-      _showSnackbar(viewModel.errorMessage!, isError: true);
-    }
+    Navigator.pop(context);
+  } else {
+    _showSnackbar(
+      viewModel.errorMessage ?? 'Unable to send reset email.',
+      isError: true,
+    );
   }
+}
+
+  
 
   void _showSnackbar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -170,12 +125,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildIconHeader(),
-                          const SizedBox(height: 32),
-                          if (!_codeSent) _buildEmailStep(viewModel) else _buildResetStep(viewModel),
-                          const SizedBox(height: 32),
-                          _buildSubmitButton(viewModel),
-                        ],
+                                _buildIconHeader(),
+                                const SizedBox(height: 32),
+                                _buildEmailStep(viewModel),
+                                const SizedBox(height: 32),
+                                _buildSubmitButton(viewModel),
+                              ],
                       ),
                     );
                   },
@@ -216,117 +171,69 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
         ),
         const SizedBox(height: 8),
         const Text(
-          'Enter your email address and we\'ll send you a code to reset your password.',
+          'Enter your email address and we\'ll send you a password reset link.',
           style: TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.5),
         ),
         const SizedBox(height: 32),
-        AuthTextField(
+       AuthTextField(
           label: 'Email Address',
           hint: 'Enter your registered email',
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
-          prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.textMuted, size: 20),
+          prefixIcon: const Icon(
+            Icons.email_outlined,
+            color: AppTheme.textMuted,
+            size: 20,
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter your email';
+            }
+        
+            final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+        
+            if (!emailRegex.hasMatch(value.trim())) {
+              return 'Enter a valid email address';
+            }
+        
+            return null;
+          },
         ),
       ],
     );
   }
 
-  Widget _buildResetStep(AuthViewModel viewModel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Verify Account',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.textDark),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'We\'ve sent a 6-digit code to ${_emailController.text}. Please enter it below along with your new password.',
-          style: const TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.5),
-        ),
-        const SizedBox(height: 32),
-        AuthTextField(
-          label: 'Verification Code',
-          hint: '6-digit OTP',
-          controller: _otpController,
-          keyboardType: TextInputType.number,
-          prefixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(width: 12),
-              const Icon(Icons.numbers_rounded, color: AppTheme.textMuted, size: 20),
-              TextButton(
-                onPressed: (viewModel.isLoading || _resendCooldown > 0) ? null : _handleSendOtp,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  _resendCooldown > 0 ? 'Resend ($_resendCooldown s)' : 'Resend',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: _resendCooldown > 0 ? AppTheme.textMuted : AppTheme.primary,
-                  ),
-                ),
-              ),
-              Container(
-                height: 20,
-                width: 1,
-                margin: const EdgeInsets.only(right: 8),
-                color: Colors.grey.withValues(alpha: 0.3),
-              ),
-            ],
-          ),
-          validator: (val) => val == null || val.length != 6 ? 'Enter the 6-digit code' : null,
-        ),
-        const SizedBox(height: 20),
-        AuthTextField(
-          label: 'New Password',
-          hint: 'Enter your new password',
-          controller: _newPasswordController,
-          obscureText: viewModel.obscurePassword,
-          prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 20),
-          suffixIcon: IconButton(
-            icon: Icon(
-              viewModel.obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-              color: AppTheme.textMuted,
-              size: 20,
-            ),
-            onPressed: viewModel.togglePasswordVisibility,
-          ),
-          validator: (val) => val == null || val.length < 8 ? 'Password must be at least 8 characters' : null,
-        ),
-        const SizedBox(height: 20),
-        AuthTextField(
-          label: 'Confirm New Password',
-          hint: 'Confirm your new password',
-          controller: _confirmPasswordController,
-          obscureText: viewModel.obscurePassword,
-          prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 20),
-          validator: (val) => val == null || val.isEmpty ? 'Please confirm your password' : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubmitButton(AuthViewModel viewModel) {
-    return ElevatedButton(
-      onPressed: viewModel.isLoading ? null : (_codeSent ? _handleResetPassword : _handleSendOtp),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 0,
+ 
+ Widget _buildSubmitButton(AuthViewModel viewModel) {
+  return ElevatedButton(
+    onPressed: viewModel.isLoading
+        ? null
+        : _handleSendResetLink,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: AppTheme.primary,
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: viewModel.isLoading
-          ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-          : Text(
-              _codeSent ? 'Reset Password' : 'Send Code',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      elevation: 0,
+    ),
+    child: viewModel.isLoading
+        ? const SizedBox(
+            height: 24,
+            width: 24,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2,
             ),
-    );
-  }
+          )
+        : const Text(
+            'Send Reset Link',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+  );
+}
 }
