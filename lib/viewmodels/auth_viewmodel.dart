@@ -449,47 +449,29 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<bool> forgotPassword(String email) async {
-    _isLoading = true;
-    _errorMessage = null;
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
+
+  try {
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'io.supabase.flutter://reset-password',
+    );
+
+    return true;
+  } on AuthException catch (e) {
+    _errorMessage = e.message;
+    return false;
+  } catch (e) {
+    _errorMessage = e.toString();
+    return false;
+  } finally {
+    _isLoading = false;
     notifyListeners();
-
-    try {
-      final response = await _authRepository.forgotPassword(email);
-      return response['success'] == true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
   }
+}
 
-  Future<bool> resetPassword({
-    required String email,
-    required String code,
-    required String password,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final response = await _authRepository.resetPassword(
-        email: email,
-        code: code,
-        password: password,
-      );
-      
-      return response['success'] == true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
 
   Future<bool> updateProfile({
     required String firstName,
