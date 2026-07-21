@@ -463,8 +463,8 @@ class AuthViewModel extends ChangeNotifier {
   } on AuthException catch (e) {
     _errorMessage = e.message;
     return false;
-  } catch (e) {
-    _errorMessage = e.toString();
+  } catch (_) {
+    _errorMessage = 'Unable to send reset email. Please try again.';
     return false;
   } finally {
     _isLoading = false;
