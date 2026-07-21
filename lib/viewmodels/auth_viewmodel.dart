@@ -539,24 +539,26 @@ class AuthViewModel extends ChangeNotifier {
   notifyListeners();
 
   try {
-    // Get the currently logged in user's email
     final email = _supabase.auth.currentUser?.email;
 
     if (email == null) {
-      _errorMessage = 'No authenticated user found.';
+      _errorMessage = 'No authenticated user.';
       return false;
     }
 
-    // Verify the current password
+    // Verify current password
     await _supabase.auth.signInWithPassword(
       email: email,
       password: currentPassword,
     );
 
-    // Current password is correct, update to the new password
+    // Update password
     await _supabase.auth.updateUser(
       UserAttributes(password: newPassword),
     );
+
+    // Optional: sign out so the user logs in again
+    await _supabase.auth.signOut();
 
     return true;
   } on AuthException catch (e) {
@@ -566,8 +568,8 @@ class AuthViewModel extends ChangeNotifier {
       _errorMessage = e.message;
     }
     return false;
-  } catch (e) {
-    _errorMessage = e.toString();
+  } catch (_) {
+    _errorMessage = 'Unable to change password.';
     return false;
   } finally {
     _isLoading = false;
