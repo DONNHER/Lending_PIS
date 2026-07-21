@@ -38,6 +38,7 @@ import 'package:capstone_application/views/login_page.dart';
 import 'package:capstone_application/views/admin_login_page.dart';
 import 'package:capstone_application/views/registration_page.dart';
 import 'package:capstone_application/views/app_shell.dart';
+import 'package:capstone_application/views/change_password_page.dart';
 import 'package:capstone_application/views/ShareHolder_screens/layouts/app.dart';
 import 'package:capstone_application/views/ShareHolder_screens/notification.dart';
 import 'package:capstone_application/models/user_model.dart';
@@ -333,13 +334,36 @@ class CanteenApp extends StatelessWidget {
   }
 }
 
-class RootApp extends StatelessWidget {
+class RootApp extends StatefulWidget {
   const RootApp({super.key});
+
+  @override
+  State<RootApp> createState() => _RootAppState();
+}
+
+class _RootAppState extends State<RootApp> {
+  @override
+  void initState() {
+    super.initState();
+
+    // 🚀 Listen for Supabase auth state changes (e.g. Password Recovery on Web)
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+
+      if (event == AuthChangeEvent.passwordRecovery) {
+        AuthViewModel.navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (_) => const ChangePasswordPage(),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthViewModel>();
-
+    
     return MaterialApp(
       navigatorKey: AuthViewModel.navigatorKey, // Set the global navigator key
       title: 'Lending System',
@@ -366,23 +390,19 @@ class RootApp extends StatelessWidget {
         ),
       );
     }
-
     if (!auth.isAuthenticated) {
       return const LoginPage();
     }
-
     // 🚀 FIX: If impersonating, ALWAYS return AppShell so the overlay banner is visible
     if (auth.isImpersonating) {
       debugPrint('DEBUG: [RootApp] Impersonation active, returning AppShell for banner support');
       return const AppShell();
     }
-
     if (auth.currentUser?.role == UserRole.shareholder) {
       return const AppLayout();
     }
-
     debugPrint('DEBUG: [RootApp] Role: ${auth.currentUser?.role}, Initialized: ${auth.isInitialized}');
-
+    
     // For Admin/Cashier, show a global loader if the dashboard (main entry) 
     // hasn't finished its initial background fetch yet.
     return Consumer<DashboardViewModel>(
