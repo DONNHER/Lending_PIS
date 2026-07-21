@@ -343,8 +343,7 @@ class RootApp extends StatelessWidget {
     return MaterialApp(
       navigatorKey: AuthViewModel.navigatorKey, // Set the global navigator key
       title: 'Lending System',
-      debugShowCheckedModeBanner: false,
-      initialRoute: '/', 
+      debugShowCheckedModeBanner: false, 
       theme: AppTheme.lightTheme,
       home: _getHome(auth),
       routes: {
