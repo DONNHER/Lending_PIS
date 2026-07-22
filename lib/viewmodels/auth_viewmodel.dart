@@ -218,25 +218,21 @@ class AuthViewModel extends ChangeNotifier {
         try {
           debugPrint('DEBUG: [AuthViewModel] Checking Supabase confirmation for: $email');
           
-          // Attempt a silent sign-in to check confirmation status
           final authRes = await _supabase.auth.signInWithPassword(email: email, password: password);
           
           debugPrint('DEBUG: [AuthViewModel] Supabase Sign-In Success. User ID: ${authRes.user?.id}');
           debugPrint('DEBUG: [AuthViewModel] Email Confirmed At: ${authRes.user?.emailConfirmedAt}');
           
-          // If we reach here, password is correct and account IS confirmed.
           await _supabase.auth.signOut();
           
         } on AuthException catch (e) {
           debugPrint('DEBUG: [AuthViewModel] Supabase Auth Error: ${e.message}');
           debugPrint('DEBUG: [AuthViewModel] Supabase Error Code: ${e.statusCode}');
 
-          // Block if email is not confirmed
           if (e.message.toLowerCase().contains('email not confirmed')) {
             debugPrint('DEBUG: [AuthViewModel] Email not confirmed. Triggering resend...');
             
             try {
-              // 🚀 Automatically resend verification email if it was expired or never confirmed
               await _supabase.auth.resend(
                 type: OtpType.signup,
                 email: email,
@@ -264,7 +260,6 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         }
 
-        // ONLY if the above check passed (no exception thrown), we send the OTP
         try {
           debugPrint('DEBUG: [AuthViewModel] Triggering OTP via Supabase...');
           await _supabase.auth.signInWithOtp(email: email);
@@ -286,7 +281,6 @@ class AuthViewModel extends ChangeNotifier {
       if (response['token'] != null && response['user'] != null) {
         final user = UserModel.fromJson(response['user']);
         
-        // 🚀 ROLE-BASED LOGIN BLOCKING
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
             _errorMessage = 'Access denied. This login is for Administrators only.';
@@ -303,10 +297,8 @@ class AuthViewModel extends ChangeNotifier {
           }
         }
 
-        // 1. Set the user locally immediately
         _currentUser = user;
         
-        // 2. Log activity but don't let it block login if it fails
         try {
           await _activityLogRepository.logActivity(
             action: 'Login',
@@ -346,13 +338,11 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 🚀 1. REGISTER IN SUPABASE FIRST
       debugPrint('DEBUG: [AuthViewModel] Registering in Supabase...');
       try {
         await _supabase.auth.signUp(email: email, password: password);
         debugPrint('DEBUG: [AuthViewModel] Supabase signUp success.');
       } on AuthException catch (e) {
-        // If user already exists in Supabase, we can proceed to sync with Laravel
         if (e.message.toLowerCase().contains('already registered') || 
             e.message.toLowerCase().contains('already been registered')) {
           debugPrint('DEBUG: [AuthViewModel] User already in Supabase, proceeding to Laravel sync...');
@@ -361,7 +351,6 @@ class AuthViewModel extends ChangeNotifier {
         }
       }
 
-      // 🚀 2. REGISTER IN LARAVEL
       debugPrint('DEBUG: [AuthViewModel] Registering in Laravel...');
       await _authRepository.register(
         username: username,
@@ -395,7 +384,6 @@ class AuthViewModel extends ChangeNotifier {
     try {
       debugPrint('DEBUG: [AuthViewModel] Attempting MFA verification for $email...');
       
-      // 🚀 TRY SIGNUP OTP FIRST (for new accounts)
       AuthResponse? res;
       try {
         res = await _supabase.auth.verifyOTP(
@@ -406,7 +394,6 @@ class AuthViewModel extends ChangeNotifier {
         debugPrint('DEBUG: [AuthViewModel] Signup OTP verification success.');
       } catch (e) {
         debugPrint('DEBUG: [AuthViewModel] Signup OTP failed, trying Magiclink OTP...');
-        // 🚀 TRY MAGICLINK OTP SECOND (for existing confirmed accounts)
         res = await _supabase.auth.verifyOTP(
           email: email,
           token: code,
@@ -416,7 +403,6 @@ class AuthViewModel extends ChangeNotifier {
       }
 
       if (res.session != null) {
-        // 2. Tell Laravel that MFA is complete and get the Laravel token
         final response = await _authRepository.verifyMfa(email);
         if (response['success'] == true) {
           _currentUser = UserModel.fromJson(response['user']);
@@ -486,11 +472,9 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 🚀 Use original admin if impersonating to avoid updating shareholder profile
       final effectiveUser = isImpersonating ? _originalAdminUser : _currentUser;
       String? avatarUrl = effectiveUser?.avatarUrl;
 
-      // 1. Handle Avatar Upload
       if (_avatarBytes != null) {
         debugPrint('DEBUG: [AuthViewModel] Uploading new avatar...');
         avatarUrl = await _storageRepository.uploadBytes(
@@ -503,7 +487,6 @@ class AuthViewModel extends ChangeNotifier {
         avatarUrl = null;
       }
 
-      // 2. Sync with Laravel
       final response = await _authRepository.updateProfile(
         firstName: firstName,
         lastName: lastName,
@@ -549,18 +532,15 @@ class AuthViewModel extends ChangeNotifier {
         return false;
       }
 
-      // Verify current password
       await _supabase.auth.signInWithPassword(
         email: email,
         password: currentPassword,
       );
 
-      // Update password
       await _supabase.auth.updateUser(
         UserAttributes(password: newPassword),
       );
 
-      // Optional: sign out so the user logs in again
       await _supabase.auth.signOut();
 
       return true;
@@ -587,19 +567,16 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Sign out from Supabase
       await _supabase.auth.signOut();
     } catch (e) {
       debugPrint('DEBUG: [AuthViewModel] Supabase SignOut error: $e');
     }
 
     try {
-      // 2. Try to hit backend logout, but catch 401s or errors to avoid loops
       await _authRepository.logout();
     } catch (e) {
       debugPrint('DEBUG: [AuthViewModel] Backend logout error (ignored): $e');
     } finally {
-      // 3. Clear local session states
       _currentUser = null;
       _originalAdminUser = null;
       _originalAdminToken = null;
@@ -610,18 +587,15 @@ class AuthViewModel extends ChangeNotifier {
       _isLoggingOut = false;
       notifyListeners();
 
-      // 4. Clear the navigation stack completely and navigate to login
       navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 
-  /// Handles unauthorized API responses safely without infinite loops.
   void handleUnauthorized() {
     if (_currentUser == null || _isLoggingOut) return;
     logout();
   }
 
-  /// Starts an impersonation session using the provided user/token response data.
   Future<void> startImpersonation(Map<String, dynamic> response) async {
     if (_currentUser == null) return;
 
@@ -629,11 +603,9 @@ class AuthViewModel extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // 1. Save current admin state
       _originalAdminUser = _currentUser;
       _originalAdminToken = await _authRepository.getToken();
 
-      // 2. Extract target user and switch token context
       if (response['token'] != null && response['user'] != null) {
         final targetUser = UserModel.fromJson(response['user']);
         await _authRepository.setToken(response['token']);
@@ -655,11 +627,9 @@ class AuthViewModel extends ChangeNotifier {
   Future<void> stopImpersonation() async {
     if (_originalAdminUser == null || _originalAdminToken == null) return;
 
-    // 1. Restore original admin state
     _currentUser = _originalAdminUser;
     await _authRepository.setToken(_originalAdminToken!);
 
-    // 2. Clear impersonation data
     _originalAdminUser = null;
     _originalAdminToken = null;
 
