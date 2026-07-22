@@ -1,7 +1,8 @@
 .git
 .idea
 .dart_tool
-build
+build/
+!build/web/
 laravel_backend/vendor
 laravel_backend/node_modules
 laravel_backend/storage/*.key
