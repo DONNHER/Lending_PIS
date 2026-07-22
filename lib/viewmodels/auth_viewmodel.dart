@@ -578,34 +578,29 @@ class AuthViewModel extends ChangeNotifier {
 }
 
   Future<void> logout() async {
+    _isLoading = true;
+    notifyListeners();
+
     try {
+      // 1. Sign out from Supabase and Laravel backend
       await _supabase.auth.signOut();
       await _authRepository.logout();
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Logout error: $e');
     } finally {
+      // 2. Clear local session states
       _currentUser = null;
+      _originalAdminUser = null;
+      _originalAdminToken = null;
+      _isMfaRequired = false;
+      _pendingMfaEmail = null;
+      
+      _isLoading = false;
       notifyListeners();
+
+      // 3. Clear the navigation stack completely and navigate to login
+      navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
     }
-  }
-
-  void handleUnauthorized() {
-    _currentUser = null;
-    _errorMessage = 'Session expired. Please login again.';
-    notifyListeners();
-    navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
-  }
-
-  Future<void> startImpersonation(Map<String, dynamic> response) async {
-    if (response['token'] == null || response['user'] == null) return;
-
-    // 1. Save original admin state
-    _originalAdminUser = _currentUser;
-    _originalAdminToken = await _authRepository.getToken();
-
-    // 2. Switch to target user
-    _currentUser = UserModel.fromJson(response['user']);
-    await _authRepository.setToken(response['token']);
-
-    notifyListeners();
   }
 
   Future<void> stopImpersonation() async {
