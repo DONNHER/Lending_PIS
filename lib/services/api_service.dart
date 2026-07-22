@@ -21,12 +21,14 @@ class ApiService {
     _token = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
+    debugPrint('DEBUG: [ApiService] Token saved successfully.');
   }
 
   Future<String?> getToken() async {
     if (_token != null) return _token;
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
+    debugPrint('DEBUG: [ApiService] Retrieved token from storage: ${_token != null ? "Found (${_token!.substring(0, 6)}...)" : "Null"}');
     return _token;
   }
 
@@ -34,6 +36,7 @@ class ApiService {
     _token = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+    debugPrint('DEBUG: [ApiService] Token cleared.');
   }
 
   Map<String, String> _headers(String? token) {
@@ -52,7 +55,7 @@ class ApiService {
     final token = await getToken();
     final uri = Uri.parse('$baseUrl/${_cleanEndpoint(endpoint)}').replace(queryParameters: queryParams);
     final headers = _headers(token);
-    debugPrint('DEBUG: [ApiService] Request GET $uri with token: ${token?.substring(0, 10)}...');
+    debugPrint('DEBUG: [ApiService] Request GET $uri with token: ${token != null ? "${token.substring(0, 6)}..." : "NULL"}');
     final response = await http.get(uri, headers: headers);
     return _handleResponse(response, 'GET', uri.toString(), triggerUnauthorized: triggerUnauthorized);
   }
@@ -61,7 +64,7 @@ class ApiService {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
     final headers = _headers(token);
-    debugPrint('DEBUG: [ApiService] Request POST $url with token: ${token?.substring(0, 10)}...');
+    debugPrint('DEBUG: [ApiService] Request POST $url with token: ${token != null ? "${token.substring(0, 6)}..." : "NULL"}');
 
     final response = await http.post(
       Uri.parse(url),
@@ -121,7 +124,6 @@ class ApiService {
     return _handleResponse(response, 'POST (Multipart)', url, triggerUnauthorized: triggerUnauthorized);
   }
 
-  // 🎯 WEB & MOBILE COMPATIBLE FIX: Upload raw file bytes from browser memory directly
   Future<dynamic> uploadFileBytes({
     required String endpoint,
     required Uint8List bytes,
@@ -131,7 +133,7 @@ class ApiService {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
 
-    debugPrint('DEBUG: [ApiService] Request POST (Multipart Bytes) $url with token: ${token?.substring(0, 10)}...');
+    debugPrint('DEBUG: [ApiService] Request POST (Multipart Bytes) $url with token: ${token != null ? "${token.substring(0, 6)}..." : "NULL"}');
 
     final request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers.addAll({
@@ -141,7 +143,7 @@ class ApiService {
 
     request.files.add(
       http.MultipartFile.fromBytes(
-        'file', // Matches your backend $request->file('file') parameter name
+        'file',
         bytes,
         filename: fileName,
         contentType: MediaType('application', 'octet-stream'),
@@ -155,7 +157,6 @@ class ApiService {
   }
 
   Future<dynamic> _handleResponse(http.Response response, String method, String url, {bool triggerUnauthorized = true}) async {
-    // Log basic info for every response
     debugPrint('DEBUG: [ApiService] Response received for $method $url');
     debugPrint('DEBUG: [ApiService] Status Code: ${response.statusCode}');
     debugPrint('DEBUG: [ApiService] Content-Type: ${response.headers['content-type']}');
@@ -180,7 +181,6 @@ class ApiService {
           onUnauthorized?.call();
         }
 
-        // 🚀 SPECIAL HANDLING: Return full response for specific status codes (like 403 Forbidden for CAPTCHA/Lockout)
         if (response.statusCode == 403 && decoded is Map && decoded.containsKey('captcha_required')) {
           return decoded;
         }
