@@ -39,7 +39,7 @@ class AuthRepository {
     String? address,
     String? phone,
     String? idImageUrl,
-    required double initialShare, // <-- 1. Added initialShare parameter here
+    double? initialShare, // <-- 1. Added initialShare parameter here
   }) async {
     final response = await _apiService.post('/register', body: {
       'username': username,
