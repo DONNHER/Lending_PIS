@@ -16,8 +16,6 @@ class AdminSettingsScreen extends StatefulWidget {
 }
 
 class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
-  bool _notificationsEnabled = true;
-
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -108,9 +106,9 @@ class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
                             onTap: authViewModel.isImpersonating 
                               ? null 
                               : () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const AdminEditAccountDetailsScreen()),
-                              ),
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const AdminEditAccountDetailsScreen()),
+                                ),
                             child: Stack(
                               children: [
                                 Container(
