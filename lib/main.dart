@@ -64,6 +64,22 @@ void main() async {
     );
   }
 
+  // 🚀 WEB RECOVERY LINK HANDLING: Check URL parameters on app boot
+  // Supabase sends a code/token parameter on web redirects for password recovery
+  final uri = Uri.base;
+  final code = uri.queryParameters['code'];
+  if (code != null) {
+    try {
+      // Immediately exchange code for session before running the app
+      await Supabase.instance.client.auth.exchangeCodeForSession(code);
+      
+      // Optionally clean up the URL in the browser bar so the code isn't exposed
+      // (Flutter web handles routing changes cleanly via named routes after initialization)
+    } catch (e) {
+      debugPrint('Error exchanging web recovery code on startup: $e');
+    }
+  }
+
   final apiBaseUrl = dotenv.env['API_URL'] ?? 'http://localhost:8000/api';
   final apiService = ApiService(baseUrl: apiBaseUrl);
   final cacheService = LocalCacheService();
@@ -240,20 +256,6 @@ class CanteenApp extends StatelessWidget {
           },
         ),
 
-        ChangeNotifierProxyProvider<AuthViewModel, UserManagementViewModel>(
-          create: (context) => UserManagementViewModel(
-            context.read<UserRepository>(),
-          ),
-          update: (context, auth, model) {
-            if (auth.isAuthenticated && 
-                auth.currentUser?.role == UserRole.admin && 
-                model != null && !model.isInitialized) {
-              model.fetchUsers();
-            }
-            return model!;
-          },
-        ),
-
         // 🚀 Registered with all 3 required repositories
         ChangeNotifierProvider(
           create: (context) => LoanDetailsViewModel(
@@ -346,7 +348,7 @@ class _RootAppState extends State<RootApp> {
   void initState() {
     super.initState();
 
-    // 🚀 Listen for Supabase auth state changes (e.g. Password Recovery on Web)
+    // 🚀 Also keep the listener active in case the event fires dynamically
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
 
@@ -364,12 +366,15 @@ class _RootAppState extends State<RootApp> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthViewModel>();
     
+    // Check if we arrived via recovery link code on startup
+    final hasRecoveryCode = Uri.base.queryParameters['code'] != null;
+
     return MaterialApp(
-      navigatorKey: AuthViewModel.navigatorKey, // Set the global navigator key
+      navigatorKey: AuthViewModel.navigatorKey, 
       title: 'Lending System',
       debugShowCheckedModeBanner: false, 
       theme: AppTheme.lightTheme,
-      home: _getHome(auth),
+      home: hasRecoveryCode ? const ChangePasswordPage() : _getHome(auth),
       routes: {
         '/login': (context) => const LoginPage(),
         '/admin-login': (context) => const AdminLoginPage(),
@@ -378,6 +383,7 @@ class _RootAppState extends State<RootApp> {
         '/users': (context) => const AppShell(),
         '/shareholder-dashboard': (context) => const AppLayout(),
         '/notifications': (context) => const NotificationScreen(),
+        '/change-password': (context) => const ChangePasswordPage(),
       },
     );
   }
@@ -393,7 +399,6 @@ class _RootAppState extends State<RootApp> {
     if (!auth.isAuthenticated) {
       return const LoginPage();
     }
-    // 🚀 FIX: If impersonating, ALWAYS return AppShell so the overlay banner is visible
     if (auth.isImpersonating) {
       debugPrint('DEBUG: [RootApp] Impersonation active, returning AppShell for banner support');
       return const AppShell();
@@ -403,8 +408,6 @@ class _RootAppState extends State<RootApp> {
     }
     debugPrint('DEBUG: [RootApp] Role: ${auth.currentUser?.role}, Initialized: ${auth.isInitialized}');
     
-    // For Admin/Cashier, show a global loader if the dashboard (main entry) 
-    // hasn't finished its initial background fetch yet.
     return Consumer<DashboardViewModel>(
       builder: (context, dashboard, child) {
         debugPrint('DEBUG: [RootApp] Dashboard isInitialized: ${dashboard.isInitialized}');
