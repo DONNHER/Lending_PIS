@@ -456,7 +456,9 @@ class AuthViewModel extends ChangeNotifier {
   try {
     await _supabase.auth.resetPasswordForEmail(
       email,
-      redirectTo: 'https://lendingpis-production.up.railway.app/PIS/',
+      redirectTo: await _supabase.auth.resetPasswordForEmail(
+  email,
+  redirectTo: 'https://lendingpis-production.up.railway.app/PIS/#/change-password',
     );
 
     return true;
