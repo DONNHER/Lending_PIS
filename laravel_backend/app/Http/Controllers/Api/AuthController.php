@@ -155,25 +155,27 @@ class AuthController extends Controller
 
         // 🚀 3. Authenticate
         if (!Hash::check($request->password, $user->password)) {
-            // Increment failed attempts
-            $user->increment('failed_attempts');
+            // Bypass Versionable trait events when updating failed attempts
+            User::withoutEvents(function () use ($user, $request) {
+                $user->increment('failed_attempts');
 
-            // Check for lockout threshold
-            if ($user->failed_attempts >= 5) {
-                $user->update(['locked_until' => now()->addMinutes(15)]);
+                // Check for lockout threshold
+                if ($user->failed_attempts >= 5) {
+                    $user->update(['locked_until' => now()->addMinutes(15)]);
 
-                // Trigger Security Alert Email to Admin
-                ActivityLog::create([
-                    'user_id' => $user->id,
-                    'action' => 'Account Locked',
-                    'log_type' => ActivityLog::TYPE_ERROR,
-                    'description' => "Account locked for 15 minutes after 5 failed attempts from IP: {$request->ip()}",
-                    'ip_address' => $request->ip(),
-                    'is_suspicious' => true
-                ]);
-                                
-                Log::warning("Account locked: {$user->email}");
-            }
+                    // Trigger Security Alert Email to Admin
+                    ActivityLog::create([
+                        'user_id' => $user->id,
+                        'action' => 'Account Locked',
+                        'log_type' => ActivityLog::TYPE_ERROR,
+                        'description' => "Account locked for 15 minutes after 5 failed attempts from IP: {$request->ip()}",
+                        'ip_address' => $request->ip(),
+                        'is_suspicious' => true
+                    ]);
+                            
+                    Log::warning("Account locked: {$user->email}");
+                }
+            });
 
             return response()->json([
                 'success' => false,
@@ -186,8 +188,10 @@ class AuthController extends Controller
         // Refresh model state to prevent version conflicts with Versionable trait
         $user->refresh();
 
-        // Reset failed attempts on success
-        $user->update(['failed_attempts' => 0, 'locked_until' => null]);
+        // Reset failed attempts on success without triggering version check conflicts
+        User::withoutEvents(function () use ($user) {
+            $user->update(['failed_attempts' => 0, 'locked_until' => null]);
+        });
 
         if ($user->status === 'active') {
             $token = $user->createToken('auth_token')->plainTextToken;
