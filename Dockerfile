@@ -47,9 +47,10 @@ ENV COMPOSER_PROCESS_TIMEOUT=2000
 # Copy Laravel backend files
 COPY laravel_backend/ .
 
-# Install Composer dependencies
+# Ensure a completely clean vendor install by removing any copied vendor files first
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+RUN rm -rf vendor && \
+    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
 
 # COPY FLUTTER WEB BUILD INTO LARAVEL PUBLIC/PIS FROM STAGE 1
 RUN mkdir -p /var/www/html/public/PIS
