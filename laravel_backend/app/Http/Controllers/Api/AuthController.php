@@ -164,15 +164,15 @@ class AuthController extends Controller
 
                 // Trigger Security Alert Email to Admin
                 ActivityLog::create([
-                                    'user_id' => $user->id,
-                                    'action' => 'Account Locked',
-                                    'log_type' => ActivityLog::TYPE_ERROR,
-                                    'description' => "Account locked for 15 minutes after 5 failed attempts from IP: {$request->ip()}",
-                                    'ip_address' => $request->ip(),
-                                    'is_suspicious' => true
-                                ]);
+                    'user_id' => $user->id,
+                    'action' => 'Account Locked',
+                    'log_type' => ActivityLog::TYPE_ERROR,
+                    'description' => "Account locked for 15 minutes after 5 failed attempts from IP: {$request->ip()}",
+                    'ip_address' => $request->ip(),
+                    'is_suspicious' => true
+                ]);
                                 
-                                Log::warning("Account locked: {$user->email}");
+                Log::warning("Account locked: {$user->email}");
             }
 
             return response()->json([
@@ -182,6 +182,9 @@ class AuthController extends Controller
                 'captcha_required' => $user->failed_attempts >= 3
             ], 401);
         }
+
+        // Refresh model state to prevent version conflicts with Versionable trait
+        $user->refresh();
 
         // Reset failed attempts on success
         $user->update(['failed_attempts' => 0, 'locked_until' => null]);
@@ -286,28 +289,27 @@ class AuthController extends Controller
     }
 
     public function forgotPassword(Request $request)
-{
-    $request->validate([
-        'email' => 'required|email'
-    ]);
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
 
-    $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->first();
 
-    if (!$user) {
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No, this email is not registered in our system.'
+            ], 404);
+        }
+
+        $this->logAuth($user, 'Password Reset Request', $request);
+
         return response()->json([
-            'success' => false,
-            'message' => 'No, this email is not registered in our system.'
-        ], 404);
+            'success' => true,
+            'message' => 'Password reset is handled by Supabase. Please use the Supabase reset password flow.'
+        ]);
     }
-
-    $this->logAuth($user, 'Password Reset Request', $request);
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Password reset is handled by Supabase. Please use the Supabase reset password flow.'
-    ]);
-}
-
 
     public function verifyMfa(Request $request)
     {
