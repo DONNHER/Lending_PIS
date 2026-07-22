@@ -448,7 +448,7 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  Future<bool> forgotPassword(String email) async {
+ Future<bool> forgotPassword(String email) async {
   _isLoading = true;
   _errorMessage = null;
   notifyListeners();
@@ -456,7 +456,7 @@ class AuthViewModel extends ChangeNotifier {
   try {
     await _supabase.auth.resetPasswordForEmail(
       email,
-      redirectTo: 'io.supabase.flutter://reset-password',
+      redirectTo: 'https://lendingpis-production.up.railway.app/PIS/',
     );
 
     return true;
