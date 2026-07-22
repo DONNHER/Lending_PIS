@@ -1,3 +1,16 @@
+# --- STAGE 1: Build Flutter Web ---
+FROM ghcr.io/cirruslabs/flutter:stable AS flutter-builder
+WORKDIR /app/flutter
+
+# Copy the root Flutter project files (since your lib/ and web/ are in the root)
+COPY . .
+
+# Build the web assets with the correct base-href (skipping native directories)
+RUN flutter config --enable-web && \
+    flutter pub get && \
+    flutter build web --release --base-href "/PIS/"
+
+# --- STAGE 2: PHP / Nginx Production Server ---
 FROM php:8.4-fpm-alpine
 
 # Install system dependencies
@@ -37,9 +50,9 @@ COPY laravel_backend/ .
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
 
-# COPY PRE-BUILT FLUTTER WEB INTO LARAVEL PUBLIC/PIS (Force Overwrite)
+# COPY FLUTTER WEB BUILD INTO LARAVEL PUBLIC/PIS FROM STAGE 1
 RUN mkdir -p /var/www/html/public/PIS
-COPY build/web/ /var/www/html/public/PIS/
+COPY --from=flutter-builder /app/flutter/build/web/ /var/www/html/public/PIS/
 
 # Configuration Files
 COPY scripts/railway/nginx.conf /etc/nginx/http.d/default.conf.template
