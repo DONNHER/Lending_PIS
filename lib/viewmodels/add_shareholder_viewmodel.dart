@@ -56,6 +56,7 @@ class AddShareholderViewModel extends ChangeNotifier {
     required String password,
     required String address,
     required String phone,
+    required double initialShare, // <-- 1. Add parameter here
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -107,6 +108,7 @@ class AddShareholderViewModel extends ChangeNotifier {
         address: address,
         phone: phone,
         idImageUrl: idImageUrl,
+        initialShare: initialShare, // <-- 2. Pass it to your backend repository call
       );
 
       if (response['success'] == true) {
