@@ -112,6 +112,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     obscureText: _obscure1,
                     decoration: InputDecoration(
                       labelText: "New Password",
+                      // Added matching placeholder hint text
+                      hintText: "Min 8 chars, uppercase, lowercase, number, special char",
+                      hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscure1
@@ -126,30 +129,35 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.length < 8) {
+                      if (value == null || value.isEmpty) {
+                        return "Password is required.";
+                      }
+                      if (value.length < 8) {
                         return "Password must be at least 8 characters.";
+                      }
+                      if (!value.contains(RegExp(r'[A-Z]'))) {
+                        return "Must contain at least one uppercase letter.";
+                      }
+                      if (!value.contains(RegExp(r'[a-z]'))) {
+                        return "Must contain at least one lowercase letter.";
+                      }
+                      if (!value.contains(RegExp(r'[0-9]'))) {
+                        return "Must contain at least one number.";
+                      }
+                      if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                        return "Must contain at least one special character.";
                       }
                       return null;
                     },
                   ),
-                  const SizedBox(height: 6),
-                  // Password requirement hint text
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Must be at least 8 characters long.",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   TextFormField(
                     controller: _confirmController,
                     obscureText: _obscure2,
                     decoration: InputDecoration(
                       labelText: "Confirm Password",
+                      hintText: "Re-enter your new password",
+                      hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscure2
