@@ -335,7 +335,7 @@ class _RootAppState extends State<RootApp> {
     super.initState();
 
     // Check on startup if URL contains recovery indicators from Supabase
-    _checkInitialUri();
+    _handleInitialSessionForRecovery();
 
     // Listen to dynamic auth state changes for password recovery events
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
@@ -348,19 +348,17 @@ class _RootAppState extends State<RootApp> {
     });
   }
 
-  void _checkInitialUri() {
+  Future<void> _handleInitialSessionForRecovery() async {
     try {
       final uri = Uri.base;
       final fragment = uri.fragment;
-      if (uri.queryParameters.containsKey('code') || 
-          fragment.contains('type=recovery') || 
-          fragment.contains('access_token')) {
+      if (fragment.contains('type=recovery') || uri.queryParameters.containsKey('code')) {
         setState(() {
           _hasRecoveryRedirect = true;
         });
       }
     } catch (e) {
-      debugPrint('Error checking URI: $e');
+      debugPrint('Error checking initial recovery URI: $e');
     }
   }
 
@@ -373,7 +371,7 @@ class _RootAppState extends State<RootApp> {
       title: 'Lending System',
       debugShowCheckedModeBanner: false, 
       theme: AppTheme.lightTheme,
-      // 🚀 Directly routes to ChangePasswordPage if a recovery link is detected
+      // 🚀 Forces route to ChangePasswordPage if a recovery link is detected
       home: _hasRecoveryRedirect ? const ChangePasswordPage() : _getHome(auth),
       routes: {
         '/login': (context) => const LoginPage(),
@@ -389,6 +387,9 @@ class _RootAppState extends State<RootApp> {
   }
 
   Widget _getHome(AuthViewModel auth) {
+    if (_hasRecoveryRedirect) {
+      return const ChangePasswordPage();
+    }
     if (!auth.isInitialized) {
       return const Scaffold(
         body: Center(
