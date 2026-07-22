@@ -2,11 +2,12 @@
 FROM ghcr.io/cirruslabs/flutter:stable AS flutter-builder
 WORKDIR /app/flutter
 
-# Copy the root Flutter project files (since your lib/ and web/ are in the root)
+# Copy the root Flutter project files
 COPY . .
 
-# Build the web assets with the correct base-href (skipping native directories)
+# Configure project for web, get dependencies, and build
 RUN flutter config --enable-web && \
+    flutter create . --platforms web && \
     flutter pub get && \
     flutter build web --release --base-href "/PIS/"
 
