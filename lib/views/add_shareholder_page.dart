@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 import '../app_theme.dart';
 import '../viewmodels/add_shareholder_viewmodel.dart';
 import '../viewmodels/navigation_viewmodel.dart';
@@ -23,7 +24,10 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
   final _passwordController = TextEditingController();
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _shareCapitalController = TextEditingController(); // Added controller for share capital
+  final _shareCapitalController = TextEditingController();
+  
+  bool _obscurePassword = true;
+  String _completePhoneNumber = '';
 
   @override
   void dispose() {
@@ -34,7 +38,7 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
     _passwordController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
-    _shareCapitalController.dispose(); // Dispose share capital controller
+    _shareCapitalController.dispose();
     super.dispose();
   }
 
@@ -67,8 +71,8 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
       username: _usernameController.text.trim(),
       password: _passwordController.text,
       address: _addressController.text.trim(),
-      phone: _phoneController.text.trim(),
-      initialShare: double.tryParse(_shareCapitalController.text.trim()) ?? 0.0, // Pass initial share value here
+      phone: _completePhoneNumber.trim(),
+      initialShare: double.tryParse(_shareCapitalController.text.trim()) ?? 0.0,
     );
 
     if (newUserId != null && mounted) {
@@ -76,11 +80,9 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
         const SnackBar(content: Text('Shareholder added successfully')),
       );
       
-      // Update global navigation state to show the new shareholder
       final nav = context.read<NavigationViewModel>();
       nav.navigateToShareholder(newUserId);
       
-      // Go back to the users page (which will now show the detail view due to the state change)
       Navigator.pop(context);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,12 +143,42 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  AuthTextField(
-                    label: 'Phone Number',
-                    hint: 'e.g. 09123456789',
+                  const Text(
+                    'Phone Number',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 8),
+                  IntlPhoneField(
                     controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                    initialCountryCode: 'PH',
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      hintText: '9123456789',
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFC06C4D), width: 1.5),
+                      ),
+                    ),
+                    onChanged: (phone) {
+                      _completePhoneNumber = phone.completeNumber;
+                    },
+                    validator: (phone) {
+                      if (phone == null || phone.number.isEmpty) {
+                        return 'Required';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 24),
                   _buildSectionTitle('Address'),
@@ -180,7 +212,7 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Share Capital Information'), // Added section title
+                  _buildSectionTitle('Share Capital Information'),
                   const SizedBox(height: 16),
                   AuthTextField(
                     label: 'Initial Share Capital',
@@ -213,10 +245,28 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
                   const SizedBox(height: 16),
                   AuthTextField(
                     label: 'Initial Password',
-                    hint: 'Min 8 characters',
+                    hint: 'Min 8 chars, uppercase, lowercase, number, special char',
                     controller: _passwordController,
-                    obscureText: true,
-                    validator: (v) => v!.length < 8 ? 'Min 8 characters' : null,
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: AppTheme.textMuted,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Required';
+                      if (v.length < 8) return 'Password must be at least 8 characters long';
+                      if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$').hasMatch(v)) {
+                        return 'Must include uppercase, lowercase, number, and special character';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 32),
                   Consumer<AddShareholderViewModel>(
