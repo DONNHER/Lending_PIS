@@ -368,72 +368,13 @@ class _RootAppState extends State<RootApp> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthViewModel>();
     
-    // 🚀 If opened via email password recovery link, show the tab navigation helper screen
-    if (_hasRecoveryRedirect) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          backgroundColor: const Color(0xFFFFF8F3),
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.lock_reset_rounded, size: 48, color: AppTheme.primary),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Password Recovery Detected',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'You have opened a password reset link in a new tab. Please switch back to your active PIL Lending tab to complete your password change.',
-                      style: TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.5),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _hasRecoveryRedirect = false;
-                        });
-                      },
-                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: const Text('Go back to PIL Lending Tab'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 0,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return MaterialApp(
       navigatorKey: AuthViewModel.navigatorKey, 
       title: 'Lending System',
       debugShowCheckedModeBanner: false, 
       theme: AppTheme.lightTheme,
-      home: _getHome(auth),
+      // 🚀 Directly routes to ChangePasswordPage if a recovery link is detected
+      home: _hasRecoveryRedirect ? const ChangePasswordPage() : _getHome(auth),
       routes: {
         '/login': (context) => const LoginPage(),
         '/admin-login': (context) => const AdminLoginPage(),
