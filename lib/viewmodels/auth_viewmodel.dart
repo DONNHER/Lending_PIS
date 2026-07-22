@@ -252,7 +252,6 @@ class AuthViewModel extends ChangeNotifier {
             return false;
           }
           
-          // Improved error message to show actual Supabase error for debugging
           _errorMessage = _mapAuthError(e);
           _isLoading = false;
           notifyListeners();
@@ -272,6 +271,8 @@ class AuthViewModel extends ChangeNotifier {
           debugPrint('DEBUG: [AuthViewModel] OTP successfully sent.');
           _isMfaRequired = true;
           _pendingMfaEmail = email;
+          _isLoading = false;
+          notifyListeners();
           return false;
         } catch (otpError) {
           debugPrint('DEBUG: [AuthViewModel] OTP Send Error: $otpError');
