@@ -132,7 +132,19 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 6),
+                  // Password requirement hint text
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Must be at least 8 characters long.",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _confirmController,
                     obscureText: _obscure2,
