@@ -449,30 +449,28 @@ class AuthViewModel extends ChangeNotifier {
   }
 
  Future<bool> forgotPassword(String email) async {
-  _isLoading = true;
-  _errorMessage = null;
-  notifyListeners();
-
-  try {
-    await _supabase.auth.resetPasswordForEmail(
-      email,
-      redirectTo: await _supabase.auth.resetPasswordForEmail(
-  email,
-  redirectTo: 'https://lendingpis-production.up.railway.app/PIS/#/change-password',
-    );
-
-    return true;
-  } on AuthException catch (e) {
-    _errorMessage = e.message;
-    return false;
-  } catch (_) {
-    _errorMessage = 'Unable to send reset email. Please try again.';
-    return false;
-  } finally {
-    _isLoading = false;
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
+    try {
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'https://lendingpis-production.up.railway.app/PIS/#/change-password',
+      );
+
+      return true;
+    } on AuthException catch (e) {
+      _errorMessage = e.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'Unable to send reset email. Please try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
-}
 
 
   Future<bool> updateProfile({
