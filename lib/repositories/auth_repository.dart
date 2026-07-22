@@ -51,7 +51,7 @@ class AuthRepository {
       'address': address,
       'phone': phone,
       'id_image_url': idImageUrl,
-      'initial_share': initialShare, // <-- 2. Passed initial_share key in the request body
+      if (initialShare != null) 'initial_share': initialShare, 
     });
     return response;
   }
