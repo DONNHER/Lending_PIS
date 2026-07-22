@@ -5,8 +5,6 @@ import '../models/user_model.dart';
 class UserTable extends StatelessWidget {
   final List<UserModel> users;
   final Function(UserModel) onView;
-  final Function(UserModel) onEdit;
-  final Function(UserModel) onDelete;
   final Function(UserModel)? onImpersonate;
   final bool isLoading;
 
@@ -14,8 +12,6 @@ class UserTable extends StatelessWidget {
     super.key,
     required this.users,
     required this.onView,
-    required this.onEdit,
-    required this.onDelete,
     this.onImpersonate,
     this.isLoading = false,
   });
@@ -125,18 +121,6 @@ class UserTable extends StatelessWidget {
                       visualDensity: VisualDensity.compact,
                       tooltip: user.status == UserStatus.active ? 'Impersonate' : 'Cannot impersonate ${user.status.name} user',
                     ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.blue),
-                    onPressed: () => onEdit(user),
-                    visualDensity: VisualDensity.compact,
-                    tooltip: 'Edit User',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
-                    onPressed: () => onDelete(user),
-                    visualDensity: VisualDensity.compact,
-                    tooltip: 'Delete User',
-                  ),
                 ],
               ),
             ),
