@@ -42,6 +42,9 @@ class AuthViewModel extends ChangeNotifier {
   UserModel? _originalAdminUser;
   String? _originalAdminToken;
 
+  // 🛑 Guard to prevent infinite logout/401 loops
+  bool _isLoggingOut = false;
+
   AuthViewModel(
     this._authRepository,
     this._activityLogRepository,
@@ -577,17 +580,25 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    if (_isLoggingOut) return;
+    _isLoggingOut = true;
     _isLoading = true;
     notifyListeners();
 
     try {
-      // 1. Sign out from Supabase and Laravel backend
+      // 1. Sign out from Supabase
       await _supabase.auth.signOut();
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Supabase SignOut error: $e');
+    }
+
+    try {
+      // 2. Try to hit backend logout, but catch 401s or errors to avoid loops
       await _authRepository.logout();
     } catch (e) {
-      debugPrint('DEBUG: [AuthViewModel] Logout error: $e');
+      debugPrint('DEBUG: [AuthViewModel] Backend logout error (ignored): $e');
     } finally {
-      // 2. Clear local session states
+      // 3. Clear local session states
       _currentUser = null;
       _originalAdminUser = null;
       _originalAdminToken = null;
@@ -595,15 +606,17 @@ class AuthViewModel extends ChangeNotifier {
       _pendingMfaEmail = null;
       
       _isLoading = false;
+      _isLoggingOut = false;
       notifyListeners();
 
-      // 3. Clear the navigation stack completely and navigate to login
+      // 4. Clear the navigation stack completely and navigate to login
       navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 
-  /// Handles unauthorized API responses by logging the user out.
+  /// Handles unauthorized API responses safely without infinite loops.
   void handleUnauthorized() {
+    if (_currentUser == null || _isLoggingOut) return;
     logout();
   }
 
