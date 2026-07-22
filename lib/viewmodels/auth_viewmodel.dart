@@ -448,7 +448,7 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
- Future<bool> forgotPassword(String email) async {
+  Future<bool> forgotPassword(String email) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -471,7 +471,6 @@ class AuthViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-
 
   Future<bool> updateProfile({
     required String firstName,
@@ -531,51 +530,51 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<bool> changePassword({
-  required String currentPassword,
-  required String newPassword,
-}) async {
-  _isLoading = true;
-  _errorMessage = null;
-  notifyListeners();
-
-  try {
-    final email = _supabase.auth.currentUser?.email;
-
-    if (email == null) {
-      _errorMessage = 'No authenticated user.';
-      return false;
-    }
-
-    // Verify current password
-    await _supabase.auth.signInWithPassword(
-      email: email,
-      password: currentPassword,
-    );
-
-    // Update password
-    await _supabase.auth.updateUser(
-      UserAttributes(password: newPassword),
-    );
-
-    // Optional: sign out so the user logs in again
-    await _supabase.auth.signOut();
-
-    return true;
-  } on AuthException catch (e) {
-    if (e.message.toLowerCase().contains('invalid login credentials')) {
-      _errorMessage = 'Current password is incorrect.';
-    } else {
-      _errorMessage = e.message;
-    }
-    return false;
-  } catch (_) {
-    _errorMessage = 'Unable to change password.';
-    return false;
-  } finally {
-    _isLoading = false;
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
+    try {
+      final email = _supabase.auth.currentUser?.email;
+
+      if (email == null) {
+        _errorMessage = 'No authenticated user.';
+        return false;
+      }
+
+      // Verify current password
+      await _supabase.auth.signInWithPassword(
+        email: email,
+        password: currentPassword,
+      );
+
+      // Update password
+      await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      // Optional: sign out so the user logs in again
+      await _supabase.auth.signOut();
+
+      return true;
+    } on AuthException catch (e) {
+      if (e.message.toLowerCase().contains('invalid login credentials')) {
+        _errorMessage = 'Current password is incorrect.';
+      } else {
+        _errorMessage = e.message;
+      }
+      return false;
+    } catch (_) {
+      _errorMessage = 'Unable to change password.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
-}
 
   Future<void> logout() async {
     _isLoading = true;
@@ -600,6 +599,42 @@ class AuthViewModel extends ChangeNotifier {
 
       // 3. Clear the navigation stack completely and navigate to login
       navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
+    }
+  }
+
+  /// Handles unauthorized API responses by logging the user out.
+  void handleUnauthorized() {
+    logout();
+  }
+
+  /// Starts an impersonation session using the provided user/token response data.
+  Future<void> startImpersonation(Map<String, dynamic> response) async {
+    if (_currentUser == null) return;
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // 1. Save current admin state
+      _originalAdminUser = _currentUser;
+      _originalAdminToken = await _authRepository.getToken();
+
+      // 2. Extract target user and switch token context
+      if (response['token'] != null && response['user'] != null) {
+        final targetUser = UserModel.fromJson(response['user']);
+        await _authRepository.setToken(response['token']);
+        _currentUser = targetUser;
+        
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Start Impersonation Error: $e');
+      _errorMessage = 'Failed to start impersonation session.';
+      _originalAdminUser = null;
+      _originalAdminToken = null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
