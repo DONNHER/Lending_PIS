@@ -104,8 +104,6 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
       body: SafeArea(
         child: Column(
           children: [
-            // Custom Header instead of AppBar to avoid double AppBars in shell
-            _buildCustomHeader(context),
 
             // Eligibility Banner
             if (!isEligible && viewModel.eligibilityMessage != null)
