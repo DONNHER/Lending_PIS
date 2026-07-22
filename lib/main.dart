@@ -64,22 +64,6 @@ void main() async {
     );
   }
 
-  // 🚀 WEB RECOVERY LINK HANDLING: Check URL parameters on app boot
-  // Supabase sends a code/token parameter on web redirects for password recovery
-  final uri = Uri.base;
-  final code = uri.queryParameters['code'];
-  if (code != null) {
-    try {
-      // Immediately exchange code for session before running the app
-      await Supabase.instance.client.auth.exchangeCodeForSession(code);
-      
-      // Optionally clean up the URL in the browser bar so the code isn't exposed
-      // (Flutter web handles routing changes cleanly via named routes after initialization)
-    } catch (e) {
-      debugPrint('Error exchanging web recovery code on startup: $e');
-    }
-  }
-
   final apiBaseUrl = dotenv.env['API_URL'] ?? 'http://localhost:8000/api';
   final apiService = ApiService(baseUrl: apiBaseUrl);
   final cacheService = LocalCacheService();
@@ -344,37 +328,112 @@ class RootApp extends StatefulWidget {
 }
 
 class _RootAppState extends State<RootApp> {
+  bool _hasRecoveryRedirect = false;
+
   @override
   void initState() {
     super.initState();
 
-    // 🚀 Also keep the listener active in case the event fires dynamically
+    // Check on startup if URL contains recovery indicators from Supabase
+    _checkInitialUri();
+
+    // Listen to dynamic auth state changes for password recovery events
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
-
       if (event == AuthChangeEvent.passwordRecovery) {
-        AuthViewModel.navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (_) => const ChangePasswordPage(),
-          ),
-        );
+        setState(() {
+          _hasRecoveryRedirect = true;
+        });
       }
     });
+  }
+
+  void _checkInitialUri() {
+    try {
+      final uri = Uri.base;
+      final fragment = uri.fragment;
+      if (uri.queryParameters.containsKey('code') || 
+          fragment.contains('type=recovery') || 
+          fragment.contains('access_token')) {
+        setState(() {
+          _hasRecoveryRedirect = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking URI: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthViewModel>();
     
-    // Check if we arrived via recovery link code on startup
-    final hasRecoveryCode = Uri.base.queryParameters['code'] != null;
+    // 🚀 If opened via email password recovery link, show the tab navigation helper screen
+    if (_hasRecoveryRedirect) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: const Color(0xFFFFF8F3),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.lock_reset_rounded, size: 48, color: AppTheme.primary),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Password Recovery Detected',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'You have opened a password reset link in a new tab. Please switch back to your active PIL Lending tab to complete your password change.',
+                      style: TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.5),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _hasRecoveryRedirect = false;
+                        });
+                      },
+                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                      label: const Text('Go back to PIL Lending Tab'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return MaterialApp(
       navigatorKey: AuthViewModel.navigatorKey, 
       title: 'Lending System',
       debugShowCheckedModeBanner: false, 
       theme: AppTheme.lightTheme,
-      home: hasRecoveryCode ? const ChangePasswordPage() : _getHome(auth),
+      home: _getHome(auth),
       routes: {
         '/login': (context) => const LoginPage(),
         '/admin-login': (context) => const AdminLoginPage(),
@@ -400,17 +459,14 @@ class _RootAppState extends State<RootApp> {
       return const LoginPage();
     }
     if (auth.isImpersonating) {
-      debugPrint('DEBUG: [RootApp] Impersonation active, returning AppShell for banner support');
       return const AppShell();
     }
     if (auth.currentUser?.role == UserRole.shareholder) {
       return const AppLayout();
     }
-    debugPrint('DEBUG: [RootApp] Role: ${auth.currentUser?.role}, Initialized: ${auth.isInitialized}');
     
     return Consumer<DashboardViewModel>(
       builder: (context, dashboard, child) {
-        debugPrint('DEBUG: [RootApp] Dashboard isInitialized: ${dashboard.isInitialized}');
         if (!dashboard.isInitialized) {
           return Scaffold(
             backgroundColor: const Color(0xFFFDF8F5),
@@ -426,14 +482,6 @@ class _RootAppState extends State<RootApp> {
                       color: Color(0xFF32211A),
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Fetching real-time records from the database',
-                    style: TextStyle(
-                      color: Colors.brown.withOpacity(0.6),
-                      fontSize: 13,
                     ),
                   ),
                 ],
