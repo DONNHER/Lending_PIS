@@ -39,6 +39,7 @@ class AuthRepository {
     String? address,
     String? phone,
     String? idImageUrl,
+    required double initialShare, // <-- 1. Added initialShare parameter here
   }) async {
     final response = await _apiService.post('/register', body: {
       'username': username,
@@ -50,6 +51,7 @@ class AuthRepository {
       'address': address,
       'phone': phone,
       'id_image_url': idImageUrl,
+      'initial_share': initialShare, // <-- 2. Passed initial_share key in the request body
     });
     return response;
   }
