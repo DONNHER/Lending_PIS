@@ -1,3 +1,16 @@
+# --- STAGE 1: Build Flutter Web ---
+FROM ghcr.io/cirruslabs/flutter:stable AS flutter-builder
+WORKDIR /app/flutter
+
+# Copy flutter files (adjust 'flutter_frontend' to your actual folder name if different)
+COPY flutter_frontend/ .
+
+# Enable web support, get dependencies, and build with base-href
+RUN flutter config --enable-web && \
+    flutter pub get && \
+    flutter build web --release --base-href "/PIS/"
+
+# --- STAGE 2: PHP / Nginx Production Server ---
 FROM php:8.4-fpm-alpine
 
 # Install system dependencies
@@ -30,12 +43,16 @@ WORKDIR /var/www/html
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV COMPOSER_PROCESS_TIMEOUT=2000
 
-# Copy files
+# Copy Laravel files
 COPY laravel_backend/ .
 
-# Install Composer
+# Install Composer dependencies
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+
+# COPY FLUTTER WEB BUILD INTO LARAVEL PUBLIC/PIS (Force Overwrite)
+RUN mkdir -p /var/www/html/public/PIS
+COPY --from=flutter-builder /app/flutter/build/web/ /var/www/html/public/PIS/
 
 # Configuration Files
 COPY scripts/railway/nginx.conf /etc/nginx/http.d/default.conf.template
@@ -43,7 +60,7 @@ COPY scripts/railway/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Permissions
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/PIS
 RUN chmod +x deploy.sh
 
 # Entrypoint script to handle PORT env var for Nginx
