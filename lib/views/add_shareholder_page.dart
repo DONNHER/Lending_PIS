@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_theme.dart';
@@ -22,6 +23,7 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
   final _passwordController = TextEditingController();
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _shareCapitalController = TextEditingController(); // Added controller for share capital
 
   @override
   void dispose() {
@@ -32,6 +34,7 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
     _passwordController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
+    _shareCapitalController.dispose(); // Dispose share capital controller
     super.dispose();
   }
 
@@ -65,6 +68,7 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
       password: _passwordController.text,
       address: _addressController.text.trim(),
       phone: _phoneController.text.trim(),
+      initialShare: double.tryParse(_shareCapitalController.text.trim()) ?? 0.0, // Pass initial share value here
     );
 
     if (newUserId != null && mounted) {
@@ -174,6 +178,20 @@ class _AddShareholderPageState extends State<AddShareholderPage> {
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Share Capital Information'), // Added section title
+                  const SizedBox(height: 16),
+                  AuthTextField(
+                    label: 'Initial Share Capital',
+                    hint: 'e.g. 1000.00',
+                    controller: _shareCapitalController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Required';
+                      if (double.tryParse(v) == null) return 'Enter a valid number';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 24),
                   _buildSectionTitle('Account Credentials'),
