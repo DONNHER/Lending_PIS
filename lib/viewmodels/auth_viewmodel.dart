@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:capstone_application/models/user_model.dart';
 import 'package:capstone_application/repositories/auth_repository.dart';
 import 'package:capstone_application/repositories/activity_log_repository.dart';
@@ -49,7 +51,10 @@ class AuthViewModel extends ChangeNotifier {
       this._authRepository,
       this._activityLogRepository,
       this._storageRepository,
-      );
+      ) {
+    // 🚀 Automatically load remembered credentials on initialization
+    _loadRememberedPreference();
+  }
 
   UserModel? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
@@ -86,6 +91,20 @@ class AuthViewModel extends ChangeNotifier {
         return '/dashboard';
       case UserRole.shareholder:
         return '/shareholder-dashboard';
+    }
+  }
+
+  // 🚀 Load saved email and flag from SharedPreferences
+  Future<void> _loadRememberedPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _rememberMe = prefs.getBool('remember_me_flag') ?? false;
+      if (_rememberMe) {
+        _rememberedEmail = prefs.getString('remembered_email_value');
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Error loading remembered preference: $e');
     }
   }
 
@@ -201,14 +220,24 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 🚀 Directly sign in using Supabase Auth
+      // 🚀 Save or clear "Remember Me" credentials based on toggle status
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('remember_me_flag', _rememberMe);
+      if (_rememberMe) {
+        await prefs.setString('remembered_email_value', email);
+        _rememberedEmail = email;
+      } else {
+        await prefs.remove('remembered_email_value');
+        _rememberedEmail = null;
+      }
+
+      // Directly sign in using Supabase Auth
       final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
       if (response.session != null && response.user != null) {
-        // Fetch user data mapping from your backend table or use user metadata
         final userModelResponse = await _authRepository.getCurrentUser();
 
         if (userModelResponse == null) {
