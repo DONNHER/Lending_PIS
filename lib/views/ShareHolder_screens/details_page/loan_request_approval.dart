@@ -104,10 +104,49 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
       future: _loanDataFuture,
       builder: (context, snapshot) {
+        // 🚀 1. Handle Loading State explicitly so it doesn't parse null data
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            backgroundColor: bgLight,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                onPressed: () => context.read<NavigationViewModel>().clearLoanReview(),
+              ),
+              title: const Text("Request Review",
+                  style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
+              centerTitle: true,
+            ),
+            body: const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+          );
+        }
+
+        // 🚀 2. Handle Error State
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: bgLight,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                onPressed: () => context.read<NavigationViewModel>().clearLoanReview(),
+              ),
+              title: const Text("Request Review",
+                  style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
+              centerTitle: true,
+            ),
+            body: Center(child: Text("Error: ${snapshot.error}")),
+          );
+        }
+
         final dynamic loan = snapshot.data?['loan'];
         final borrower = snapshot.data?['borrower'] as ShareholderModel?;
 
