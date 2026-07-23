@@ -3,7 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:capstone_application/app_theme.dart';
 
 class ChangePasswordPage extends StatefulWidget {
-  const ChangePasswordPage({super.key});
+  final VoidCallback? onPasswordChanged;
+
+  const ChangePasswordPage({super.key, this.onPasswordChanged});
 
   @override
   State<ChangePasswordPage> createState() => _ChangePasswordPageState();
@@ -51,12 +53,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
       await Supabase.instance.client.auth.signOut();
 
+      // 🚀 Clear the recovery flag in main.dart so it drops the URI trap
+      widget.onPasswordChanged?.call();
+
       if (!mounted) return;
 
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/login',
-        (route) => false,
+            (route) => false,
       );
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -112,7 +117,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     obscureText: _obscure1,
                     decoration: InputDecoration(
                       labelText: "New Password",
-                      // Added matching placeholder hint text
                       hintText: "Min 8 chars, uppercase, lowercase, number, special char",
                       hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
                       suffixIcon: IconButton(
@@ -186,13 +190,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       onPressed: _loading ? null : _updatePassword,
                       child: _loading
                           ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                           : const Text("Update Password"),
                     ),
                   ),

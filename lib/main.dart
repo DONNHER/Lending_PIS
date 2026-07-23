@@ -333,11 +333,8 @@ class _RootAppState extends State<RootApp> {
   @override
   void initState() {
     super.initState();
-
-    // Check on startup if URL contains recovery indicators from Supabase
     _handleInitialSessionForRecovery();
 
-    // Listen to dynamic auth state changes for password recovery events
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       if (event == AuthChangeEvent.passwordRecovery) {
@@ -362,17 +359,26 @@ class _RootAppState extends State<RootApp> {
     }
   }
 
+  // 🚀 Add this method to clear the flag after password change / cancel
+  void _clearRecovery() {
+    setState(() {
+      _hasRecoveryRedirect = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthViewModel>();
-    
+
     return MaterialApp(
-      navigatorKey: AuthViewModel.navigatorKey, 
+      navigatorKey: AuthViewModel.navigatorKey,
       title: 'Lending System',
-      debugShowCheckedModeBanner: false, 
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      // 🚀 Forces route to ChangePasswordPage if a recovery link is detected
-      home: _hasRecoveryRedirect ? const ChangePasswordPage() : _getHome(auth),
+      // 🚀 Pass the clear callback down to ChangePasswordPage
+      home: _hasRecoveryRedirect
+          ? ChangePasswordPage(onPasswordChanged: _clearRecovery)
+          : _getHome(auth),
       routes: {
         '/login': (context) => const LoginPage(),
         '/admin-login': (context) => const AdminLoginPage(),
@@ -388,7 +394,7 @@ class _RootAppState extends State<RootApp> {
 
   Widget _getHome(AuthViewModel auth) {
     if (_hasRecoveryRedirect) {
-      return const ChangePasswordPage();
+      return ChangePasswordPage(onPasswordChanged: _clearRecovery);
     }
     if (!auth.isInitialized) {
       return const Scaffold(
@@ -406,7 +412,7 @@ class _RootAppState extends State<RootApp> {
     if (auth.currentUser?.role == UserRole.shareholder) {
       return const AppLayout();
     }
-    
+
     return Consumer<DashboardViewModel>(
       builder: (context, dashboard, child) {
         if (!dashboard.isInitialized) {

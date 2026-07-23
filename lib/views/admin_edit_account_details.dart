@@ -24,7 +24,7 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
     final auth = context.read<AuthViewModel>();
     // 🚀 Use original admin user if impersonating
     final user = auth.isImpersonating ? auth.originalAdminUser : auth.currentUser;
-    
+
     _firstNameController = TextEditingController(text: user?.firstName ?? '');
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
@@ -55,14 +55,14 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
   @override
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
-    
+
     // 🚀 Use original admin user if impersonating
-    final user = authViewModel.isImpersonating 
-        ? authViewModel.originalAdminUser 
+    final user = authViewModel.isImpersonating
+        ? authViewModel.originalAdminUser
         : authViewModel.currentUser;
 
-    final hasAvatar = authViewModel.avatarBytes != null || 
-                     (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty && !authViewModel.removeAvatarRequested);
+    final hasAvatar = authViewModel.avatarBytes != null ||
+        (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty && !authViewModel.removeAvatarRequested);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -102,12 +102,12 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
                             child: authViewModel.avatarBytes != null
                                 ? Image.memory(authViewModel.avatarBytes!, fit: BoxFit.cover)
                                 : (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty && !authViewModel.removeAvatarRequested)
-                                    ? Image.network(
-                                        user.avatarUrl!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
-                                      )
-                                    : const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
+                                ? Image.network(
+                              user.avatarUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
+                            )
+                                : const Icon(Icons.person_rounded, size: 60, color: AppTheme.textMuted),
                           ),
                         ),
                         Positioned(
@@ -116,7 +116,6 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-
                               if (hasAvatar) const SizedBox(width: 8),
                               GestureDetector(
                                 onTap: () => authViewModel.pickAvatar(),
@@ -142,17 +141,17 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   _buildTextField('First Name', _firstNameController, isRequired: false),
                   const SizedBox(height: 16),
                   _buildTextField('Last Name', _lastNameController, isRequired: false),
                   const SizedBox(height: 16),
                   _buildTextField('Email Address', _emailController, enabled: false, isRequired: false),
-                  
+
                   const SizedBox(height: 32),
                   const Text('Address', style: TextStyle(color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  
+
                   InkWell(
                     onTap: _selectAddress,
                     borderRadius: BorderRadius.circular(12),
@@ -194,33 +193,33 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
                     onPressed: authViewModel.isLoading
                         ? null
                         : () async {
-                            if (_formKey.currentState!.validate()) {
-                              final success = await authViewModel.updateProfile(
-                                firstName: _firstNameController.text.trim(),
-                                lastName: _lastNameController.text.trim(),
-                                address: _addressController.text.trim(),
-                              );
-                              
-                              if (context.mounted) {
-                                if (success) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Profile updated successfully'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                  Navigator.pop(context);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(authViewModel.errorMessage ?? 'Update failed'),
-                                      backgroundColor: AppTheme.error,
-                                    ),
-                                  );
-                                }
-                              }
-                            }
-                          },
+                      if (_formKey.currentState!.validate()) {
+                        final success = await authViewModel.updateProfile(
+                          firstName: _firstNameController.text.trim(),
+                          lastName: _lastNameController.text.trim(),
+                          address: _addressController.text.trim(),
+                        );
+
+                        if (context.mounted) {
+                          if (success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Profile updated successfully'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            Navigator.pop(context);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(authViewModel.errorMessage ?? 'Update failed'),
+                                backgroundColor: AppTheme.error,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
@@ -249,126 +248,172 @@ class _AdminEditAccountDetailsScreenState extends State<AdminEditAccountDetailsS
   }
 
   void _showResetPasswordDialog(
-  BuildContext context,
-  AuthViewModel authViewModel,
-) {
-  final currentPasswordController = TextEditingController();
-  final newPasswordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
-  final dialogFormKey = GlobalKey<FormState>();
+      BuildContext context,
+      AuthViewModel authViewModel,
+      ) {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final dialogFormKey = GlobalKey<FormState>();
 
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Change Password'),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      content: Form(
-        key: dialogFormKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: currentPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Current Password',
-              ),
-              validator: (value) =>
-                  value == null || value.isEmpty
-                      ? 'Current password is required'
-                      : null,
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          bool obscureCurrent = true;
+          bool obscureNew = true;
+          bool obscureConfirm = true;
+
+          return AlertDialog(
+            title: const Text('Change Password'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: newPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New Password',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'New password is required';
-                }
-                if (value.length < 8) {
-                  return 'Minimum 8 characters required';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: confirmPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirm New Password',
-              ),
-              validator: (value) {
-                if (value != newPasswordController.text) {
-                  return 'Passwords do not match';
-                }
-                return null;
-              },
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            if (!dialogFormKey.currentState!.validate()) return;
-
-            final success = await authViewModel.changePassword(
-              currentPassword: currentPasswordController.text.trim(),
-              newPassword: newPasswordController.text.trim(),
-            );
-
-            if (!context.mounted) return;
-
-            if (success) {
-              Navigator.pop(context);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Password changed successfully. Please log in again.',
-                  ),
-                  backgroundColor: Colors.green,
+            content: Form(
+              key: dialogFormKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: currentPasswordController,
+                      obscureText: obscureCurrent,
+                      decoration: InputDecoration(
+                        labelText: 'Current Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscureCurrent ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              obscureCurrent = !obscureCurrent;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) =>
+                      value == null || value.isEmpty
+                          ? 'Current password is required'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: newPasswordController,
+                      obscureText: obscureNew,
+                      decoration: InputDecoration(
+                        labelText: 'New Password',
+                        helperText: 'Must be at least 8 characters long',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscureNew ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              obscureNew = !obscureNew;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'New password is required';
+                        }
+                        if (value.length < 8) {
+                          return 'Minimum 8 characters required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: confirmPasswordController,
+                      obscureText: obscureConfirm,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm New Password',
+                        helperText: 'Re-enter your new password',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              obscureConfirm = !obscureConfirm;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value != newPasswordController.text) {
+                          return 'Passwords do not match';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ),
-              );
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (!dialogFormKey.currentState!.validate()) return;
 
-              await authViewModel.logout();
+                  final success = await authViewModel.changePassword(
+                    currentPassword: currentPasswordController.text.trim(),
+                    newPassword: newPasswordController.text.trim(),
+                  );
 
-              if (!context.mounted) return;
+                  if (!context.mounted) return;
 
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    authViewModel.errorMessage ??
-                        'Failed to change password.',
-                  ),
-                  backgroundColor: AppTheme.error,
-                ),
-              );
-            }
-          },
-          child: const Text('Change'),
-        ),
-      ],
-    ),
-  );
-}
+                  if (success) {
+                    Navigator.pop(context);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Password changed successfully. Please log in again.',
+                        ),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+
+                    await authViewModel.logout();
+
+                    if (!context.mounted) return;
+
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/login',
+                          (route) => false,
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          authViewModel.errorMessage ??
+                              'Failed to change password.',
+                        ),
+                        backgroundColor: AppTheme.error,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Change'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildTextField(String label, TextEditingController controller, {String? hint, bool enabled = true, bool isRequired = true}) {
     return Column(
