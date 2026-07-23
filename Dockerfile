@@ -34,9 +34,17 @@ RUN apk add --no-cache \
     gettext
 
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN docker-php-ext-install pdo_pgsql pgsql bcmath zip intl gd exif pcntl
-
+# Install PHP extensions (optimized with parallel compilation to prevent timeouts)
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install -j$(nproc) \
+    pdo_pgsql \
+    pgsql \
+    bcmath \
+    zip \
+    intl \
+    gd \
+    exif \
+    pcntl
 # Set working directory
 WORKDIR /var/www/html
 
