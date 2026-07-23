@@ -46,10 +46,10 @@ class AuthViewModel extends ChangeNotifier {
   bool _isLoggingOut = false;
 
   AuthViewModel(
-    this._authRepository,
-    this._activityLogRepository,
-    this._storageRepository,
-  );
+      this._authRepository,
+      this._activityLogRepository,
+      this._storageRepository,
+      );
 
   UserModel? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
@@ -118,7 +118,7 @@ class AuthViewModel extends ChangeNotifier {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-      
+
       if (image != null) {
         _avatarBytes = await image.readAsBytes();
         _removeAvatarRequested = false;
@@ -139,7 +139,12 @@ class AuthViewModel extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      _currentUser = await _authRepository.getCurrentUser();
+      final session = _supabase.auth.currentSession;
+      if (session != null) {
+        _currentUser = await _authRepository.getCurrentUser();
+      } else {
+        _currentUser = null;
+      }
     } catch (e) {
       _currentUser = null;
     } finally {
@@ -196,94 +201,29 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _authRepository.login(
-        email, 
-        password,
-        captchaToken: _isCaptchaVerified ? 'verified' : null,
+      // 🚀 Directly sign in using Supabase Auth
+      final response = await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
       );
-      
-      debugPrint('DEBUG: [AuthViewModel] Login response: $response');
 
-      if (response['captcha_required'] == true) {
-        _isCaptchaRequired = true;
-        _isCaptchaVerified = false;
-        _errorMessage = 'Security check required. Please complete the CAPTCHA.';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
+      if (response.session != null && response.user != null) {
+        // Fetch user data mapping from your backend table or use user metadata
+        final userModelResponse = await _authRepository.getCurrentUser();
 
-      if (response['mfa_required'] == true) {
-        // 🚀 STRICT CHECK: Ensure account is confirmed in Supabase
-        try {
-          debugPrint('DEBUG: [AuthViewModel] Checking Supabase confirmation for: $email');
-          
-          final authRes = await _supabase.auth.signInWithPassword(email: email, password: password);
-          
-          debugPrint('DEBUG: [AuthViewModel] Supabase Sign-In Success. User ID: ${authRes.user?.id}');
-          debugPrint('DEBUG: [AuthViewModel] Email Confirmed At: ${authRes.user?.emailConfirmedAt}');
-          
-          await _supabase.auth.signOut();
-          
-        } on AuthException catch (e) {
-          debugPrint('DEBUG: [AuthViewModel] Supabase Auth Error: ${e.message}');
-          debugPrint('DEBUG: [AuthViewModel] Supabase Error Code: ${e.statusCode}');
-
-          if (e.message.toLowerCase().contains('email not confirmed')) {
-            debugPrint('DEBUG: [AuthViewModel] Email not confirmed. Triggering resend...');
-            
-            try {
-              await _supabase.auth.resend(
-                type: OtpType.signup,
-                email: email,
-              );
-              _errorMessage = 'Account not verified. A new verification link has been sent to your email. Please check your inbox.';
-            } catch (resendError) {
-              debugPrint('DEBUG: [AuthViewModel] Resend failed: $resendError');
-              _errorMessage = 'Account not verified. We tried to send a new link but failed. Please try again later.';
-            }
-
-            _isLoading = false;
-            notifyListeners();
-            return false;
-          }
-          
-          _errorMessage = _mapAuthError(e);
-          _isLoading = false;
-          notifyListeners();
-          return false;
-        } catch (unexpected) {
-          debugPrint('DEBUG: [AuthViewModel] Unexpected Supabase Error: $unexpected');
-          _errorMessage = 'Account synchronization error. Please try again later.';
+        if (userModelResponse == null) {
+          _errorMessage = 'User profile data could not be retrieved.';
           _isLoading = false;
           notifyListeners();
           return false;
         }
 
-        try {
-          debugPrint('DEBUG: [AuthViewModel] Triggering OTP via Supabase...');
-          await _supabase.auth.signInWithOtp(email: email);
-          debugPrint('DEBUG: [AuthViewModel] OTP successfully sent.');
-          _isMfaRequired = true;
-          _pendingMfaEmail = email;
-          _isLoading = false;
-          notifyListeners();
-          return false;
-        } catch (otpError) {
-          debugPrint('DEBUG: [AuthViewModel] OTP Send Error: $otpError');
-          _errorMessage = _mapAuthError(otpError);
-          _isLoading = false;
-          notifyListeners();
-          return false;
-        }
-      }
+        final user = userModelResponse;
 
-      if (response['token'] != null && response['user'] != null) {
-        final user = UserModel.fromJson(response['user']);
-        
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
             _errorMessage = 'Access denied. This login is for Administrators only.';
+            await _supabase.auth.signOut();
             _isLoading = false;
             notifyListeners();
             return false;
@@ -291,6 +231,7 @@ class AuthViewModel extends ChangeNotifier {
         } else {
           if (user.role == UserRole.admin) {
             _errorMessage = 'Administrators must use the secure Admin Login portal.';
+            await _supabase.auth.signOut();
             _isLoading = false;
             notifyListeners();
             return false;
@@ -298,7 +239,7 @@ class AuthViewModel extends ChangeNotifier {
         }
 
         _currentUser = user;
-        
+
         try {
           await _activityLogRepository.logActivity(
             action: 'Login',
@@ -311,6 +252,14 @@ class AuthViewModel extends ChangeNotifier {
         notifyListeners();
         return true;
       }
+      return false;
+    } on AuthException catch (e) {
+      if (e.message.toLowerCase().contains('email not confirmed')) {
+        _errorMessage = 'Account not verified. Please check your inbox for the verification link.';
+      } else {
+        _errorMessage = _mapAuthError(e);
+      }
+      debugPrint('DEBUG: [AuthViewModel] Login AuthException: $_errorMessage');
       return false;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -339,33 +288,23 @@ class AuthViewModel extends ChangeNotifier {
 
     try {
       debugPrint('DEBUG: [AuthViewModel] Registering in Supabase...');
-      try {
-        await _supabase.auth.signUp(email: email, password: password);
-        debugPrint('DEBUG: [AuthViewModel] Supabase signUp success.');
-      } on AuthException catch (e) {
-        if (e.message.toLowerCase().contains('already registered') || 
-            e.message.toLowerCase().contains('already been registered')) {
-          debugPrint('DEBUG: [AuthViewModel] User already in Supabase, proceeding to Laravel sync...');
-        } else {
-          rethrow;
-        }
-      }
-
-      debugPrint('DEBUG: [AuthViewModel] Registering in Laravel...');
-      await _authRepository.register(
-        username: username,
-        email: email,
-        password: password,
-        firstName: firstName,
-        lastName: lastName,
-        role: role,
-        address: address,
-        phone: phone,
-        idImageUrl: idImageUrl,
+      final signUpRes = await _supabase.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'username': username,
+            'firstname': firstName,
+            'lastname': lastName,
+            'role': role.name,
+          }
       );
-      
-      debugPrint('DEBUG: [AuthViewModel] Registration complete.');
+      debugPrint('DEBUG: [AuthViewModel] Supabase signUp success. User: ${signUpRes.user?.id}');
+
       return true;
+    } on AuthException catch (e) {
+      _errorMessage = e.message;
+      debugPrint('DEBUG: [AuthViewModel] Registration AuthException: $_errorMessage');
+      return false;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       debugPrint('DEBUG: [AuthViewModel] Registration Error: $_errorMessage');
@@ -383,36 +322,24 @@ class AuthViewModel extends ChangeNotifier {
 
     try {
       debugPrint('DEBUG: [AuthViewModel] Attempting MFA verification for $email...');
-      
-      AuthResponse? res;
-      try {
-        res = await _supabase.auth.verifyOTP(
-          email: email,
-          token: code,
-          type: OtpType.signup,
-        );
-        debugPrint('DEBUG: [AuthViewModel] Signup OTP verification success.');
-      } catch (e) {
-        debugPrint('DEBUG: [AuthViewModel] Signup OTP failed, trying Magiclink OTP...');
-        res = await _supabase.auth.verifyOTP(
-          email: email,
-          token: code,
-          type: OtpType.magiclink,
-        );
-        debugPrint('DEBUG: [AuthViewModel] Magiclink OTP verification success.');
-      }
+
+      final res = await _supabase.auth.verifyOTP(
+        email: email,
+        token: code,
+        type: OtpType.signup,
+      );
 
       if (res.session != null) {
-        final response = await _authRepository.verifyMfa(email);
-        if (response['success'] == true) {
-          _currentUser = UserModel.fromJson(response['user']);
+        final userModel = await _authRepository.getCurrentUser();
+        if (userModel != null) {
+          _currentUser = userModel;
           _isMfaRequired = false;
           return true;
         }
       }
       return false;
     } catch (e) {
-      debugPrint('DEBUG: [AuthViewModel] All MFA verification attempts failed: $e');
+      debugPrint('DEBUG: [AuthViewModel] MFA verification failed: $e');
       _errorMessage = _mapAuthError(e);
       return false;
     } finally {
@@ -582,7 +509,7 @@ class AuthViewModel extends ChangeNotifier {
       _originalAdminToken = null;
       _isMfaRequired = false;
       _pendingMfaEmail = null;
-      
+
       _isLoading = false;
       _isLoggingOut = false;
       notifyListeners();
@@ -610,7 +537,7 @@ class AuthViewModel extends ChangeNotifier {
         final targetUser = UserModel.fromJson(response['user']);
         await _authRepository.setToken(response['token']);
         _currentUser = targetUser;
-        
+
         notifyListeners();
       }
     } catch (e) {
