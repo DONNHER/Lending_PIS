@@ -24,8 +24,13 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LoanDetailsViewModel>().fetchLoanDetails(widget.loanId);
+      _loadData();
     });
+  }
+
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    final viewModel = context.read<LoanDetailsViewModel>();
+    await viewModel.fetchLoanDetails(widget.loanId, forceRefresh: forceRefresh);
   }
 
   @override
@@ -47,16 +52,16 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, color: AppTheme.primary),
-                onPressed: () => viewModel.fetchLoanDetails(widget.loanId, forceRefresh: true),
+                onPressed: () => _loadData(forceRefresh: true),
               ),
               const SizedBox(width: 8),
             ],
           ),
           body: viewModel.isLoading && !viewModel.isInitialized
               ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-              : viewModel.errorMessage != null
-                  ? _buildErrorView(viewModel)
-                  : _buildContentView(viewModel),
+              : viewModel.errorMessage != null && viewModel.loan == null && viewModel.request == null
+              ? _buildErrorView(viewModel)
+              : _buildContentView(viewModel),
         );
       },
     );
@@ -64,21 +69,26 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
 
   Widget _buildErrorView(LoanDetailsViewModel viewModel) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline_rounded, size: 64, color: Colors.redAccent),
-          const SizedBox(height: 16),
-          Text(viewModel.errorMessage!,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 64, color: Colors.redAccent),
+            const SizedBox(height: 16),
+            Text(
+              viewModel.errorMessage ?? "Failed to load loan details.",
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => viewModel.fetchLoanDetails(widget.loanId, forceRefresh: true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-            child: const Text("Retry"),
-          )
-        ],
+              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => _loadData(forceRefresh: true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+              child: const Text("Retry"),
+            )
+          ],
+        ),
       ),
     );
   }
@@ -88,8 +98,12 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
     final dynamic request = viewModel.request;
     final currencyFormat = NumberFormat.currency(symbol: '₱', decimalDigits: 2);
 
+    if (loan == null && request == null) {
+      return _buildErrorView(viewModel);
+    }
+
     return RefreshIndicator(
-      onRefresh: () => viewModel.fetchLoanDetails(widget.loanId, forceRefresh: true),
+      onRefresh: () => _loadData(forceRefresh: true),
       color: AppTheme.primary,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -155,7 +169,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
       ),
       child: Column(
         children: [
-          const Text("UPCOMING PAYMENT", 
+          const Text("UPCOMING PAYMENT",
               style: TextStyle(color: textGrey, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
           const SizedBox(height: 8),
           Text(format.format(amount),
@@ -193,7 +207,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
       ),
       child: Column(
         children: [
-          const Text("LOAN STATUS", 
+          const Text("LOAN STATUS",
               style: TextStyle(color: textGrey, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
           const SizedBox(height: 12),
           Text(request.status.name.toUpperCase(),
@@ -225,7 +239,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("Payment Progress", style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.textDark)),
-              Text("${(progress * 100).toStringAsFixed(0)}%", 
+              Text("${(progress * 100).toStringAsFixed(0)}%",
                   style: const TextStyle(color: primaryGreen, fontWeight: FontWeight.w900, fontSize: 16)),
             ],
           ),
@@ -286,11 +300,11 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
             _aestheticDetailRow(Icons.account_balance_wallet_outlined, "Principal", format.format(request.requestedAmount)),
             _aestheticDetailRow(Icons.percent_rounded, "Interest Rate", "${(request.interestRate * 100).toStringAsFixed(1)}% p.m."),
             _aestheticDetailRow(Icons.calendar_month_outlined, "Duration", "${request.tenureMonths} Months"),
-            _aestheticDetailRow(Icons.payments_outlined, "Monthly Payment", 
+            _aestheticDetailRow(Icons.payments_outlined, "Monthly Payment",
                 format.format((request.requestedAmount * (1 + request.interestRate * request.tenureMonths)) / request.tenureMonths)),
             _aestheticDetailRow(Icons.receipt_outlined, "Processing Fee", "₱150.00"),
             const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Divider(height: 24)),
-            _aestheticDetailRow(Icons.summarize_outlined, "Total Repayable", 
+            _aestheticDetailRow(Icons.summarize_outlined, "Total Repayable",
                 format.format(request.requestedAmount * (1 + request.interestRate * request.tenureMonths) + 150),
                 isBold: true),
           ] else if (loan != null) ...[
@@ -357,7 +371,7 @@ class _ActiveLoanDetailsScreenState extends State<ActiveLoanDetailsScreen> {
                   ],
                 ),
               ),
-              Text(format.format(tx.amount), 
+              Text(format.format(tx.amount),
                   style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.textDark, fontSize: 14)),
             ],
           ),

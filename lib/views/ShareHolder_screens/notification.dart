@@ -57,12 +57,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
               return TextButton(
                 onPressed: hasUnread ? () => viewModel.markAllAsRead() : null,
                 child: Text(
-                  "Mark all as read", 
-                  style: TextStyle(
-                    color: hasUnread ? AppTheme.primary : AppTheme.textMuted.withValues(alpha: 0.5), 
-                    fontWeight: FontWeight.w700, 
-                    fontSize: 13
-                  )
+                    "Mark all as read",
+                    style: TextStyle(
+                        color: hasUnread ? AppTheme.primary : AppTheme.textMuted.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13
+                    )
                 ),
               );
             },
@@ -210,11 +210,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
         iconColor = Colors.orange;
         break;
       default:
-        iconData = n.category == NotificationCategory.transaction 
-            ? Icons.receipt_long_rounded 
+        iconData = n.category == NotificationCategory.transaction
+            ? Icons.receipt_long_rounded
             : Icons.notifications_none_rounded;
-        iconColor = n.category == NotificationCategory.transaction 
-            ? Colors.teal 
+        iconColor = n.category == NotificationCategory.transaction
+            ? Colors.teal
             : Colors.grey;
     }
 
@@ -224,18 +224,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
         color: n.isUnread ? Colors.white : const Color(0xFFF3F4F6).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: n.isUnread 
-              ? AppTheme.primary.withValues(alpha: 0.2) 
-              : Colors.transparent
+            color: n.isUnread
+                ? AppTheme.primary.withValues(alpha: 0.2)
+                : Colors.transparent
         ),
         boxShadow: n.isUnread
             ? [
-                BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.08),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                )
-              ]
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          )
+        ]
             : null,
       ),
       child: Material(
@@ -260,9 +260,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    iconData, 
-                    color: n.isUnread ? iconColor : Colors.grey.shade400, 
-                    size: 22
+                      iconData,
+                      color: n.isUnread ? iconColor : Colors.grey.shade400,
+                      size: 22
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -304,9 +304,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       Text(
                         DateFormat('MMM dd • h:mm a').format(n.createdAt),
                         style: TextStyle(
-                          fontSize: 11, 
-                          color: n.isUnread ? Colors.grey.shade600 : Colors.grey.shade400, 
-                          fontWeight: n.isUnread ? FontWeight.w600 : FontWeight.w500
+                            fontSize: 11,
+                            color: n.isUnread ? Colors.grey.shade600 : Colors.grey.shade400,
+                            fontWeight: n.isUnread ? FontWeight.w600 : FontWeight.w500
                         ),
                       ),
                     ],
@@ -322,28 +322,31 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   void _handleTap(BuildContext context, NotificationModel n) {
     final metadata = n.metadata ?? {};
-    
+
     // 🚀 Robust Extraction of IDs from Metadata
     final String? loanRequestId = metadata['loan_request_id']?.toString() ?? metadata['request_id']?.toString();
     final String? loanId = metadata['loan_id']?.toString();
-    
+
     // Prefer specific transaction keys over generic 'id'
-    final String? transactionId = metadata['transaction_id']?.toString() ?? 
-                                  metadata['tx_id']?.toString() ?? 
-                                  metadata['payment_id']?.toString();
-    
-    // Only use metadata['id'] if it looks like a database ID (numeric or short string)
-    // Avoid using it if it matches the notification's UUID
-    String? potentialId = metadata['id']?.toString();
-    if (potentialId == n.id || (potentialId != null && potentialId.length > 30)) {
-      potentialId = null;
+    final String? transactionId = metadata['transaction_id']?.toString() ??
+        metadata['tx_id']?.toString() ??
+        metadata['payment_id']?.toString();
+
+    // Helper to validate that an ID is a genuine database identifier and NOT the notification's own UUID
+    bool isValidDbId(String? id) {
+      if (id == null) return false;
+      if (id == n.id) return false; // Cannot be the notification's own ID
+      // If it looks like a standard UUID format (36 chars with dashes), double-check if it belongs to the notification
+      if (id.length >= 36 && id == n.id) return false;
+      return true;
     }
-    
+
+    final String? potentialId = isValidDbId(metadata['id']?.toString()) ? metadata['id']?.toString() : null;
     final String? refId = metadata['reference_id']?.toString();
     final String type = n.type?.toLowerCase() ?? '';
     final bool isTransactionCategory = n.category == NotificationCategory.transaction;
 
-    debugPrint('DEBUG: [NotificationScreen] _handleTap - type: $type, category: ${n.category}, loanId: $loanId, transactionId: $transactionId, refId: $refId, potentialId: $potentialId');
+    debugPrint('DEBUG: [NotificationScreen] _handleTap - type: $type, category: ${n.category}, loanId: $loanId, transactionId: $transactionId, refId: $refId');
 
     // 0. Check for embedded transaction object directly in metadata
     if (metadata['transaction'] is Map) {
@@ -360,15 +363,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
 
     // 1. Transaction-specific notifications (Payments, Capital, or Transaction Category)
-    if (type.contains('payment') || 
-        type.contains('repayment') || 
-        type.contains('capital') || 
+    if (type.contains('payment') ||
+        type.contains('repayment') ||
+        type.contains('capital') ||
         type.contains('transaction') ||
         isTransactionCategory) {
-      
+
       final targetTxId = transactionId ?? potentialId ?? refId;
-      if (targetTxId != null) {
-        _handleTransactionTap(context, targetTxId);
+      if (isValidDbId(targetTxId)) {
+        _handleTransactionTap(context, targetTxId!);
         return;
       }
     }
@@ -376,79 +379,54 @@ class _NotificationScreenState extends State<NotificationScreen> {
     // 2. Co-maker requests
     if (type.contains('comaker')) {
       final targetRequestId = loanRequestId ?? potentialId ?? refId;
-      if (targetRequestId != null) {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => LoanRequestDetailsScreen(loanRequestId: targetRequestId)));
+      if (isValidDbId(targetRequestId)) {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => LoanRequestDetailsScreen(loanRequestId: targetRequestId!)));
       } else {
-        _showError(context, "Loan request ID not found.");
+        _showError(context, "Loan request ID not found or invalid.");
       }
       return;
     }
 
-    // 3. Loan Status / Updates
+    // 3. Loan Status / Updates (Fixed to prevent passing bad IDs that cause 502)
     if (type.contains('loan') || type.contains('disbursed') || type.contains('released') || type.contains('status')) {
-      final targetLoanId = loanId ?? loanRequestId ?? potentialId ?? refId;
-      if (targetLoanId != null) {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ActiveLoanDetailsScreen(loanId: targetLoanId)));
+      final targetLoanId = loanId ?? loanRequestId ?? refId;
+
+      if (isValidDbId(targetLoanId)) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => ActiveLoanDetailsScreen(loanId: targetLoanId!)
+          ),
+        );
       } else {
-        _showError(context, "Loan ID not found.");
+        _showError(context, "Loan ID reference is missing or invalid.");
       }
       return;
     }
 
     // 4. Fallback: If we have a transaction-like ID, try viewing it as a transaction
-    if (transactionId != null || (isTransactionCategory && potentialId != null)) {
+    if (isValidDbId(transactionId) || (isTransactionCategory && isValidDbId(potentialId))) {
       _handleTransactionTap(context, transactionId ?? potentialId!);
       return;
     }
 
     // 5. General Fallback
-    if (potentialId != null) {
-       _handleTransactionTap(context, potentialId);
-       return;
+    if (isValidDbId(potentialId)) {
+      _handleTransactionTap(context, potentialId!);
+      return;
     }
 
-    _showError(context, "No details available for this notification.");
+    _showError(context, "No valid details found for this notification.");
   }
 
-  Future<void> _handleTransactionTap(BuildContext context, String idOrRef) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+  // 🚀 Defined helper method to navigate to ActiveLoanDetailsScreen
+  void _handleTransactionTap(BuildContext context, String referenceId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ActiveLoanDetailsScreen(loanId: referenceId),
+      ),
     );
-
-    try {
-      final txRepo = context.read<TransactionRepository>();
-      
-      // Try by ID first
-      TransactionModel? tx = await txRepo.getTransactionById(idOrRef);
-      
-      // Fallback: try by Reference ID if direct ID lookup failed
-      if (tx == null) {
-        debugPrint('🚀 [Notification] Direct ID lookup failed for $idOrRef, trying reference search...');
-        final txs = await txRepo.getTransactionsByReferenceId(idOrRef);
-        if (txs.isNotEmpty) {
-          tx = txs.first;
-        }
-      }
-      
-      if (context.mounted) {
-        Navigator.pop(context); // Close loader
-        if (tx != null) {
-          showDialog(
-            context: context,
-            builder: (context) => TransactionDetailDialog(transaction: tx!),
-          );
-        } else {
-          _showError(context, "Transaction details not found.");
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context);
-        _showError(context, "Failed to load transaction: $e");
-      }
-    }
   }
 
   void _showError(BuildContext context, String message) {
@@ -463,17 +441,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white, 
-              shape: BoxShape.circle, 
-              border: Border.all(color: const Color(0xFFF3F4F6))
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF3F4F6))
             ),
             child: Icon(Icons.notifications_off_outlined, size: 48, color: Colors.grey.shade300),
           ),
           const SizedBox(height: 24),
-          const Text("No notifications yet", 
+          const Text("No notifications yet",
               style: TextStyle(color: AppTheme.textDark, fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          const Text("We'll notify you when something important happens.", 
+          const Text("We'll notify you when something important happens.",
               style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
         ],
       ),
