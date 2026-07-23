@@ -44,4 +44,25 @@ class NotificationModel {
         return NotificationCategory.general;
     }
   }
+  NotificationModel copyWith({
+    String? id,
+    String? title,
+    String? content,
+    DateTime? createdAt,
+    bool? isUnread,
+    String? type,
+    NotificationCategory? category,
+    Map<String, dynamic>? metadata,
+  }) {
+    return NotificationModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      isUnread: isUnread ?? this.isUnread,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      metadata: metadata ?? this.metadata,
+    );
+  }
 }
