@@ -65,19 +65,26 @@ class ShareCapitalViewModel extends ChangeNotifier {
 
         final shareholderId = _currentShareholder!.id;
 
-        // 2. Fetch loan requests based on role
-        if (_loanRequestFilter == 'borrower') {
-          _loanRequests = await _lendingRepository.getLoanRequestsByShareholderId(shareholderId);
-        } else {
-          _loanRequests = await _lendingRepository.getLoanRequestsByComakerId(shareholderId);
-        }
+        // 2. Fetch loan requests
+        _loanRequests = await _lendingRepository.getLoanRequestsByShareholderId(shareholderId);
 
-        // 3. FETCH THE ACTIVE LOAN HERE
-        // (Replace `getActiveLoanByShareholderId` with the actual method name in your LendingRepository)
-        try {
-          _activeLoan = await _lendingRepository.getActiveLoanByShareholderId(shareholderId);
-        } catch (_) {
-          _activeLoan = null; // Fallback if none exists or endpoint throws 404
+        // 3. FIND ACTIVE LOAN USING EXISTING REPOSITORY METHODS
+        _activeLoan = null;
+        for (var request in _loanRequests) {
+          // Check if the request is approved or released/disbursed
+          final status = request.status.name.toLowerCase();
+          if (status == 'approved' || status == 'released' || status == 'active') {
+            try {
+              // Use the existing repository method that matches your backend
+              final loan = await _lendingRepository.getLoanByLoanRequestId(request.id);
+              if (loan != null && loan.remainingBalance > 0) {
+                _activeLoan = loan;
+                break; // Found the active loan, stop searching
+              }
+            } catch (_) {
+              // Ignore if individual loan lookup fails, continue checking others
+            }
+          }
         }
 
       } else {
