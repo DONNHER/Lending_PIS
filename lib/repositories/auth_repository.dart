@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthRepository {
   final ApiService _apiService;
@@ -14,11 +13,11 @@ class AuthRepository {
       'password': password,
       if (captchaToken != null) 'captcha_token': captchaToken,
     });
-    
+
     if (response['token'] != null) {
       await _apiService.setToken(response['token']);
     }
-    
+
     return response;
   }
 
@@ -40,7 +39,7 @@ class AuthRepository {
     String? address,
     String? phone,
     String? idImageUrl,
-    double? initialShare, // <-- 1. Added initialShare parameter here
+    double? initialShare,
   }) async {
     final response = await _apiService.post('/register', body: {
       'username': username,
@@ -52,35 +51,29 @@ class AuthRepository {
       'address': address,
       'phone': phone,
       'id_image_url': idImageUrl,
-      if (initialShare != null) 'initial_share': initialShare, 
+      if (initialShare != null) 'initial_share': initialShare,
     });
     return response;
   }
 
   Future<UserModel?> getCurrentUser() async {
     try {
-      final supabaseUser = Supabase.instance.client.auth.currentUser;
-      if (supabaseUser == null) return null;
-
-      // Fetch the profile data directly from your Supabase database table
-      final response = await Supabase.instance.client
-          .from('users') // or 'admins' depending on your schema
-          .select()
-          .eq('id', supabaseUser.id)
-          .single();
-
-      return UserModel.fromJson(response);
+      final response = await _apiService.get('/user');
+      if (response != null) {
+        return UserModel.fromJson(response);
+      }
     } catch (e) {
-      debugPrint('Error fetching current user from Supabase: $e');
+      debugPrint('DEBUG: [AuthRepository] Error fetching current user from API: $e');
       return null;
     }
+    return null;
   }
 
   Future<Map<String, dynamic>> verifyMfa(String email) async {
     final response = await _apiService.post('/verify-mfa', body: {
       'email': email,
     });
-    
+
     if (response['token'] != null) {
       await _apiService.setToken(response['token']);
     }
