@@ -45,7 +45,6 @@ class _LoansPageState extends State<LoansPage> {
           onBack: () => nav.clearLoanSelection(),
         );
       } else if (request.status == LoanStatus.released || request.status == LoanStatus.rejected) {
-        // Use the specific navigation method for loan details to ensure it doesn't fall back to evaluation
         WidgetsBinding.instance.addPostFrameCallback((_) {
           nav.navigateToLoanDetails(request.id, request.shareholderId, request: request);
         });
@@ -93,6 +92,16 @@ class _LoansPageState extends State<LoansPage> {
         builder: (context, viewModel, child) {
           return Column(
             children: [
+              // 🚀 Thin Loading Indicator right below the App Bar header
+              if (viewModel.isLoading)
+                const LinearProgressIndicator(
+                  color: Color(0xFFC06C4D),
+                  backgroundColor: Color(0xFFFDF8F5),
+                  minHeight: 3,
+                )
+              else
+                const SizedBox(height: 3),
+
               _buildActionBar(viewModel),
               Expanded(
                 child: Padding(
@@ -153,7 +162,6 @@ class _LoansPageState extends State<LoansPage> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minWidth: constraints.maxWidth - 48),
               child: Row(
-                // Safe positioning across wide spaces without unbounded flex crashes
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
@@ -187,7 +195,6 @@ class _LoansPageState extends State<LoansPage> {
                       ),
                     ],
                   ),
-                  // Safe fixed separation boundary if layout hits scroll bounds
                   const SizedBox(width: 24),
                   ImportExportButtons(
                     type: 'loans',
