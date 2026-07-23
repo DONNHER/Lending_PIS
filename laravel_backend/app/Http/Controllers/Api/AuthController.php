@@ -55,19 +55,19 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'username' => 'required|string|unique:users',
-            'email' => 'required|string|email|unique:users',
-            'password' => $this->passwordPolicy,
-            'firstname' => 'required|string',
-            'lastname' => 'required|string',
-            'role' => 'required|string',
-            'avatar_url' => 'nullable|string',
-            'address' => 'nullable|string',
-            'phone' => 'nullable|string',
-            'id_image_url' => 'nullable|string',
-        ], [
-            'password.regex' => $this->passwordPolicyMessage
-        ]);
+                    'username' => 'required|string|unique:users',
+                    'email' => 'required|string|email|unique:users',
+                    'password' => $this->passwordPolicy,
+                    'firstname' => 'required|string',
+                    'lastname' => 'required|string',
+                    'role' => 'required|string',
+                    'avatar_url' => 'nullable|string',
+                    'address' => 'nullable|string',
+                    'phone' => 'nullable|string',
+                    'id_image_url' => 'nullable|string',
+                ], [
+                    'password.regex' => $this->passwordPolicyMessage
+                ]);
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
@@ -97,7 +97,7 @@ class AuthController extends Controller
                         'full_name' => $user->firstname . ' ' . $user->lastname,
                         'address' => $user->address,
                         'contact_number' => $request->phone ?? '',
-                        'total_share_capital' => 0.00,
+                        'total_share_capital' => $request->input('initial_share', 0.00),
                         'creditscore' => 700,
                         'status' => 'active',
                         'id_image_url' => $request->id_image_url,
