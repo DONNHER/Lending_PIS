@@ -36,9 +36,9 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
         automaticallyImplyLeading: false,
         leading: nav.isViewingAdminSettings
             ? IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => nav.clearAdminSettings(),
-              )
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => nav.clearAdminSettings(),
+        )
             : null,
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -70,13 +70,26 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
             return Center(child: CircularProgressIndicator(color: theme.primaryColor));
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(32.0),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
-                child: isMobile
-                    ? Column(
+          return Column(
+            children: [
+              // 🚀 Thin Loading Indicator right below the App Bar header
+              if (viewModel.isLoading)
+                const LinearProgressIndicator(
+                  color: Color(0xFFC06C4D),
+                  backgroundColor: Color(0xFFFDF8F5),
+                  minHeight: 3,
+                )
+              else
+                const SizedBox(height: 3),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1200),
+                      child: isMobile
+                          ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _MainContent(viewModel: viewModel),
@@ -84,7 +97,7 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
                           _Sidebar(viewModel: viewModel),
                         ],
                       )
-                    : Row(
+                          : Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
@@ -98,8 +111,11 @@ class _InterestManagementPageState extends State<InterestManagementPage> {
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           );
         },
       ),

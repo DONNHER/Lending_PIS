@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthRepository {
   final ApiService _apiService;
@@ -58,14 +59,21 @@ class AuthRepository {
 
   Future<UserModel?> getCurrentUser() async {
     try {
-      final response = await _apiService.get('/user');
-      if (response != null) {
-        return UserModel.fromJson(response);
-      }
+      final supabaseUser = Supabase.instance.client.auth.currentUser;
+      if (supabaseUser == null) return null;
+
+      // Fetch the profile data directly from your Supabase database table
+      final response = await Supabase.instance.client
+          .from('users') // or 'admins' depending on your schema
+          .select()
+          .eq('id', supabaseUser.id)
+          .single();
+
+      return UserModel.fromJson(response);
     } catch (e) {
+      debugPrint('Error fetching current user from Supabase: $e');
       return null;
     }
-    return null;
   }
 
   Future<Map<String, dynamic>> verifyMfa(String email) async {

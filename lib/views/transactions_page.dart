@@ -50,6 +50,16 @@ class _TransactionsPageState extends State<TransactionsPage> {
         builder: (context, viewModel, child) {
           return Column(
             children: [
+              // 🚀 Thin Loading Indicator right below the App Bar header
+              if (viewModel.isLoading)
+                const LinearProgressIndicator(
+                  color: Color(0xFFC06C4D),
+                  backgroundColor: Color(0xFFFDF8F5),
+                  minHeight: 3,
+                )
+              else
+                const SizedBox(height: 3),
+
               _buildActionBar(viewModel),
               Expanded(
                 child: Padding(
@@ -113,10 +123,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minWidth: constraints.maxWidth - 48),
               child: Row(
-                // Using spaceBetween spreads dropdowns and buttons safely across wide viewports
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Group dropdowns together in their own nested row
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -148,7 +156,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       ),
                     ],
                   ),
-                  // Adds safety spacing when content overflows and starts scrolling horizontally
                   const SizedBox(width: 24),
                   ImportExportButtons(
                     type: 'transactions',
