@@ -109,11 +109,11 @@ class CanteenApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) {
             final authVM = AuthViewModel(
-              context.read<AuthRepository>(), 
+              context.read<AuthRepository>(),
               context.read<ActivityLogRepository>(),
               context.read<StorageRepository>(),
             );
-            
+
             apiService.onUnauthorized = authVM.handleUnauthorized;
             authVM.restoreSession();
             return authVM;
@@ -147,8 +147,8 @@ class CanteenApp extends StatelessWidget {
             context.read<TransactionRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && 
-                auth.currentUser?.role == UserRole.admin && 
+            if (auth.isAuthenticated &&
+                auth.currentUser?.role == UserRole.admin &&
                 model != null && !model.isInitialized) {
               model.initDashboard();
             }
@@ -161,8 +161,8 @@ class CanteenApp extends StatelessWidget {
             context.read<LendingRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && 
-                auth.currentUser?.role == UserRole.admin && 
+            if (auth.isAuthenticated &&
+                auth.currentUser?.role == UserRole.admin &&
                 model != null && !model.isInitialized) {
               model.fetchLoanRequests();
             }
@@ -175,8 +175,8 @@ class CanteenApp extends StatelessWidget {
             context.read<ShareholderRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && 
-                auth.currentUser?.role == UserRole.admin && 
+            if (auth.isAuthenticated &&
+                auth.currentUser?.role == UserRole.admin &&
                 model != null && !model.isInitialized) {
               model.fetchShareholders();
             }
@@ -189,8 +189,8 @@ class CanteenApp extends StatelessWidget {
             context.read<UserRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && 
-                auth.currentUser?.role == UserRole.admin && 
+            if (auth.isAuthenticated &&
+                auth.currentUser?.role == UserRole.admin &&
                 model != null && !model.isInitialized) {
               model.fetchUsers();
             }
@@ -203,8 +203,8 @@ class CanteenApp extends StatelessWidget {
             context.read<TransactionRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && 
-                auth.currentUser?.role == UserRole.admin && 
+            if (auth.isAuthenticated &&
+                auth.currentUser?.role == UserRole.admin &&
                 model != null && !model.isInitialized) {
               model.fetchTransactions();
             }
@@ -217,8 +217,8 @@ class CanteenApp extends StatelessWidget {
             context.read<ActivityLogRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && 
-                auth.currentUser?.role == UserRole.admin && 
+            if (auth.isAuthenticated &&
+                auth.currentUser?.role == UserRole.admin &&
                 model != null && !model.isInitialized) {
               model.fetchLogs();
             }
@@ -231,8 +231,8 @@ class CanteenApp extends StatelessWidget {
             context.read<LendingRepository>(),
           ),
           update: (context, auth, model) {
-            if (auth.isAuthenticated && 
-                auth.currentUser?.role == UserRole.admin && 
+            if (auth.isAuthenticated &&
+                auth.currentUser?.role == UserRole.admin &&
                 model != null && !model.isInitialized) {
               model.loadData();
             }
@@ -381,13 +381,55 @@ class _RootAppState extends State<RootApp> {
         '/login': (context) => const LoginPage(),
         '/admin-login': (context) => const AdminLoginPage(),
         '/register': (context) => const RegistrationPage(),
-        '/dashboard': (context) => const AppShell(),
-        '/users': (context) => const AppShell(),
-        '/shareholder-dashboard': (context) => const AppLayout(),
-        '/notifications': (context) => const NotificationScreen(),
+        '/dashboard': (context) => _protectedRouteGuard(auth, const AppShell(), UserRole.admin),
+        '/users': (context) => _protectedRouteGuard(auth, const AppShell(), UserRole.admin),
+        '/shareholder-dashboard': (context) => _protectedRouteGuard(auth, const AppLayout(), UserRole.shareholder),
+        '/notifications': (context) => _protectedRouteGuard(auth, const NotificationScreen(), null),
         '/change-password': (context) => const ChangePasswordPage(),
       },
     );
+  }
+
+  /// 🔒 Route Guard Helper to prevent direct URL access to restricted pages
+  Widget _protectedRouteGuard(AuthViewModel auth, Widget targetScreen, UserRole? requiredRole) {
+    if (!auth.isInitialized) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFFDF8F5),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D))),
+      );
+    }
+
+    if (!auth.isAuthenticated) {
+      return const LoginPage();
+    }
+
+    if (requiredRole != null && auth.currentUser?.role != requiredRole && !auth.isImpersonating) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFFDF8F5),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 48, color: Color(0xFFC06C4D)),
+              const SizedBox(height: 16),
+              const Text('Access Denied', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('You do not have permission to view this page.'),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  final route = auth.dashboardRoute ?? '/login';
+                  Navigator.of(context).pushNamedAndRemoveUntil(route, (route) => false);
+                },
+                child: const Text('Return to Dashboard'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return targetScreen;
   }
 
   Widget _getHome(AuthViewModel auth) {
@@ -396,7 +438,6 @@ class _RootAppState extends State<RootApp> {
     }
 
     // 🛑 CRITICAL: Keep showing a loader until session restoration finishes!
-    // This stops it from prematurely defaulting to the admin dashboard on a hard refresh.
     if (!auth.isInitialized) {
       return Scaffold(
         backgroundColor: const Color(0xFFFDF8F5),
