@@ -359,7 +359,6 @@ class _RootAppState extends State<RootApp> {
     }
   }
 
-  // 🚀 Add this method to clear the flag after password change / cancel
   void _clearRecovery() {
     setState(() {
       _hasRecoveryRedirect = false;
@@ -375,11 +374,10 @@ class _RootAppState extends State<RootApp> {
       title: 'Lending System',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      // 🚀 Pass the clear callback down to ChangePasswordPage
-      home: _hasRecoveryRedirect
-          ? ChangePasswordPage(onPasswordChanged: _clearRecovery)
-          : _getHome(auth),
+      // Use initialRoute to let Flutter handle deep-link paths on refresh cleanly
+      initialRoute: '/',
       routes: {
+        '/': (context) => _getHome(auth),
         '/login': (context) => const LoginPage(),
         '/admin-login': (context) => const AdminLoginPage(),
         '/register': (context) => const RegistrationPage(),
@@ -396,20 +394,46 @@ class _RootAppState extends State<RootApp> {
     if (_hasRecoveryRedirect) {
       return ChangePasswordPage(onPasswordChanged: _clearRecovery);
     }
+
+    // 🛑 CRITICAL: Keep showing a loader until session restoration finishes!
+    // This stops it from prematurely defaulting to the admin dashboard on a hard refresh.
     if (!auth.isInitialized) {
-      return const Scaffold(
+      return Scaffold(
+        backgroundColor: const Color(0xFFFDF8F5),
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFFC06C4D)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: Color(0xFFC06C4D)),
+              const SizedBox(height: 24),
+              const Text(
+                'Restoring your session...',
+                style: TextStyle(
+                  color: Color(0xFF32211A),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
+
     if (!auth.isAuthenticated) {
       return const LoginPage();
     }
+
     if (auth.isImpersonating) {
       return const AppShell();
     }
+
+    // If user is a shareholder, ensure they land safely back on their layout/app shell view
     if (auth.currentUser?.role == UserRole.shareholder) {
+      // Check if URL path requested notifications directly
+      if (Uri.base.path.contains('notifications')) {
+        return const NotificationScreen();
+      }
       return const AppLayout();
     }
 
