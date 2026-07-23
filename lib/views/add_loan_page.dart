@@ -372,7 +372,7 @@ class _AddLoanBodyState extends State<_AddLoanBody> {
             _buildFixedFooter(context, viewModel),
           ],
         ),
-      ),
+      ),)
     );
   }
 

@@ -135,12 +135,6 @@ class _UsersPageState extends State<UsersPage> {
                                     }
                                   }
                                 },
-                                onEdit: (user) {
-                                  // Handle edit
-                                },
-                                onDelete: (user) {
-                                  // Handle delete
-                                },
                               ),
                             ),
                             // Pagination
