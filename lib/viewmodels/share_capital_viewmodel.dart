@@ -62,16 +62,24 @@ class ShareCapitalViewModel extends ChangeNotifier {
       if (_currentShareholder != null) {
         _shareholderFirstName = _currentShareholder!.firstName;
         _totalCapital = _currentShareholder!.shareCapital;
-        
+
         final shareholderId = _currentShareholder!.id;
 
         // 2. Fetch loan requests based on role
-        // This is non-blocking as it awaits the future
         if (_loanRequestFilter == 'borrower') {
           _loanRequests = await _lendingRepository.getLoanRequestsByShareholderId(shareholderId);
         } else {
           _loanRequests = await _lendingRepository.getLoanRequestsByComakerId(shareholderId);
         }
+
+        // 3. FETCH THE ACTIVE LOAN HERE
+        // (Replace `getActiveLoanByShareholderId` with the actual method name in your LendingRepository)
+        try {
+          _activeLoan = await _lendingRepository.getActiveLoanByShareholderId(shareholderId);
+        } catch (_) {
+          _activeLoan = null; // Fallback if none exists or endpoint throws 404
+        }
+
       } else {
         throw Exception("Shareholder profile not found.");
       }
