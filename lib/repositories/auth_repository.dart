@@ -92,35 +92,79 @@ class AuthRepository {
 
   Future<UserModel?> getCurrentUser() async {
     try {
-      final email = _supabase.auth.currentUser?.email;
+      final authUser = _supabase.auth.currentUser;
 
-      if (email == null) return null;
+      if (authUser == null) {
+        debugPrint('DEBUG: No authenticated Supabase user.');
+        return null;
+      }
+
+      debugPrint(
+        'DEBUG: Auth user id: ${authUser.id}, email: ${authUser.email}',
+      );
 
 
-      final response = await _supabase
+      // 1. Try matching by UUID (recommended)
+      var response = await _supabase
           .from('users')
           .select()
-          .eq('email', email)
+          .eq('id', authUser.id)
           .maybeSingle();
 
 
       if (response != null) {
+        debugPrint('DEBUG: Profile found by UUID.');
         return UserModel.fromJson(response);
       }
 
 
+      // 2. Fallback: match by email
+      if (authUser.email != null) {
+        response = await _supabase
+            .from('users')
+            .select()
+            .eq('email', authUser.email!)
+            .maybeSingle();
+
+
+        if (response != null) {
+          debugPrint(
+            'DEBUG: Profile found by email. Repairing UUID...',
+          );
+
+
+          // Fix the broken relationship
+          await _supabase
+              .from('users')
+              .update({
+            'id': authUser.id,
+          })
+              .eq('email', authUser.email!);
+
+
+          response['id'] = authUser.id;
+
+          return UserModel.fromJson(response);
+        }
+      }
+
+
       debugPrint(
-        'DEBUG: No profile found for email: $email',
+        'DEBUG: No profile found for email: ${authUser.email}',
       );
+
+      return null;
+
 
     } catch (e) {
       debugPrint(
-        'DEBUG: [AuthRepository] Error fetching user by email: $e',
+        'DEBUG: [AuthRepository] Error fetching current user: $e',
       );
-    }
 
-    return null;
+      return null;
+    }
   }
+
 
 
   Future<UserModel?> getUserByEmail(String email) async {
