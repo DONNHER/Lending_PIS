@@ -103,38 +103,35 @@ class _UsersPageState extends State<UsersPage> {
                                 onView: (user) {
                                   nav.navigateToShareholder(user.id);
                                 },
-                                onImpersonate: (user) async {
-                                  try {
-                                    final repo = context.read<UserRepository>();
-                                    final response = await repo.impersonate(user.id);
+                                  onImpersonate: (user) async {
+                                    try {
+                                      final authModel = context.read<AuthViewModel>();
+                                      await authModel.startImpersonation(user);
 
-                                    final authModel = context.read<AuthViewModel>();
-                                    await authModel.startImpersonation(response);
-
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Now impersonating ${user.fullName}'),
-                                          backgroundColor: const Color(0xFFC06C4D),
-                                        ),
-                                      );
-                                      // Navigate to appropriate dashboard
-                                      final route = authModel.dashboardRoute;
-                                      if (route != null) {
-                                        // Find dashboard index
-                                        final navItems = nav.getFilteredNavItems();
-                                        final idx = navItems.indexWhere((it) => it.route == route);
-                                        if (idx != -1) nav.navigateTo(idx);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Now impersonating ${user.fullName}'),
+                                            backgroundColor: const Color(0xFFC06C4D),
+                                          ),
+                                        );
+                                        // Navigate to appropriate dashboard
+                                        final route = authModel.dashboardRoute;
+                                        if (route != null) {
+                                          // Find dashboard index
+                                          final navItems = nav.getFilteredNavItems();
+                                          final idx = navItems.indexWhere((it) => it.route == route);
+                                          if (idx != -1) nav.navigateTo(idx);
+                                        }
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Impersonation failed: $e'), backgroundColor: Colors.red),
+                                        );
                                       }
                                     }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Impersonation failed: $e'), backgroundColor: Colors.red),
-                                      );
-                                    }
-                                  }
-                                },
+                                  },
                               ),
                             ),
                             // Pagination

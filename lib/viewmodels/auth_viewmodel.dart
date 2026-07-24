@@ -42,7 +42,6 @@ class AuthViewModel extends ChangeNotifier {
 
   // 🚀 Impersonation State
   UserModel? _originalAdminUser;
-  String? _originalAdminToken;
 
   // 🛑 Guard to prevent infinite logout/401 loops
   bool _isLoggingOut = false;
@@ -233,45 +232,11 @@ class AuthViewModel extends ChangeNotifier {
 
       debugPrint('DEBUG: [AuthViewModel] Attempting Supabase sign-in for email: $email (isAdminLogin: $isAdminLogin)');
 
-      // 1. Authenticate against Supabase Auth
-      final supabaseResponse = await _supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+      // 1. Authenticate directly against Supabase Auth
+      final loginResult = await _authRepository.login(email, password: password, captchaToken: captchaToken);
 
-      debugPrint('DEBUG: [AuthViewModel] Supabase sign-in successful. User ID: ${supabaseResponse.user?.id}');
-
-      if (supabaseResponse.session != null && supabaseResponse.user != null) {
-
-        debugPrint('DEBUG: [AuthViewModel] Proceeding to Laravel backend login...');
-        // 2. Authenticate against Laravel Backend using Repository
-        final laravelLoginResponse = await _authRepository.login(
-          email,
-          captchaToken: captchaToken,
-        );
-
-        debugPrint('DEBUG: [AuthViewModel] Laravel backend login response received.');
-
-        // 🚀 Check if Laravel backend blocked the user and requires a CAPTCHA
-        if (laravelLoginResponse['captcha_required'] == true) {
-          debugPrint('DEBUG: [AuthViewModel] Laravel response indicates CAPTCHA required.');
-          _isCaptchaRequired = true;
-          _errorMessage = laravelLoginResponse['message'] ?? 'Security check required. Please complete the CAPTCHA.';
-          _isLoading = false;
-          notifyListeners();
-          return false;
-        }
-
-        if (laravelLoginResponse['token'] != null) {
-          await _authRepository.setToken(laravelLoginResponse['token']);
-        }
-
-        UserModel? user;
-        if (laravelLoginResponse['user'] != null) {
-          user = UserModel.fromJson(laravelLoginResponse['user']);
-        } else {
-          user = await _authRepository.getCurrentUser();
-        }
+      if (loginResult['user'] != null && loginResult['session'] != null) {
+        UserModel? user = await _authRepository.getCurrentUser();
 
         if (user == null) {
           debugPrint('DEBUG: [AuthViewModel] Error: User profile data could not be retrieved.');
@@ -290,7 +255,6 @@ class AuthViewModel extends ChangeNotifier {
             debugPrint('DEBUG: [AuthViewModel] Access denied: Non-admin tried entering Admin Portal.');
             _errorMessage = 'Access denied. This login is for Administrators only.';
             await _supabase.auth.signOut();
-            await _authRepository.logout();
             _isLoading = false;
             notifyListeners();
             return false;
@@ -300,7 +264,6 @@ class AuthViewModel extends ChangeNotifier {
             debugPrint('DEBUG: [AuthViewModel] Access denied: Admin tried logging in via regular portal.');
             _errorMessage = 'Administrators must use the secure Admin Login portal.';
             await _supabase.auth.signOut();
-            await _authRepository.logout();
             _isLoading = false;
             notifyListeners();
             return false;
@@ -345,17 +308,18 @@ class AuthViewModel extends ChangeNotifier {
 
     try {
       debugPrint('DEBUG: [AuthViewModel] Registering in Supabase...');
-      final signUpRes = await _supabase.auth.signUp(
-          email: email,
-          password: password,
-          data: {
-            'username': username,
-            'firstname': firstName,
-            'lastname': lastName,
-            'role': role.name,
-          }
+      await _authRepository.register(
+        username: username,
+        email: email,
+        password: password,
+        firstName: firstName,
+        lastName: lastName,
+        role: role,
+        address: address,
+        phone: phone,
+        idImageUrl: idImageUrl,
       );
-      debugPrint('DEBUG: [AuthViewModel] Supabase signUp success. User: ${signUpRes.user?.id}');
+      debugPrint('DEBUG: [AuthViewModel] Supabase registration success.');
 
       return true;
     } on AuthException catch (e) {
@@ -481,8 +445,8 @@ class AuthViewModel extends ChangeNotifier {
         avatarUrl: avatarUrl,
       );
 
-      if (response['success'] == true) {
-        final updatedUser = UserModel.fromJson(response['user']);
+      if (response != null) {
+        final updatedUser = UserModel.fromJson(response);
         if (isImpersonating) {
           _originalAdminUser = updatedUser;
         } else {
@@ -531,15 +495,7 @@ class AuthViewModel extends ChangeNotifier {
         UserAttributes(password: newPassword),
       );
 
-      debugPrint('DEBUG: [AuthViewModel] Syncing new password hash with Laravel backend...');
-      await _authRepository.resetPassword(
-        email: email,
-        code: '',
-        password: newPassword,
-      );
-
       await _supabase.auth.signOut();
-      await _authRepository.logout();
 
       return true;
     } on AuthException catch (e) {
@@ -567,19 +523,12 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _supabase.auth.signOut();
-    } catch (e) {
-      debugPrint('DEBUG: [AuthViewModel] Supabase SignOut error: $e');
-    }
-
-    try {
       await _authRepository.logout();
     } catch (e) {
-      debugPrint('DEBUG: [AuthViewModel] Backend logout error (ignored): $e');
+      debugPrint('DEBUG: [AuthViewModel] Supabase SignOut error: $e');
     } finally {
       _currentUser = null;
       _originalAdminUser = null;
-      _originalAdminToken = null;
       _isMfaRequired = false;
       _pendingMfaEmail = null;
 
@@ -596,28 +545,21 @@ class AuthViewModel extends ChangeNotifier {
     logout();
   }
 
-  Future<void> startImpersonation(Map<String, dynamic> response) async {
-    if (_currentUser == null) return;
+  Future<void> startImpersonation(UserModel targetUser) async {
+    if (_currentUser == null || _currentUser!.role != UserRole.admin) return;
 
     try {
       _isLoading = true;
       notifyListeners();
 
       _originalAdminUser = _currentUser;
-      _originalAdminToken = await _authRepository.getToken();
+      _currentUser = targetUser;
 
-      if (response['token'] != null && response['user'] != null) {
-        final targetUser = UserModel.fromJson(response['user']);
-        await _authRepository.setToken(response['token']);
-        _currentUser = targetUser;
-
-        notifyListeners();
-      }
+      notifyListeners();
     } catch (e) {
       debugPrint('DEBUG: [AuthViewModel] Start Impersonation Error: $e');
       _errorMessage = 'Failed to start impersonation session.';
       _originalAdminUser = null;
-      _originalAdminToken = null;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -625,13 +567,10 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<void> stopImpersonation() async {
-    if (_originalAdminUser == null || _originalAdminToken == null) return;
+    if (_originalAdminUser == null) return;
 
     _currentUser = _originalAdminUser;
-    await _authRepository.setToken(_originalAdminToken!);
-
     _originalAdminUser = null;
-    _originalAdminToken = null;
 
     notifyListeners();
   }

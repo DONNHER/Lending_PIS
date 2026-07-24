@@ -2,40 +2,42 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
-import '../services/api_service.dart';
 
 class AuthRepository {
-  final ApiService _apiService;
   final _supabase = Supabase.instance.client;
 
-  AuthRepository(this._apiService);
+  AuthRepository();
 
-  Map<String, String> get _supabaseHeaders {
-    final userId = _supabase.auth.currentUser?.id;
-    return {
-      if (userId != null) 'X-Supabase-User-Id': userId,
-    };
-  }
-
-  Future<Map<String, dynamic>> login(String email, {String? captchaToken}) async {
-    final response = await _apiService.post('/login', body: {
-      'email': email,
-      if (captchaToken != null) 'captcha_token': captchaToken,
-    });
-
-    if (response['token'] != null) {
-      await _apiService.setToken(response['token']);
+  Future<Map<String, dynamic>> login(String email, {String? password, String? captchaToken}) async {
+    // If using Supabase Auth password sign in:
+    if (password != null) {
+      final response = await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      return {
+        'user': response.user,
+        'session': response.session,
+      };
     }
 
-    return response;
+    // Fallback to OTP / Magic Link if password isn't provided
+    await _supabase.auth.signInWithOtp(
+      email: email,
+      // data: if you need to pass captcha token, use emailRedirectTo or options
+    );
+
+    return {'message': 'OTP sent successfully'};
   }
 
   Future<void> setToken(String token) async {
-    await _apiService.setToken(token);
+    // Supabase manages its own session tokens locally,
+    // but you can set the session manually if needed:
+    // await _supabase.auth.setSession(token);
   }
 
   Future<String?> getToken() async {
-    return await _apiService.getToken();
+    return _supabase.auth.currentSession?.accessToken;
   }
 
   Future<Map<String, dynamic>> register({
@@ -50,38 +52,73 @@ class AuthRepository {
     String? idImageUrl,
     double? initialShare,
   }) async {
-    final response = await _apiService.post('/register', body: {
-      'username': username,
-      'email': email,
-      'password': password,
-      'firstname': firstName,
-      'lastname': lastName,
-      'role': role.name,
-      'address': address,
-      'phone': phone,
-      'id_image_url': idImageUrl,
-      if (initialShare != null) 'initial_share': initialShare,
-    });
-    return response;
+    // 1. Sign up with Supabase Auth
+    final authResponse = await _supabase.auth.signUp(
+      email: email,
+      password: password,
+      data: {
+        'username': username,
+        'firstname': firstName,
+        'lastname': lastName,
+        'role': role.name,
+      },
+    );
+
+    final userId = authResponse.user?.id;
+
+    if (userId != null) {
+      // 2. Insert corresponding record directly into your users table
+      final profileData = {
+        'id': userId,
+        'username': username,
+        'email': email,
+        'firstname': firstName,
+        'lastname': lastName,
+        'role': role.name,
+        'address': address,
+        'phone': phone,
+        'id_image_url': idImageUrl,
+        if (initialShare != null) 'initial_share': initialShare,
+      };
+
+      await _supabase.from('users').upsert(profileData);
+    }
+
+    return {
+      'user': authResponse.user,
+      'session': authResponse.session,
+    };
   }
 
   Future<UserModel?> getCurrentUser() async {
     try {
-      final response = await _apiService.get('/user', headers: _supabaseHeaders);
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final response = await _supabase
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+
       if (response != null) {
         return UserModel.fromJson(response);
       }
     } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] Error fetching current user from API: $e');
+      debugPrint('DEBUG: [AuthRepository] Error fetching current user from Supabase: $e');
       return null;
     }
     return null;
   }
 
-  // 🚀 Fetch user profile directly by email from the Laravel backend
   Future<UserModel?> getUserByEmail(String email) async {
     try {
-      final response = await _apiService.get('/user/by-email?email=$email');
+      final response = await _supabase
+          .from('users')
+          .select()
+          .eq('email', email)
+          .maybeSingle();
+
       if (response != null) {
         return UserModel.fromJson(response);
       }
@@ -93,15 +130,10 @@ class AuthRepository {
   }
 
   Future<Map<String, dynamic>> verifyMfa(String email) async {
-    final response = await _apiService.post('/verify-mfa', body: {
-      'email': email,
-    });
-
-    if (response['token'] != null) {
-      await _apiService.setToken(response['token']);
-    }
-
-    return response;
+    // Handled natively by Supabase Auth (e.g. OTP verification)
+    // Example for verifying an OTP token:
+    // final response = await _supabase.auth.verifyOTP(email: email, token: code, type: OtpType.signup);
+    return {'message': 'MFA verification should use supabase.auth.verifyOTP'};
   }
 
   Future<Map<String, dynamic>> updateProfile({
@@ -110,33 +142,37 @@ class AuthRepository {
     required String address,
     String? avatarUrl,
   }) async {
-    final response = await _apiService.post('/user/profile',
-      body: {
-        'firstname': firstName,
-        'lastname': lastName,
-        'address': address,
-        'avatar_url': avatarUrl,
-      },
-      headers: _supabaseHeaders,
-    );
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('No authenticated user found.');
+
+    final updateData = {
+      'firstname': firstName,
+      'lastname': lastName,
+      'address': address,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+    };
+
+    final response = await _supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select()
+        .single();
+
     return response;
   }
 
   Future<void> logout() async {
-    await _apiService.post('/logout');
-    await _apiService.clearToken();
+    await _supabase.auth.signOut();
   }
 
   Future<Map<String, dynamic>> forgotPassword(String email) async {
-    debugPrint('DEBUG: [AuthRepository] Calling /forgot-password for: $email');
+    debugPrint('DEBUG: [AuthRepository] Calling Supabase resetPasswordForEmail for: $email');
     try {
-      final response = await _apiService.post('/forgot-password', body: {
-        'email': email,
-      });
-      debugPrint('DEBUG: [AuthRepository] /forgot-password response success: $response');
-      return response;
+      await _supabase.auth.resetPasswordForEmail(email);
+      return {'success': true, 'message': 'Password reset email sent.'};
     } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] /forgot-password error: $e');
+      debugPrint('DEBUG: [AuthRepository] forgotPassword error: $e');
       rethrow;
     }
   }
@@ -146,17 +182,23 @@ class AuthRepository {
     required String code,
     required String password,
   }) async {
-    debugPrint('DEBUG: [AuthRepository] Calling /reset-password for: $email');
+    debugPrint('DEBUG: [AuthRepository] Calling Supabase updateUser password');
     try {
-      final response = await _apiService.post('/reset-password', body: {
-        'email': email,
-        'code': code,
-        'password': password,
-      });
-      debugPrint('DEBUG: [AuthRepository] /reset-password response success: $response');
-      return response;
+      // Note: Typically Supabase handles recovery via a deep link session,
+      // but if using a custom token/code verification:
+      await _supabase.auth.verifyOTP(
+        email: email,
+        token: code,
+        type: OtpType.recovery,
+      );
+
+      final response = await _supabase.auth.updateUser(
+        UserAttributes(password: password),
+      );
+
+      return {'success': true, 'user': response.user};
     } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] /reset-password error: $e');
+      debugPrint('DEBUG: [AuthRepository] resetPassword error: $e');
       rethrow;
     }
   }

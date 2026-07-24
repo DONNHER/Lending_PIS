@@ -93,7 +93,7 @@ class CanteenApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // ─── Repositories ──────
-        Provider(create: (_) => AuthRepository(apiService)),
+        Provider(create: (_) => AuthRepository()),
         Provider(create: (_) => StorageRepository()),
         Provider(create: (_) => ActivityLogRepository(apiService)),
         Provider(create: (_) => LendingRepository(apiService)),
@@ -114,7 +114,6 @@ class CanteenApp extends StatelessWidget {
               context.read<StorageRepository>(),
             );
 
-            apiService.onUnauthorized = authVM.handleUnauthorized;
             authVM.restoreSession();
             return authVM;
           },

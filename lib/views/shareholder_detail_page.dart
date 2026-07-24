@@ -122,7 +122,7 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
       final repo = context.read<UserRepository>();
       // Before calling impersonate, let's fetch the actual user to check status
       final user = await repo.getUserById(userId);
-      
+
       if (user != null && user.status != UserStatus.active) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -135,16 +135,21 @@ class _ShareholderDetailPageState extends State<ShareholderDetailPage> {
         return;
       }
 
-      final response = await repo.impersonate(userId);
-      
+      // Fetch the target user's UserModel directly from Supabase instead of calling backend impersonate
+      final targetUser = await repo.getUserById(userId);
+
+      if (targetUser == null) {
+        throw Exception('User profile not found.');
+      }
+
       if (!mounted) return;
-      
+
       final authModel = Provider.of<AuthViewModel>(context, listen: false);
       final nav = Provider.of<NavigationViewModel>(context, listen: false);
       final messenger = ScaffoldMessenger.of(context);
 
-      await authModel.startImpersonation(response);
-      
+      await authModel.startImpersonation(targetUser);
+
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
