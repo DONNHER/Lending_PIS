@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:capstone_application/app_theme.dart';
@@ -330,122 +331,99 @@ class _RootAppState extends State<RootApp> {
   bool _hasRecoveryRedirect = false;
   bool _isVerifyingRecovery = false;
 
+  StreamSubscription<AuthState>? _authSubscription;
+
   @override
   void initState() {
     super.initState();
+
     _handleInitialSessionForRecovery();
 
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final event = data.event;
-      if (event == AuthChangeEvent.passwordRecovery) {
-        setState(() {
-          _hasRecoveryRedirect = true;
-          _isVerifyingRecovery = false;
+    _authSubscription =
+        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+          if (data.event == AuthChangeEvent.passwordRecovery) {
+            if (!mounted) return;
+
+            setState(() {
+              _hasRecoveryRedirect = true;
+              _isVerifyingRecovery = false;
+            });
+          }
         });
-      }
-    });
   }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
 
   Future<void> _handleInitialSessionForRecovery() async {
     try {
       final uri = Uri.base;
-      final fragment = uri.fragment;
 
-      bool isRecovery = fragment.contains('type=recovery') ||
-          uri.queryParameters.containsKey('code');
+      final code = uri.queryParameters['code'];
 
-      if (isRecovery) {
-        setState(() {
-          _isVerifyingRecovery = true;
-        });
-        // Prompt user with an overlay confirmation dialog before executing code exchange
-        _showOpenAppOverlayDialog(uri);
-      } else {
+      final isRecovery =
+          code != null || uri.fragment.contains('type=recovery');
+
+
+      if (!isRecovery) {
         setState(() {
           _isVerifyingRecovery = false;
         });
+        return;
       }
+
+
+      setState(() {
+        _isVerifyingRecovery = true;
+      });
+
+
+      // PKCE recovery flow
+      if (code != null) {
+        await Supabase.instance.client.auth.exchangeCodeForSession(code);
+      }
+
+
+      if (!mounted) return;
+
+
+      setState(() {
+        _hasRecoveryRedirect = true;
+        _isVerifyingRecovery = false;
+      });
+
+
     } catch (e) {
-      debugPrint('Error handling recovery session: $e');
+      debugPrint(
+        'Recovery session error: $e',
+      );
+
+      if (!mounted) return;
+
       setState(() {
         _isVerifyingRecovery = false;
+        _hasRecoveryRedirect = false;
       });
     }
   }
 
-  void _showOpenAppOverlayDialog(Uri uri) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
-        context: AuthViewModel.navigatorKey.currentContext ?? context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(
-              children: [
-                Icon(Icons.lock_reset_rounded, color: Color(0xFFC06C4D)),
-                SizedBox(width: 12),
-                Text('Password Recovery'),
-              ],
-            ),
-            content: const Text(
-              'You are attempting to reset your password. Do you want to open the password recovery workspace?',
-              style: TextStyle(height: 1.4),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  setState(() {
-                    _isVerifyingRecovery = false;
-                  });
-                  Navigator.of(context).pushReplacementNamed('/login');
-                },
-                child: const Text('Close', style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC06C4D),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                onPressed: () async {
-                  Navigator.of(context).pop(); // Close dialog
-
-                  try {
-                    if (uri.queryParameters.containsKey('code')) {
-                      final code = uri.queryParameters['code']!;
-                      await Supabase.instance.client.auth.exchangeCodeForSession(code);
-                    }
-
-                    setState(() {
-                      _hasRecoveryRedirect = true;
-                      _isVerifyingRecovery = false;
-                    });
-                  } catch (e) {
-                    debugPrint('Error exchanging code for session: $e');
-                    setState(() {
-                      _isVerifyingRecovery = false;
-                    });
-                  }
-                },
-                child: const Text('Open App'),
-              ),
-            ],
-          );
-        },
-      );
-    });
-  }
 
   void _clearRecovery() {
+    if (!mounted) return;
+
     setState(() {
       _hasRecoveryRedirect = false;
     });
   }
 
+
   @override
   Widget build(BuildContext context) {
+
     final auth = context.watch<AuthViewModel>();
 
     return MaterialApp(
@@ -453,154 +431,243 @@ class _RootAppState extends State<RootApp> {
       title: 'Lending System',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      initialRoute: '/',
+
+      home: _getHome(auth),
+
       routes: {
-        '/': (context) => _getHome(auth),
-        '/login': (context) => const LoginPage(),
-        '/admin-login': (context) => const AdminLoginPage(),
-        '/register': (context) => const RegistrationPage(),
-        '/dashboard': (context) => _protectedRouteGuard(auth, const AppShell(), UserRole.admin),
-        '/users': (context) => _protectedRouteGuard(auth, const AppShell(), UserRole.admin),
-        '/shareholder-dashboard': (context) => _protectedRouteGuard(auth, const AppLayout(), UserRole.shareholder),
-        '/notifications': (context) => _protectedRouteGuard(auth, const NotificationScreen(), null),
-        '/change-password': (context) => const ChangePasswordPage(),
+
+        '/login': (context) =>
+        const LoginPage(),
+
+        '/admin-login': (context) =>
+        const AdminLoginPage(),
+
+        '/register': (context) =>
+        const RegistrationPage(),
+
+
+        '/dashboard': (context) =>
+            _protectedRouteGuard(
+              auth,
+              const AppShell(),
+              UserRole.admin,
+            ),
+
+
+        '/users': (context) =>
+            _protectedRouteGuard(
+              auth,
+              const AppShell(),
+              UserRole.admin,
+            ),
+
+
+        '/shareholder-dashboard': (context) =>
+            _protectedRouteGuard(
+              auth,
+              const AppLayout(),
+              UserRole.shareholder,
+            ),
+
+
+        '/notifications': (context) =>
+            _protectedRouteGuard(
+              auth,
+              const NotificationScreen(),
+              null,
+            ),
+
       },
     );
   }
 
-  Widget _protectedRouteGuard(AuthViewModel auth, Widget targetScreen, UserRole? requiredRole) {
+
+
+  Widget _getHome(AuthViewModel auth) {
+
+
+    if (_isVerifyingRecovery) {
+
+      return const Scaffold(
+        backgroundColor: Color(0xFFFDF8F5),
+        body: Center(
+          child: Column(
+            mainAxisAlignment:
+            MainAxisAlignment.center,
+            children: [
+
+              CircularProgressIndicator(
+                color: Color(0xFFC06C4D),
+              ),
+
+              SizedBox(height:24),
+
+              Text(
+                'Preparing password recovery...',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+
+            ],
+          ),
+        ),
+      );
+    }
+
+
+
+    if (_hasRecoveryRedirect) {
+
+      return ChangePasswordPage(
+        onPasswordChanged: _clearRecovery,
+      );
+
+    }
+
+
+
+    if (!auth.isInitialized) {
+
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+    }
+
+
+
+    if (!auth.isAuthenticated) {
+
+      return const LoginPage();
+
+    }
+
+
+
+    if (auth.isImpersonating) {
+
+      return const AppShell();
+
+    }
+
+
+
+    if (auth.currentUser?.role ==
+        UserRole.shareholder) {
+
+      return const AppLayout();
+
+    }
+
+
+
+    return Consumer<DashboardViewModel>(
+      builder: (context, dashboard, child) {
+
+        if (!dashboard.isInitialized) {
+
+          return const Scaffold(
+            backgroundColor:
+            Color(0xFFFDF8F5),
+
+            body: Center(
+              child:
+              CircularProgressIndicator(
+                color:
+                Color(0xFFC06C4D),
+              ),
+            ),
+          );
+
+        }
+
+
+        return const AppShell();
+
+      },
+    );
+  }
+  Widget _protectedRouteGuard(
+      AuthViewModel auth,
+      Widget targetScreen,
+      UserRole? requiredRole,
+      ) {
+
     if (!auth.isInitialized || _isVerifyingRecovery) {
       return const Scaffold(
         backgroundColor: Color(0xFFFDF8F5),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D))),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFC06C4D),
+          ),
+        ),
       );
     }
+
 
     if (!auth.isAuthenticated) {
       return const LoginPage();
     }
 
-    if (requiredRole != null && auth.currentUser?.role != requiredRole && !auth.isImpersonating) {
+
+    if (requiredRole != null &&
+        auth.currentUser?.role != requiredRole &&
+        !auth.isImpersonating) {
+
       return Scaffold(
         backgroundColor: const Color(0xFFFDF8F5),
         body: Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment:
+            MainAxisAlignment.center,
             children: [
-              const Icon(Icons.lock_outline, size: 48, color: Color(0xFFC06C4D)),
-              const SizedBox(height: 16),
-              const Text('Access Denied', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text('You do not have permission to view this page.'),
-              const SizedBox(height: 24),
+
+              const Icon(
+                Icons.lock_outline,
+                size:48,
+                color:Color(0xFFC06C4D),
+              ),
+
+              const SizedBox(height:16),
+
+              const Text(
+                'Access Denied',
+                style:TextStyle(
+                  fontSize:20,
+                  fontWeight:FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height:24),
+
               ElevatedButton(
                 onPressed: () {
-                  final route = auth.dashboardRoute ?? '/login';
-                  Navigator.of(context).pushNamedAndRemoveUntil(route, (route) => false);
+
+                  final route =
+                      auth.dashboardRoute ?? '/login';
+
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil(
+                    route,
+                        (route)=>false,
+                  );
                 },
-                child: const Text('Return to Dashboard'),
+
+                child:
+                const Text(
+                  'Return to Dashboard',
+                ),
               ),
             ],
           ),
         ),
       );
     }
+
 
     return targetScreen;
-  }
-
-  Widget _getHome(AuthViewModel auth) {
-    if (_isVerifyingRecovery) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFFDF8F5),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Color(0xFFC06C4D)),
-              SizedBox(height: 24),
-              Text(
-                'Preparing recovery options...',
-                style: TextStyle(
-                  color: Color(0xFF32211A),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (_hasRecoveryRedirect) {
-      return ChangePasswordPage(onPasswordChanged: _clearRecovery);
-    }
-
-    if (!auth.isInitialized) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFFDF8F5),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Color(0xFFC06C4D)),
-              SizedBox(height: 24),
-              Text(
-                'Restoring your session...',
-                style: TextStyle(
-                  color: Color(0xFF32211A),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!auth.isAuthenticated) {
-      return const LoginPage();
-    }
-
-    if (auth.isImpersonating) {
-      return const AppShell();
-    }
-
-    if (auth.currentUser?.role == UserRole.shareholder) {
-      if (Uri.base.path.contains('notifications')) {
-        return const NotificationScreen();
-      }
-      return const AppLayout();
-    }
-
-    return Consumer<DashboardViewModel>(
-      builder: (context, dashboard, child) {
-        if (!dashboard.isInitialized) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFFDF8F5),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Color(0xFFC06C4D)),
-                  SizedBox(height: 24),
-                  Text(
-                    'Synchronizing your dashboard...',
-                    style: TextStyle(
-                      color: Color(0xFF32211A),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        return const AppShell();
-      },
-    );
   }
 }

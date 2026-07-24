@@ -168,14 +168,23 @@ class AuthRepository {
 
   Future<Map<String, dynamic>> forgotPassword(String email) async {
     debugPrint('DEBUG: [AuthRepository] Calling Supabase resetPasswordForEmail for: $email');
+
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
-      return {'success': true, 'message': 'Password reset email sent.'};
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'https://lendingpis-production.up.railway.app/PIS/',
+      );
+
+      return {
+        'success': true,
+        'message': 'Password reset email sent.',
+      };
     } catch (e) {
       debugPrint('DEBUG: [AuthRepository] forgotPassword error: $e');
       rethrow;
     }
   }
+
 
   Future<Map<String, dynamic>> resetPassword({
     required String email,
