@@ -536,76 +536,62 @@ class _AdminSettingsBodyState extends State<_AdminSettingsBody> {
   }
 
   void _showManualBackupDialog(BuildContext context, BackupSettingsViewModel viewModel) {
-    String backupType = 'full'; // Default selection
-
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Manual Backup'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Choose the type of backup you want to trigger immediately.'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: backupType,
-                decoration: const InputDecoration(
-                  labelText: 'Backup Type',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'full', child: Text('Full System')),
-                  DropdownMenuItem(value: 'db', child: Text('Database Only')),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
-                    setDialogState(() => backupType = val);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Note: The file will be saved locally on the server.',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-              onPressed: () async {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(backupType == 'full' ? 'Starting full system backup...' : 'Starting database backup...'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-
-                final success = await viewModel.runManualBackup(backupType);
-
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(success
-                          ? (backupType == 'full' ? 'Full system backup successful!' : 'Database backup successful!')
-                          : 'Backup failed'
-                      ),
-                      backgroundColor: success ? Colors.green : Colors.red,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Run', style: TextStyle(color: Colors.white)),
+      builder: (context) => AlertDialog(
+        title: const Text('Manual Backup'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Trigger an immediate full system backup to your cloud storage.'),
+            SizedBox(height: 12),
+            Text(
+              'Note: Backup will be saved to Cloud (Dropbox).',
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic),
             ),
           ],
         ),
+        actions: [
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFFE5E7EB)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textDark)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Starting full system backup to Dropbox...'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+
+              final success = await viewModel.runManualBackup('full');
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success
+                        ? 'Full system backup successfully uploaded to Dropbox!'
+                        : 'Backup failed'
+                    ),
+                    backgroundColor: success ? Colors.green : Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Run', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
