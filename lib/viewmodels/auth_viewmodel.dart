@@ -220,7 +220,6 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 🚀 Save or clear "Remember Me" credentials
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remember_me_flag', _rememberMe);
       if (_rememberMe) {
@@ -239,33 +238,35 @@ class AuthViewModel extends ChangeNotifier {
 
       if (supabaseResponse.session != null && supabaseResponse.user != null) {
 
-        // 2. 🚀 Authenticate against Laravel Backend to acquire the Sanctum Token
+        // 2. Authenticate against Laravel Backend
         final laravelLoginResponse = await _authRepository.login(email, password);
 
         if (laravelLoginResponse['token'] != null) {
-          // Save Laravel Sanctum token to ApiService / SharedPreferences
           await _authRepository.setToken(laravelLoginResponse['token']);
         }
 
-        // 3. 🔍 SEARCH BY EMAIL USING REPOSITORY (or use data from Laravel response)
-        final userModelResponse = await _authRepository.getUserByEmail(email);
+        // 🚀 3. FIX: Get current user via standard session token call instead of email query
+        UserModel? user;
+        if (laravelLoginResponse['user'] != null) {
+          user = UserModel.fromJson(laravelLoginResponse['user']);
+        } else {
+          user = await _authRepository.getCurrentUser();
+        }
 
-        if (userModelResponse == null) {
-          _errorMessage = 'User profile data could not be retrieved by email.';
+        if (user == null) {
+          _errorMessage = 'User profile data could not be retrieved.';
           await _supabase.auth.signOut();
           _isLoading = false;
           notifyListeners();
           return false;
         }
 
-        final user = userModelResponse;
-
         // 4. Role validation check
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
             _errorMessage = 'Access denied. This login is for Administrators only.';
             await _supabase.auth.signOut();
-            await _authRepository.logout(); // Clear Laravel token too
+            await _authRepository.logout();
             _isLoading = false;
             notifyListeners();
             return false;
@@ -274,7 +275,7 @@ class AuthViewModel extends ChangeNotifier {
           if (user.role == UserRole.admin) {
             _errorMessage = 'Administrators must use the secure Admin Login portal.';
             await _supabase.auth.signOut();
-            await _authRepository.logout(); // Clear Laravel token too
+            await _authRepository.logout();
             _isLoading = false;
             notifyListeners();
             return false;
@@ -289,7 +290,7 @@ class AuthViewModel extends ChangeNotifier {
             details: 'User ${_currentUser!.email} logged in',
           );
         } catch (e) {
-          debugPrint('DEBUG: [AuthViewModel] Activity logging failed but login proceeding: $e');
+          debugPrint('DEBUG: [AuthViewModel] Activity logging failed: $e');
         }
 
         notifyListeners();
@@ -302,11 +303,9 @@ class AuthViewModel extends ChangeNotifier {
       } else {
         _errorMessage = _mapAuthError(e);
       }
-      debugPrint('DEBUG: [AuthViewModel] Login AuthException: $_errorMessage');
       return false;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      debugPrint('DEBUG: [AuthViewModel] Login Error: $_errorMessage');
       return false;
     } finally {
       _isLoading = false;
