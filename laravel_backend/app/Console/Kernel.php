@@ -18,19 +18,19 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // 🚀 Dynamic Weekly Database Backup (Site Settings Controlled)
+        // 🚀 Dynamic Weekly Database Backup using Spatie (Site Settings Controlled)
         $backupDay = SiteSetting::get('backup_day', 'Monday');
         $backupTime = SiteSetting::get('backup_time', '02:00');
 
-        $schedule->command('backup:weekly')
+        $schedule->command('backup:run --only-to-disk=dropbox')
             ->days([$backupDay])
             ->at($backupTime)
             ->withoutOverlapping()
             ->onFailure(fn() => \Log::error('Weekly automated backup failed.'))
             ->onSuccess(fn() => \Log::info('Weekly automated backup completed.'));
 
-        // 🚀 Monthly Full System Backup
-        $schedule->command('backup:full')->monthlyOn(1, '02:00')
+        // 🚀 Monthly Full System Backup using Spatie
+        $schedule->command('backup:run --only-to-disk=dropbox')->monthlyOn(1, '02:00')
             ->withoutOverlapping()
             ->onFailure(fn() => \Log::error('Monthly full system backup failed.'))
             ->onSuccess(fn() => \Log::info('Monthly full system backup completed.'));
@@ -41,7 +41,7 @@ class Kernel extends ConsoleKernel
             ->onFailure(fn() => \Log::error('Daily log archival failed.'))
             ->onSuccess(fn() => \Log::info('Daily log archival completed.'));
 
-        // Standard Cleanup
+        // Standard Spatie Backup Clean-up
         $schedule->command('backup:clean')->dailyAt('03:00')
             ->withoutOverlapping();
         $schedule->command('session:table')->daily(); // Placeholder for session cleanup if using DB
@@ -53,7 +53,6 @@ class Kernel extends ConsoleKernel
 
         $schedule->call(function () {
             // audit:archive Monthly Archive audit logs > 1 year old
-            // In a real app, this might move to a separate 'audit_archives' table or S3
             \App\Models\ActivityLog::where('created_at', '<', now()->subYear())->delete();
         })->monthly();
 
