@@ -232,14 +232,22 @@ class AuthViewModel extends ChangeNotifier {
       }
 
       // 1. Authenticate against Supabase Auth
-      final response = await _supabase.auth.signInWithPassword(
+      final supabaseResponse = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
-      if (response.session != null && response.user != null) {
+      if (supabaseResponse.session != null && supabaseResponse.user != null) {
 
-        // 2. 🔍 SEARCH BY EMAIL USING REPOSITORY
+        // 2. 🚀 Authenticate against Laravel Backend to acquire the Sanctum Token
+        final laravelLoginResponse = await _authRepository.login(email, password);
+
+        if (laravelLoginResponse['token'] != null) {
+          // Save Laravel Sanctum token to ApiService / SharedPreferences
+          await _authRepository.setToken(laravelLoginResponse['token']);
+        }
+
+        // 3. 🔍 SEARCH BY EMAIL USING REPOSITORY (or use data from Laravel response)
         final userModelResponse = await _authRepository.getUserByEmail(email);
 
         if (userModelResponse == null) {
@@ -252,11 +260,12 @@ class AuthViewModel extends ChangeNotifier {
 
         final user = userModelResponse;
 
-        // 3. Role validation check
+        // 4. Role validation check
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
             _errorMessage = 'Access denied. This login is for Administrators only.';
             await _supabase.auth.signOut();
+            await _authRepository.logout(); // Clear Laravel token too
             _isLoading = false;
             notifyListeners();
             return false;
@@ -265,6 +274,7 @@ class AuthViewModel extends ChangeNotifier {
           if (user.role == UserRole.admin) {
             _errorMessage = 'Administrators must use the secure Admin Login portal.';
             await _supabase.auth.signOut();
+            await _authRepository.logout(); // Clear Laravel token too
             _isLoading = false;
             notifyListeners();
             return false;
