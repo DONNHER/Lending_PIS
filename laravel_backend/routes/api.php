@@ -34,7 +34,20 @@ Route::middleware('throttle:auth')->group(function () {
     Route::post('/verify-mfa', [AuthController::class, 'verifyMfa']);
     Route::post('/resend-mfa', [AuthController::class, 'resendMfa']);
 });
+// 🚀 Public User Lookup by Email (Supports Admin, Cashier, and Shareholder roles)
+Route::get('/user/by-email', function (Request $request) {
+    $email = $request->query('email');
+    $user = \App\Models\User::with('shareholder')->where('email', $email)->first();
 
+    if (!$user) {
+        return response()->json([
+            'success' => false,
+            'message' => 'User not found'
+        ], 404);
+    }
+
+    return response()->json($user);
+});
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

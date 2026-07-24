@@ -1,15 +1,15 @@
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // <--- 1. Import Supabase
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 
 class AuthRepository {
   final ApiService _apiService;
-  final _supabase = Supabase.instance.client; // <--- 2. Instance reference
+  final _supabase = Supabase.instance.client;
 
   AuthRepository(this._apiService);
 
-  // 🚀 Helper to extract and send the Supabase User UUID as a header
   Map<String, String> get _supabaseHeaders {
     final userId = _supabase.auth.currentUser?.id;
     return {
@@ -68,13 +68,26 @@ class AuthRepository {
 
   Future<UserModel?> getCurrentUser() async {
     try {
-      // 🚀 Pass the Supabase headers into the GET request
       final response = await _apiService.get('/user', headers: _supabaseHeaders);
       if (response != null) {
         return UserModel.fromJson(response);
       }
     } catch (e) {
       debugPrint('DEBUG: [AuthRepository] Error fetching current user from API: $e');
+      return null;
+    }
+    return null;
+  }
+
+  // 🚀 Fetch user profile directly by email from the Laravel backend
+  Future<UserModel?> getUserByEmail(String email) async {
+    try {
+      final response = await _apiService.get('/user/by-email?email=$email');
+      if (response != null) {
+        return UserModel.fromJson(response);
+      }
+    } catch (e) {
+      debugPrint('DEBUG: [AuthRepository] Error fetching user by email: $e');
       return null;
     }
     return null;
@@ -98,7 +111,6 @@ class AuthRepository {
     required String address,
     String? avatarUrl,
   }) async {
-    // 🚀 Pass the Supabase headers into the POST request
     final response = await _apiService.post('/user/profile',
       body: {
         'firstname': firstName,
@@ -135,21 +147,5 @@ class AuthRepository {
       'password': password,
     });
     return response;
-  }
-  Future<UserModel?> getUserByEmail(String email) async {
-    try {
-      // Assuming your backend has an endpoint like GET /user/by-email?email=...
-      // or you can adjust the path to match your backend route structure.
-      final response = await _apiService.get('/user/by-email', headers: {
-        'email': email, // or pass as query parameter depending on your API setup
-      });
-      if (response != null) {
-        return UserModel.fromJson(response);
-      }
-    } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] Error fetching user by email: $e');
-      return null;
-    }
-    return null;
   }
 }
