@@ -447,28 +447,66 @@ class AuthController extends Controller
     }
 
     public function forgotPassword(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email'
-        ]);
+        {
+            $request->validate([
+                'email' => 'required|email'
+            ]);
 
-        $user = User::where('email', $request->email)->first();
+            $email = $request->input('email');
+            $user = User::where('email', $email)->first();
 
-        if (!$user) {
-            Log::warning('Laravel Forgot Password Failed: Email not found', ['email' => $request->input('email')]);
-            return response()->json([
-                'success' => true,
-                'message' => 'If this email exists, a password reset link has been processed.'
-            ], 200);
+            if (!$user) {
+                Log::warning('Laravel Forgot Password Failed: Email not found', ['email' => $email]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'If this email exists, a password reset link has been processed.'
+                ], 200);
+            }
+
+            try {
+                $supabaseUrl = env('SUPABASE_URL') ?? config('services.supabase.url');
+                $serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY') ?? config('services.supabase.service_role_key');
+
+                if (!$supabaseUrl || !$serviceRoleKey) {
+                    Log::error('Supabase credentials missing for password recovery trigger.');
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Server configuration error.'
+                    ], 500);
+                }
+
+                $response = Http::withHeaders([
+                    'apikey' => $serviceRoleKey,
+                    'Authorization' => 'Bearer ' . $serviceRoleKey,
+                    'Content-Type' => 'application/json',
+                ])->post("{$supabaseUrl}/auth/v1/recover", [
+                    'email' => $email,
+                    'redirect_to' => 'https://lendingpis-production.up.railway.app/PIS/#/change-password'
+                ]);
+
+                if (!$response->successful()) {
+                    Log::error('Supabase Auth recover API failed', ['response' => $response->body()]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to trigger password recovery via Supabase Auth.'
+                    ], 400);
+                }
+
+                $this->logAuth($user, 'Password Reset Request', $request);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Password reset instructions have been dispatched.'
+                ], 200);
+
+            } catch (\Exception $e) {
+                Log::error('Forgot password exception: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred while processing the request.'
+                ], 500);
+            }
         }
-
-        $this->logAuth($user, 'Password Reset Request', $request);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Password reset instructions processed successfully.'
-        ], 200);
-    }
 
     public function verifyMfa(Request $request)
     {
