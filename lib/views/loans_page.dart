@@ -125,7 +125,7 @@ class _LoansPageState extends State<LoansPage> {
                         Expanded(
                           child: LoanRequestsTable(
                             requests: viewModel.loanRequests,
-                            isLoading: viewModel.isLoading,
+                            isLoading: false, // 🚀 Disabled table body center loading spinner to prevent UI wipeouts
                             onView: (request) {
                               nav.navigateToLoanRequest(request);
                             },
