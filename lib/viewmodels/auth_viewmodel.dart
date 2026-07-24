@@ -233,7 +233,19 @@ class AuthViewModel extends ChangeNotifier {
       debugPrint('DEBUG: [AuthViewModel] Attempting Supabase sign-in for email: $email (isAdminLogin: $isAdminLogin)');
 
       // 1. Authenticate directly against Supabase Auth
-      final loginResult = await _authRepository.login(email, password: password, captchaToken: captchaToken);
+      final loginResult = await _authRepository.login(
+        email,
+        password: password,
+        captchaToken: captchaToken,
+      );
+
+      debugPrint('==============================');
+      debugPrint('LOGIN SUCCESS');
+      debugPrint('Login User    : ${loginResult['user']}');
+      debugPrint('Login Session : ${loginResult['session']}');
+      debugPrint('Supabase ID   : ${_supabase.auth.currentUser?.id}');
+      debugPrint('Supabase Email: ${_supabase.auth.currentUser?.email}');
+      debugPrint('==============================');
 
       if (loginResult['user'] != null && loginResult['session'] != null) {
         UserModel? user = await _authRepository.getCurrentUser();
@@ -249,7 +261,7 @@ class AuthViewModel extends ChangeNotifier {
 
         debugPrint('DEBUG: [AuthViewModel] User role resolved: ${user.role}. Validating permissions...');
 
-        // Role validation checks...
+      // Role validation checks...
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
             debugPrint('DEBUG: [AuthViewModel] Access denied: Non-admin tried entering Admin Portal.');

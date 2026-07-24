@@ -94,76 +94,62 @@ class AuthRepository {
     try {
       final authUser = _supabase.auth.currentUser;
 
+      debugPrint('==============================');
+      debugPrint('AUTH USER DEBUG');
+      debugPrint('ID    : ${authUser?.id}');
+      debugPrint('EMAIL : ${authUser?.email}');
+      debugPrint('==============================');
+
       if (authUser == null) {
-        debugPrint('DEBUG: No authenticated Supabase user.');
+        debugPrint('No authenticated user.');
         return null;
       }
 
-      debugPrint(
-        'DEBUG: Auth user id: ${authUser.id}, email: ${authUser.email}',
-      );
-
-
-      // 1. Try matching by UUID (recommended)
-      var response = await _supabase
+      // -------- Search by ID --------
+      final idRows = await _supabase
           .from('users')
           .select()
-          .eq('id', authUser.id)
-          .maybeSingle();
+          .eq('id', authUser.id);
 
+      debugPrint('Search by ID returned:');
+      debugPrint(idRows.toString());
 
-      if (response != null) {
-        debugPrint('DEBUG: Profile found by UUID.');
-        return UserModel.fromJson(response);
+      // -------- Search by Email --------
+      final emailRows = await _supabase
+          .from('users')
+          .select()
+          .eq('email', authUser.email!);
+
+      debugPrint('Search by EMAIL returned:');
+      debugPrint(emailRows.toString());
+
+      if (idRows.isNotEmpty) {
+        debugPrint('Profile loaded using ID.');
+        return UserModel.fromJson(idRows.first);
       }
 
-
-      // 2. Fallback: match by email
-      if (authUser.email != null) {
-        response = await _supabase
-            .from('users')
-            .select()
-            .eq('email', authUser.email!)
-            .maybeSingle();
-
-
-        if (response != null) {
-          debugPrint(
-            'DEBUG: Profile found by email. Repairing UUID...',
-          );
-
-
-          // Fix the broken relationship
-          await _supabase
-              .from('users')
-              .update({
-            'id': authUser.id,
-          })
-              .eq('email', authUser.email!);
-
-
-          response['id'] = authUser.id;
-
-          return UserModel.fromJson(response);
-        }
+      if (emailRows.isNotEmpty) {
+        debugPrint('Profile loaded using EMAIL.');
+        return UserModel.fromJson(emailRows.first);
       }
 
-
-      debugPrint(
-        'DEBUG: No profile found for email: ${authUser.email}',
-      );
+      debugPrint('===================================');
+      debugPrint('NO USER PROFILE FOUND');
+      debugPrint('Auth ID    : ${authUser.id}');
+      debugPrint('Auth Email : ${authUser.email}');
+      debugPrint('===================================');
 
       return null;
-
-
-    } catch (e) {
-      debugPrint(
-        'DEBUG: [AuthRepository] Error fetching current user: $e',
-      );
-
+    } catch (e, stack) {
+      debugPrint('===================================');
+      debugPrint('getCurrentUser ERROR');
+      debugPrint(e.toString());
+      debugPrint(stack.toString());
+      debugPrint('===================================');
       return null;
     }
   }
+
 
 
 
