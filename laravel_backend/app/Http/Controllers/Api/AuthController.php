@@ -54,22 +54,29 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        Log::info('Laravel Register Attempt initiated', [
+            'email' => $request->input('email'),
+            'username' => $request->input('username'),
+            'ip' => $request->ip()
+        ]);
+
         $validator = Validator::make($request->all(), [
-                    'username' => 'required|string|unique:users',
-                    'email' => 'required|string|email|unique:users',
-                    'password' => $this->passwordPolicy,
-                    'firstname' => 'required|string',
-                    'lastname' => 'required|string',
-                    'role' => 'required|string',
-                    'avatar_url' => 'nullable|string',
-                    'address' => 'nullable|string',
-                    'phone' => 'nullable|string',
-                    'id_image_url' => 'nullable|string',
-                ], [
-                    'password.regex' => $this->passwordPolicyMessage
-                ]);
+            'username' => 'required|string|unique:users',
+            'email' => 'required|string|email|unique:users',
+            'password' => $this->passwordPolicy,
+            'firstname' => 'required|string',
+            'lastname' => 'required|string',
+            'role' => 'required|string',
+            'avatar_url' => 'nullable|string',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'id_image_url' => 'nullable|string',
+        ], [
+            'password.regex' => $this->passwordPolicyMessage
+        ]);
 
         if ($validator->fails()) {
+            Log::warning('Laravel Register Validation Failed', ['errors' => $validator->errors()->toArray()]);
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
@@ -106,6 +113,8 @@ class AuthController extends Controller
 
                 $this->logAuth($user, 'Register (Pending)', $request);
 
+                Log::info('Laravel Register Successful', ['user_id' => $user->id, 'email' => $user->email]);
+
                 return response()->json([
                     'success' => true,
                     'user' => $user->load('shareholder'),
@@ -115,8 +124,7 @@ class AuthController extends Controller
                 ], 201);
             });
         } catch (\Exception $e) {
-            Log::error('Registration failed: ' . $e->getMessage());
-            Log::error('Trace: ' . $e->getTraceAsString());
+            Log::error('Registration failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed: ' . $e->getMessage()
@@ -126,6 +134,11 @@ class AuthController extends Controller
 
     public function resetPassword(Request $request)
     {
+        Log::info('Laravel Password Reset Attempt initiated', [
+            'email' => $request->input('email'),
+            'ip' => $request->ip(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|exists:users,email',
             'password' => $this->passwordPolicy,
@@ -134,6 +147,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Laravel Password Reset Validation Failed', ['errors' => $validator->errors()->toArray()]);
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
@@ -141,10 +155,10 @@ class AuthController extends Controller
             $user = User::where('email', $request->email)->first();
 
             if (!$user) {
+                Log::warning('Laravel Password Reset Failed: User not found', ['email' => $request->email]);
                 return response()->json(['success' => false, 'message' => 'User not found.'], 404);
             }
 
-            // Update the password in your Laravel application users table with a secure hash
             $user->update([
                 'password' => Hash::make($request->password)
             ]);
@@ -152,12 +166,14 @@ class AuthController extends Controller
             $this->logAuth($user, 'Password Reset Completed', $request);
             $this->notifyPasswordChange($user);
 
+            Log::info('Laravel Password Reset Successful', ['user_id' => $user->id]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Password has been successfully synchronized and updated.'
             ]);
         } catch (\Exception $e) {
-            Log::error('Password reset sync failed: ' . $e->getMessage());
+            Log::error('Password reset sync failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to sync password: ' . $e->getMessage()
@@ -167,16 +183,29 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        Log::info('Laravel Login Attempt initiated', [
+            'email' => $request->input('email'),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent()
+        ]);
+
         $request->validate(['email' => 'required|email', 'password' => 'required']);
         $user = User::where('email', $request->email)->first();
 
         if (!$user) {
+            Log::warning('Laravel Login Failed: Email does not exist in local database', [
+                'email' => $request->input('email')
+            ]);
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
         // 🚀 1. Check if account is locked
         if ($user->isLocked()) {
             $minutes = now()->diffInMinutes($user->locked_until);
+            Log::warning('Laravel Login Blocked: Account is locked', [
+                'email' => $user->email,
+                'locked_until' => $user->locked_until
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => "Account is locked due to multiple failed attempts. Please try again in $minutes minutes."
@@ -186,6 +215,7 @@ class AuthController extends Controller
         // 🚀 2. CAPTCHA Validation (If required)
         if ($user->failed_attempts >= 3) {
             if (!$request->has('captcha_token') || $request->captcha_token !== 'verified') {
+                Log::info('Laravel Login Blocked: CAPTCHA required', ['email' => $user->email, 'failed_attempts' => $user->failed_attempts]);
                 return response()->json([
                     'success' => false,
                     'captcha_required' => true,
@@ -196,15 +226,12 @@ class AuthController extends Controller
 
         // 🚀 3. Authenticate
         if (!Hash::check($request->password, $user->password)) {
-            // Bypass Versionable trait events when updating failed attempts
             User::withoutEvents(function () use ($user, $request) {
                 $user->increment('failed_attempts');
 
-                // Check for lockout threshold
                 if ($user->failed_attempts >= 5) {
                     $user->update(['locked_until' => now()->addMinutes(15)]);
 
-                    // Trigger Security Alert Email to Admin
                     ActivityLog::create([
                         'user_id' => $user->id,
                         'action' => 'Account Locked',
@@ -213,10 +240,15 @@ class AuthController extends Controller
                         'ip_address' => $request->ip(),
                         'is_suspicious' => true
                     ]);
-                            
-                    Log::warning("Account locked: {$user->email}");
+
+                    Log::warning("Account locked: {$user->email} due to 5 consecutive failed attempts.");
                 }
             });
+
+            Log::warning('Laravel Login Failed: Password hash mismatch', [
+                'email' => $user->email,
+                'current_failed_attempts' => $user->failed_attempts
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -226,10 +258,8 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Refresh model state to prevent version conflicts with Versionable trait
         $user->refresh();
 
-        // Reset failed attempts on success without triggering version check conflicts
         User::withoutEvents(function () use ($user) {
             $user->update(['failed_attempts' => 0, 'locked_until' => null]);
         });
@@ -237,17 +267,29 @@ class AuthController extends Controller
         if ($user->status === 'active') {
             $token = $user->createToken('auth_token')->plainTextToken;
             $this->logAuth($user, 'User Login', $request);
+
+            Log::info('Laravel Login Successful (Active User)', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'role' => $user->role
+            ]);
+
             return response()->json([
-                'success' => true, 
-                'user' => $user->load('shareholder'), 
+                'success' => true,
+                'user' => $user->load('shareholder'),
                 'token' => $token,
                 'mfa_required' => false
             ]);
         }
 
+        Log::info('Laravel Login Successful, but Pending Verification (MFA Required)', [
+            'user_id' => $user->id,
+            'email' => $user->email
+        ]);
+
         return response()->json([
             'success' => true,
-            'user' => $user->load('shareholder'), 
+            'user' => $user->load('shareholder'),
             'mfa_required' => true,
             'email' => $user->email,
             'message' => 'Verification required.'
@@ -267,18 +309,18 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Laravel Profile Update Validation Failed', ['errors' => $validator->errors()->toArray()]);
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
         try {
             $user->update($request->only([
-                'firstname', 
-                'lastname', 
-                'avatar_url', 
+                'firstname',
+                'lastname',
+                'avatar_url',
                 'address',
             ]));
 
-            // Sync with shareholders table if user has a shareholder profile
             if ($user->shareholder) {
                 $user->shareholder->update([
                     'first_name' => $user->firstname,
@@ -289,13 +331,15 @@ class AuthController extends Controller
                 ]);
             }
 
+            Log::info('Laravel Profile Update Successful', ['user_id' => $user->id]);
+
             return response()->json([
                 'success' => true,
                 'user' => $user->load('shareholder'),
                 'message' => 'Profile updated successfully'
             ]);
         } catch (\Exception $e) {
-            Log::error('Profile update failed: ' . $e->getMessage());
+            Log::error('Profile update failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Failed to update profile'], 500);
         }
     }
@@ -312,10 +356,12 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Laravel Change Password Validation Failed', ['errors' => $validator->errors()->toArray()]);
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
         if (!Hash::check($request->current_password, $user->password)) {
+            Log::warning('Laravel Change Password Failed: Current password mismatch', ['user_id' => $user->id]);
             return response()->json(['success' => false, 'message' => 'Current password does not match'], 400);
         }
 
@@ -326,9 +372,11 @@ class AuthController extends Controller
 
             $this->notifyPasswordChange($user);
 
+            Log::info('Laravel Change Password Successful', ['user_id' => $user->id]);
+
             return response()->json(['success' => true, 'message' => 'Password changed successfully']);
         } catch (\Exception $e) {
-            Log::error('Password change failed: ' . $e->getMessage());
+            Log::error('Password change failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Failed to change password'], 500);
         }
     }
@@ -342,6 +390,7 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user) {
+            Log::warning('Laravel Forgot Password Failed: Email not found', ['email' => $request->input('email')]);
             return response()->json([
                 'success' => false,
                 'message' => 'No, this email is not registered in our system.'
@@ -362,13 +411,16 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user) {
+            Log::warning('Laravel Verify MFA Failed: User not found', ['email' => $request->input('email')]);
             return response()->json(['success' => false, 'message' => 'User not found.'], 404);
         }
 
         $user->update(['status' => 'active']);
-        
+
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        Log::info('Laravel Verify MFA Successful', ['user_id' => $user->id]);
 
         return response()->json(['success' => true, 'user' => $user->load('shareholder'), 'token' => $token]);
     }
@@ -383,8 +435,11 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $user = $request->user();
-        $this->logAuth($user, 'User Logout', $request);
-        $user->currentAccessToken()->delete();
+        if ($user) {
+            $this->logAuth($user, 'User Logout', $request);
+            $user->currentAccessToken()->delete();
+            Log::info('Laravel Logout Successful', ['user_id' => $user->id]);
+        }
         return response()->json(['success' => true, 'message' => 'Logged out']);
     }
 }
