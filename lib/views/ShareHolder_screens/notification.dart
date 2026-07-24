@@ -5,10 +5,10 @@ import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
 import 'package:capstone_application/models/notification_model.dart';
 import 'package:capstone_application/app_theme.dart';
-import 'package:capstone_application/repositories/transaction_repository.dart';
 import 'package:capstone_application/models/transaction_model.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/loan_request_approval.dart';
+import 'details_page/loan_request_details.dart';
 import '../../../widgets/transaction_detail_dialog.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -323,7 +323,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void _handleTap(BuildContext context, NotificationModel n) {
     final metadata = n.metadata ?? {};
 
-    // 🚀 Robust Extraction of IDs from Metadata
+    // Robust Extraction of IDs from Metadata
     final String? loanRequestId = metadata['loan_request_id']?.toString() ?? metadata['request_id']?.toString();
     final String? loanId = metadata['loan_id']?.toString();
 
@@ -335,9 +335,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     // Helper to validate that an ID is a genuine database identifier and NOT the notification's own UUID
     bool isValidDbId(String? id) {
       if (id == null) return false;
-      if (id == n.id) return false; // Cannot be the notification's own ID
-      // If it looks like a standard UUID format (36 chars with dashes), double-check if it belongs to the notification
-      if (id.length >= 36 && id == n.id) return false;
+      if (id == n.id) return false;
       return true;
     }
 
@@ -362,7 +360,23 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
     }
 
-    // 1. Transaction-specific notifications (Payments, Capital, or Transaction Category)
+    // 1. Loan Request / Pending Submission notifications -> Route to LoanRequestStatusScreen
+    if (type.contains('loan_request') || type.contains('request_submitted') || type.contains('request_created')) {
+      final targetRequestId = loanRequestId ?? loanId ?? potentialId ?? refId;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LoanRequestStatusScreen(
+            loanId: targetRequestId,
+            isPending: true,
+            borrowerName: metadata['borrower_name']?.toString(),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // 2. Transaction-specific notifications (Payments, Capital, or Transaction Category)
     if (type.contains('payment') ||
         type.contains('repayment') ||
         type.contains('capital') ||
@@ -376,7 +390,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
     }
 
-    // 2. Co-maker requests
+    // 3. Co-maker requests
     if (type.contains('comaker')) {
       final targetRequestId = loanRequestId ?? potentialId ?? refId;
       if (isValidDbId(targetRequestId)) {
@@ -387,7 +401,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       return;
     }
 
-    // 3. Loan Status / Updates (Fixed to prevent passing bad IDs that cause 502)
+    // 4. Loan Status / Updates (Active Loans)
     if (type.contains('loan') || type.contains('disbursed') || type.contains('released') || type.contains('status')) {
       final targetLoanId = loanId ?? loanRequestId ?? refId;
 
@@ -404,13 +418,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
       return;
     }
 
-    // 4. Fallback: If we have a transaction-like ID, try viewing it as a transaction
+    // 5. Fallback: If we have a transaction-like ID, try viewing it as a transaction
     if (isValidDbId(transactionId) || (isTransactionCategory && isValidDbId(potentialId))) {
       _handleTransactionTap(context, transactionId ?? potentialId!);
       return;
     }
 
-    // 5. General Fallback
+    // 6. General Fallback
     if (isValidDbId(potentialId)) {
       _handleTransactionTap(context, potentialId!);
       return;
@@ -419,7 +433,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     _showError(context, "No valid details found for this notification.");
   }
 
-  // 🚀 Defined helper method to navigate to ActiveLoanDetailsScreen
   void _handleTransactionTap(BuildContext context, String referenceId) {
     Navigator.push(
       context,
