@@ -130,10 +130,16 @@ class AuthRepository {
 
   Future<Map<String, dynamic>> forgotPassword(String email) async {
     debugPrint('DEBUG: [AuthRepository] Calling /forgot-password for: $email');
-    final response = await _apiService.post('/forgot-password', body: {
-      'email': email,
-    });
-    return response;
+    try {
+      final response = await _apiService.post('/forgot-password', body: {
+        'email': email,
+      });
+      debugPrint('DEBUG: [AuthRepository] /forgot-password response success: $response');
+      return response;
+    } catch (e) {
+      debugPrint('DEBUG: [AuthRepository] /forgot-password error: $e');
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> resetPassword({
@@ -141,11 +147,18 @@ class AuthRepository {
     required String code,
     required String password,
   }) async {
-    final response = await _apiService.post('/reset-password', body: {
-      'email': email,
-      'code': code,
-      'password': password,
-    });
-    return response;
+    debugPrint('DEBUG: [AuthRepository] Calling /reset-password for: $email');
+    try {
+      final response = await _apiService.post('/reset-password', body: {
+        'email': email,
+        'code': code,
+        'password': password,
+      });
+      debugPrint('DEBUG: [AuthRepository] /reset-password response success: $response');
+      return response;
+    } catch (e) {
+      debugPrint('DEBUG: [AuthRepository] /reset-password error: $e');
+      rethrow;
+    }
   }
 }

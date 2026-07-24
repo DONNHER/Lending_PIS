@@ -431,10 +431,9 @@ class AuthViewModel extends ChangeNotifier {
 
     try {
       debugPrint('DEBUG: [AuthViewModel] Requesting password reset for: $email');
-      await _supabase.auth.resetPasswordForEmail(
-        email,
-        redirectTo: 'https://lendingpis-production.up.railway.app/PIS/#/change-password',
-      );
+
+      final response = await _authRepository.forgotPassword(email);
+      debugPrint('DEBUG: [AuthViewModel] Password reset request successful: $response');
 
       return true;
     } on AuthException catch (e) {

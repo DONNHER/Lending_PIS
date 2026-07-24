@@ -11,19 +11,34 @@ use Illuminate\Support\Collection;
 
 class TransactionsImport implements ToCollection, WithHeadingRow
 {
-    public $errors = [];
-    public $isPreview = false;
+    public array $errors = [];
+    public bool $isPreview = false;
+    public int $successCount = 0;
+    public int $failureCount = 0;
 
     public function collection(Collection $rows)
     {
         $validated = $this->validateData($rows->toArray());
 
         $this->errors = $validated['errors'];
+        $this->failureCount = count($validated['errors']);
 
         if (!$this->isPreview) {
             foreach ($validated['valid'] as $row) {
-                $this->createTransaction($row);
+                try {
+                    $this->createTransaction($row);
+                    $this->successCount++;
+                } catch (\Exception $e) {
+                    $this->failureCount++;
+                    $this->errors[] = [
+                        'row' => $row['row_number'] ?? 0,
+                        'messages' => [$e->getMessage()],
+                        'data' => $row
+                    ];
+                }
             }
+        } else {
+            $this->successCount = count($validated['valid']);
         }
     }
 
@@ -31,9 +46,11 @@ class TransactionsImport implements ToCollection, WithHeadingRow
     {
         $valid = [];
         $errors = [];
-        $duplicates = [];
+        $seenReferenceIds = []; // Track duplicates within the same batch upload
 
         foreach ($rows as $index => $row) {
+            $rowNumber = $index + 2;
+
             // Mapping Layer
             $data = [
                 'shareholder_name' => $row['client'] ?? null,
@@ -42,6 +59,7 @@ class TransactionsImport implements ToCollection, WithHeadingRow
                 'method'           => $this->mapCsvMethod($row['method'] ?? ''),
                 'amount'           => $row['amount'] ?? 0,
                 'status'           => $this->mapCsvStatus($row['status'] ?? ''),
+                'row_number'       => $rowNumber,
             ];
 
             $validator = Validator::make($data, [
@@ -54,20 +72,32 @@ class TransactionsImport implements ToCollection, WithHeadingRow
             ]);
 
             if ($validator->fails()) {
-                $errors[] = ['row' => $index + 2, 'messages' => $validator->errors()->all(), 'data' => $row];
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'messages' => $validator->errors()->all(),
+                    'data' => $row
+                ];
                 continue;
             }
 
-            $existing = Transaction::where('reference_id', $data['reference_id'])->first();
-            if ($existing) {
-                $duplicates[] = ['row' => $index + 2, 'message' => "Duplicate Ref ID", 'data' => $row];
+            // Check if reference_id already exists in Database or within this same spreadsheet batch
+            $existsInDb = Transaction::where('reference_id', $data['reference_id'])->exists();
+            $existsInBatch = in_array($data['reference_id'], $seenReferenceIds);
+
+            if ($existsInDb || $existsInBatch) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'messages' => ["Duplicate Ref ID: Transaction reference '{$data['reference_id']}' already exists."],
+                    'data' => $row
+                ];
                 continue;
             }
 
+            $seenReferenceIds[] = $data['reference_id'];
             $valid[] = $data;
         }
 
-        return ['valid' => $valid, 'errors' => $errors, 'duplicates' => $duplicates];
+        return ['valid' => $valid, 'errors' => $errors];
     }
 
     private function mapCsvType($type) {
@@ -102,6 +132,8 @@ class TransactionsImport implements ToCollection, WithHeadingRow
                 'status'         => $row['status'],
                 'date'           => now(),
             ]);
+        } else {
+            throw new \Exception("Shareholder '{$row['shareholder_name']}' not found in the database.");
         }
     }
 }
