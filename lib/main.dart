@@ -433,11 +433,12 @@ class _RootAppState extends State<RootApp> {
   }
 
   Widget _getHome(AuthViewModel auth) {
+    // 🛑 FIX: Handle recovery redirect immediately before evaluating auth states or providers
     if (_hasRecoveryRedirect) {
       return ChangePasswordPage(onPasswordChanged: _clearRecovery);
     }
 
-    // 🛑 CRITICAL: Keep showing a loader until session restoration finishes!
+    // Keep showing loader until session restoration finishes...
     if (!auth.isInitialized) {
       return Scaffold(
         backgroundColor: const Color(0xFFFDF8F5),
@@ -465,13 +466,12 @@ class _RootAppState extends State<RootApp> {
       return const LoginPage();
     }
 
+    // Rest of your routing logic...
     if (auth.isImpersonating) {
       return const AppShell();
     }
 
-    // If user is a shareholder, ensure they land safely back on their layout/app shell view
     if (auth.currentUser?.role == UserRole.shareholder) {
-      // Check if URL path requested notifications directly
       if (Uri.base.path.contains('notifications')) {
         return const NotificationScreen();
       }
