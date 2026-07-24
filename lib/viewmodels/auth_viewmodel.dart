@@ -265,7 +265,7 @@ class AuthViewModel extends ChangeNotifier {
       debugPrint('Supabase Email: ${_supabase.auth.currentUser?.email}');
       debugPrint('==============================');
 
-      if (loginResult['user'] != null && loginResult['session'] != null) {
+      if (loginResult['user'] != null && loginResult['token'] != null) {
         UserModel? user = await _authRepository.getCurrentUser();
 
         if (user == null) {
