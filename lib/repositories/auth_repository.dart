@@ -1,11 +1,21 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // <--- 1. Import Supabase
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 
 class AuthRepository {
   final ApiService _apiService;
+  final _supabase = Supabase.instance.client; // <--- 2. Instance reference
 
   AuthRepository(this._apiService);
+
+  // 🚀 Helper to extract and send the Supabase User UUID as a header
+  Map<String, String> get _supabaseHeaders {
+    final userId = _supabase.auth.currentUser?.id;
+    return {
+      if (userId != null) 'X-Supabase-User-Id': userId,
+    };
+  }
 
   Future<Map<String, dynamic>> login(String email, String password, {String? captchaToken}) async {
     final response = await _apiService.post('/login', body: {
@@ -58,7 +68,8 @@ class AuthRepository {
 
   Future<UserModel?> getCurrentUser() async {
     try {
-      final response = await _apiService.get('/user');
+      // 🚀 Pass the Supabase headers into the GET request
+      final response = await _apiService.get('/user', headers: _supabaseHeaders);
       if (response != null) {
         return UserModel.fromJson(response);
       }
@@ -87,12 +98,16 @@ class AuthRepository {
     required String address,
     String? avatarUrl,
   }) async {
-    final response = await _apiService.post('/user/profile', body: {
-      'firstname': firstName,
-      'lastname': lastName,
-      'address': address,
-      'avatar_url': avatarUrl,
-    });
+    // 🚀 Pass the Supabase headers into the POST request
+    final response = await _apiService.post('/user/profile',
+      body: {
+        'firstname': firstName,
+        'lastname': lastName,
+        'address': address,
+        'avatar_url': avatarUrl,
+      },
+      headers: _supabaseHeaders,
+    );
     return response;
   }
 

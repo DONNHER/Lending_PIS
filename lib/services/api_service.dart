@@ -39,11 +39,13 @@ class ApiService {
     debugPrint('DEBUG: [ApiService] Token cleared.');
   }
 
-  Map<String, String> _headers(String? token) {
+  // 🚀 Updated to merge optional custom headers (like X-Supabase-User-Id)
+  Map<String, String> _headers(String? token, Map<String, String>? customHeaders) {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
+      if (customHeaders != null) ...customHeaders,
     };
   }
 
@@ -51,49 +53,51 @@ class ApiService {
     return endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
   }
 
-  Future<dynamic> get(String endpoint, {Map<String, String>? queryParams, bool triggerUnauthorized = true}) async {
+  // 🚀 Added optional {Map<String, String>? headers} parameter
+  Future<dynamic> get(String endpoint, {Map<String, String>? queryParams, Map<String, String>? headers, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final uri = Uri.parse('$baseUrl/${_cleanEndpoint(endpoint)}').replace(queryParameters: queryParams);
-    final headers = _headers(token);
+    final requestHeaders = _headers(token, headers);
     debugPrint('DEBUG: [ApiService] Request GET $uri with token: ${token != null ? "${token.substring(0, 6)}..." : "NULL"}');
-    final response = await http.get(uri, headers: headers);
+    final response = await http.get(uri, headers: requestHeaders);
     return _handleResponse(response, 'GET', uri.toString(), triggerUnauthorized: triggerUnauthorized);
   }
 
-  Future<dynamic> post(String endpoint, {Map<String, dynamic>? body, bool triggerUnauthorized = true}) async {
+  // 🚀 Added optional {Map<String, String>? headers} parameter
+  Future<dynamic> post(String endpoint, {Map<String, dynamic>? body, Map<String, String>? headers, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
-    final headers = _headers(token);
+    final requestHeaders = _headers(token, headers);
     debugPrint('DEBUG: [ApiService] Request POST $url with token: ${token != null ? "${token.substring(0, 6)}..." : "NULL"}');
 
     final response = await http.post(
       Uri.parse(url),
-      headers: headers,
+      headers: requestHeaders,
       body: body != null ? jsonEncode(body) : null,
     );
     return _handleResponse(response, 'POST', url, triggerUnauthorized: triggerUnauthorized);
   }
 
-  Future<dynamic> put(String endpoint, {Map<String, dynamic>? body, bool triggerUnauthorized = true}) async {
+  Future<dynamic> put(String endpoint, {Map<String, dynamic>? body, Map<String, String>? headers, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
 
     final response = await http.post(
       Uri.parse(url),
-      headers: _headers(token),
+      headers: _headers(token, headers),
       body: jsonEncode({...?body, '_method': 'PUT'}),
     );
     return _handleResponse(response, 'PUT', url, triggerUnauthorized: triggerUnauthorized);
   }
 
-  Future<dynamic> delete(String endpoint, {Map<String, dynamic>? body, bool triggerUnauthorized = true}) async {
+  Future<dynamic> delete(String endpoint, {Map<String, dynamic>? body, Map<String, String>? headers, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
 
     if (body != null) {
       final response = await http.post(
         Uri.parse(url),
-        headers: _headers(token),
+        headers: _headers(token, headers),
         body: jsonEncode({...body, '_method': 'DELETE'}),
       );
       return _handleResponse(response, 'DELETE', url, triggerUnauthorized: triggerUnauthorized);
@@ -101,12 +105,12 @@ class ApiService {
 
     final response = await http.delete(
       Uri.parse(url),
-      headers: _headers(token),
+      headers: _headers(token, headers),
     );
     return _handleResponse(response, 'DELETE', url, triggerUnauthorized: triggerUnauthorized);
   }
 
-  Future<dynamic> uploadFile(String endpoint, String filePath, {bool triggerUnauthorized = true}) async {
+  Future<dynamic> uploadFile(String endpoint, String filePath, {Map<String, String>? headers, bool triggerUnauthorized = true}) async {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
 
@@ -114,6 +118,7 @@ class ApiService {
     request.headers.addAll({
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
+      if (headers != null) ...headers,
     });
 
     request.files.add(await http.MultipartFile.fromPath('file', filePath));
@@ -128,6 +133,7 @@ class ApiService {
     required String endpoint,
     required Uint8List bytes,
     required String fileName,
+    Map<String, String>? headers,
     bool triggerUnauthorized = true,
   }) async {
     final token = await getToken();
@@ -139,6 +145,7 @@ class ApiService {
     request.headers.addAll({
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
+      if (headers != null) ...headers,
     });
 
     request.files.add(
