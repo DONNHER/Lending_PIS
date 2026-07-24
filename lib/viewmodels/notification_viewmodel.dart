@@ -33,14 +33,14 @@ class NotificationViewModel extends ChangeNotifier {
   }
 
   Future<void> markAsRead(String id) async {
-    try {
-      // 1. Instantly update the local list item using copyWith
-      final index = _notifications.indexWhere((n) => n.id == id);
-      if (index != -1) {
-        _notifications[index] = _notifications[index].copyWith(isUnread: false);
-        notifyListeners(); // UI updates instantly!
-      }
+    // 1. Instantly update the local list item using copyWith and notify listeners
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index != -1 && _notifications[index].isUnread) {
+      _notifications[index] = _notifications[index].copyWith(isUnread: false);
+      notifyListeners(); // UI updates instantly!
+    }
 
+    try {
       // 2. Persist change on the backend
       await _notificationRepository.markAsRead(id);
     } catch (e) {
@@ -54,11 +54,15 @@ class NotificationViewModel extends ChangeNotifier {
 
   Future<void> markAllAsRead() async {
     if (_shareholderId == null) return;
-    try {
-      // Optimistic local update
-      _notifications = _notifications.map((n) => n.copyWith(isUnread: false)).toList();
-      notifyListeners();
 
+    // Optimistic local update
+    final hasUnread = _notifications.any((n) => n.isUnread);
+    if (!hasUnread) return;
+
+    _notifications = _notifications.map((n) => n.copyWith(isUnread: false)).toList();
+    notifyListeners();
+
+    try {
       await _notificationRepository.markAllAsRead(_shareholderId!);
     } catch (e) {
       debugPrint('Error marking all as read: $e');

@@ -5,6 +5,7 @@ import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
 import 'package:capstone_application/models/notification_model.dart';
 import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/repositories/transaction_repository.dart';
 import 'package:capstone_application/models/transaction_model.dart';
 import 'details_page/loan_details.dart';
 import 'details_page/loan_request_approval.dart';
@@ -242,11 +243,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
+          onTap: () async {
+            // 🚀 Ensure markAsRead executes completely and triggers UI refresh safely
             if (n.isUnread) {
-              context.read<NotificationViewModel>().markAsRead(n.id);
+              await context.read<NotificationViewModel>().markAsRead(n.id);
             }
-            _handleTap(context, n);
+            if (context.mounted) {
+              _handleTap(context, n);
+            }
           },
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -323,16 +327,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void _handleTap(BuildContext context, NotificationModel n) {
     final metadata = n.metadata ?? {};
 
-    // Robust Extraction of IDs from Metadata
     final String? loanRequestId = metadata['loan_request_id']?.toString() ?? metadata['request_id']?.toString();
     final String? loanId = metadata['loan_id']?.toString();
-
-    // Prefer specific transaction keys over generic 'id'
     final String? transactionId = metadata['transaction_id']?.toString() ??
         metadata['tx_id']?.toString() ??
         metadata['payment_id']?.toString();
 
-    // Helper to validate that an ID is a genuine database identifier and NOT the notification's own UUID
     bool isValidDbId(String? id) {
       if (id == null) return false;
       if (id == n.id) return false;
@@ -360,7 +360,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
     }
 
-    // 1. Loan Request / Pending Submission notifications -> Route to LoanRequestStatusScreen
+    // 1. Loan Request / Pending Submission notifications
     if (type.contains('loan_request') || type.contains('request_submitted') || type.contains('request_created')) {
       final targetRequestId = loanRequestId ?? loanId ?? potentialId ?? refId;
       Navigator.push(
