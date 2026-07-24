@@ -501,6 +501,7 @@ class AuthViewModel extends ChangeNotifier {
         return false;
       }
 
+      // 1. Authenticate and update password in Supabase Auth
       await _supabase.auth.signInWithPassword(
         email: email,
         password: currentPassword,
@@ -510,7 +511,16 @@ class AuthViewModel extends ChangeNotifier {
         UserAttributes(password: newPassword),
       );
 
+      // 2. 🚀 Sync the new password hash with your Laravel backend database
+      await _authRepository.resetPassword(
+        email: email,
+        code: '', // Pass any required code or leave empty depending on your backend route
+        password: newPassword,
+      );
+
+      // 3. Sign out so the user logs in fresh with their new password
       await _supabase.auth.signOut();
+      await _authRepository.logout();
 
       return true;
     } on AuthException catch (e) {
@@ -520,8 +530,8 @@ class AuthViewModel extends ChangeNotifier {
         _errorMessage = e.message;
       }
       return false;
-    } catch (_) {
-      _errorMessage = 'Unable to change password.';
+    } catch (e) {
+      _errorMessage = 'Unable to change password: ${e.toString().replaceAll('Exception: ', '')}';
       return false;
     } finally {
       _isLoading = false;

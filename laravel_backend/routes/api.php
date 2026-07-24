@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\UserController;
 Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::middleware('throttle:auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);

@@ -124,6 +124,47 @@ class AuthController extends Controller
         }
     }
 
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+            'password' => $this->passwordPolicy,
+        ], [
+            'password.regex' => $this->passwordPolicyMessage
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'User not found.'], 404);
+            }
+
+            // Update the password in your Laravel application users table with a secure hash
+            $user->update([
+                'password' => Hash::make($request->password)
+            ]);
+
+            $this->logAuth($user, 'Password Reset Completed', $request);
+            $this->notifyPasswordChange($user);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password has been successfully synchronized and updated.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Password reset sync failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to sync password: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function login(Request $request)
     {
         $request->validate(['email' => 'required|email', 'password' => 'required']);
