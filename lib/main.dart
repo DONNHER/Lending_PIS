@@ -328,6 +328,7 @@ class RootApp extends StatefulWidget {
 
 class _RootAppState extends State<RootApp> {
   bool _hasRecoveryRedirect = false;
+  bool _isVerifyingRecovery = true; // Show loading while exchanging code
 
   @override
   void initState() {
@@ -339,6 +340,7 @@ class _RootAppState extends State<RootApp> {
       if (event == AuthChangeEvent.passwordRecovery) {
         setState(() {
           _hasRecoveryRedirect = true;
+          _isVerifyingRecovery = false;
         });
       }
     });
@@ -348,13 +350,32 @@ class _RootAppState extends State<RootApp> {
     try {
       final uri = Uri.base;
       final fragment = uri.fragment;
-      if (fragment.contains('type=recovery') || uri.queryParameters.containsKey('code')) {
+
+      // Check if the URL contains a recovery parameter or PKCE auth code
+      bool isRecovery = fragment.contains('type=recovery') ||
+          uri.queryParameters.containsKey('code');
+
+      if (isRecovery) {
+        // If it's a PKCE code from Supabase, exchange it to establish a verified recovery session
+        if (uri.queryParameters.containsKey('code')) {
+          final code = uri.queryParameters['code']!;
+          await Supabase.instance.client.auth.exchangeCodeForSession(code);
+        }
+
         setState(() {
           _hasRecoveryRedirect = true;
+          _isVerifyingRecovery = false;
+        });
+      } else {
+        setState(() {
+          _isVerifyingRecovery = false;
         });
       }
     } catch (e) {
-      debugPrint('Error checking initial recovery URI: $e');
+      debugPrint('Error handling recovery session: $e');
+      setState(() {
+        _isVerifyingRecovery = false;
+      });
     }
   }
 
@@ -373,7 +394,6 @@ class _RootAppState extends State<RootApp> {
       title: 'Lending System',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      // Use initialRoute to let Flutter handle deep-link paths on refresh cleanly
       initialRoute: '/',
       routes: {
         '/': (context) => _getHome(auth),
@@ -389,9 +409,8 @@ class _RootAppState extends State<RootApp> {
     );
   }
 
-  /// 🔒 Route Guard Helper to prevent direct URL access to restricted pages
   Widget _protectedRouteGuard(AuthViewModel auth, Widget targetScreen, UserRole? requiredRole) {
-    if (!auth.isInitialized) {
+    if (!auth.isInitialized || _isVerifyingRecovery) {
       return const Scaffold(
         backgroundColor: Color(0xFFFDF8F5),
         body: Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D))),
@@ -432,12 +451,35 @@ class _RootAppState extends State<RootApp> {
   }
 
   Widget _getHome(AuthViewModel auth) {
-    // 🛑 FIX: Handle recovery redirect immediately before evaluating auth states or providers
+    // Show loading indicator while validating the incoming recovery token/code from email
+    if (_isVerifyingRecovery) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFFDF8F5),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Color(0xFFC06C4D)),
+              SizedBox(height: 24),
+              Text(
+                'Verifying your recovery link...',
+                style: TextStyle(
+                  color: Color(0xFF32211A),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Force redirection to Change Password page if verified recovery link is present
     if (_hasRecoveryRedirect) {
       return ChangePasswordPage(onPasswordChanged: _clearRecovery);
     }
 
-    // Keep showing loader until session restoration finishes...
     if (!auth.isInitialized) {
       return Scaffold(
         backgroundColor: const Color(0xFFFDF8F5),
@@ -465,7 +507,6 @@ class _RootAppState extends State<RootApp> {
       return const LoginPage();
     }
 
-    // Rest of your routing logic...
     if (auth.isImpersonating) {
       return const AppShell();
     }
