@@ -328,7 +328,7 @@ class RootApp extends StatefulWidget {
 
 class _RootAppState extends State<RootApp> {
   bool _hasRecoveryRedirect = false;
-  bool _isVerifyingRecovery = true; // Show loading while exchanging code
+  bool _isVerifyingRecovery = false;
 
   @override
   void initState() {
@@ -351,21 +351,15 @@ class _RootAppState extends State<RootApp> {
       final uri = Uri.base;
       final fragment = uri.fragment;
 
-      // Check if the URL contains a recovery parameter or PKCE auth code
       bool isRecovery = fragment.contains('type=recovery') ||
           uri.queryParameters.containsKey('code');
 
       if (isRecovery) {
-        // If it's a PKCE code from Supabase, exchange it to establish a verified recovery session
-        if (uri.queryParameters.containsKey('code')) {
-          final code = uri.queryParameters['code']!;
-          await Supabase.instance.client.auth.exchangeCodeForSession(code);
-        }
-
         setState(() {
-          _hasRecoveryRedirect = true;
-          _isVerifyingRecovery = false;
+          _isVerifyingRecovery = true;
         });
+        // Prompt user with an overlay confirmation dialog before executing code exchange
+        _showOpenAppOverlayDialog(uri);
       } else {
         setState(() {
           _isVerifyingRecovery = false;
@@ -377,6 +371,71 @@ class _RootAppState extends State<RootApp> {
         _isVerifyingRecovery = false;
       });
     }
+  }
+
+  void _showOpenAppOverlayDialog(Uri uri) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog(
+        context: AuthViewModel.navigatorKey.currentContext ?? context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.lock_reset_rounded, color: Color(0xFFC06C4D)),
+                SizedBox(width: 12),
+                Text('Password Recovery'),
+              ],
+            ),
+            content: const Text(
+              'You are attempting to reset your password. Do you want to open the password recovery workspace?',
+              style: TextStyle(height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _isVerifyingRecovery = false;
+                  });
+                  Navigator.of(context).pushReplacementNamed('/login');
+                },
+                child: const Text('Close', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC06C4D),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop(); // Close dialog
+
+                  try {
+                    if (uri.queryParameters.containsKey('code')) {
+                      final code = uri.queryParameters['code']!;
+                      await Supabase.instance.client.auth.exchangeCodeForSession(code);
+                    }
+
+                    setState(() {
+                      _hasRecoveryRedirect = true;
+                      _isVerifyingRecovery = false;
+                    });
+                  } catch (e) {
+                    debugPrint('Error exchanging code for session: $e');
+                    setState(() {
+                      _isVerifyingRecovery = false;
+                    });
+                  }
+                },
+                child: const Text('Open App'),
+              ),
+            ],
+          );
+        },
+      );
+    });
   }
 
   void _clearRecovery() {
@@ -451,7 +510,6 @@ class _RootAppState extends State<RootApp> {
   }
 
   Widget _getHome(AuthViewModel auth) {
-    // Show loading indicator while validating the incoming recovery token/code from email
     if (_isVerifyingRecovery) {
       return const Scaffold(
         backgroundColor: Color(0xFFFDF8F5),
@@ -462,7 +520,7 @@ class _RootAppState extends State<RootApp> {
               CircularProgressIndicator(color: Color(0xFFC06C4D)),
               SizedBox(height: 24),
               Text(
-                'Verifying your recovery link...',
+                'Preparing recovery options...',
                 style: TextStyle(
                   color: Color(0xFF32211A),
                   fontWeight: FontWeight.w600,
@@ -475,21 +533,20 @@ class _RootAppState extends State<RootApp> {
       );
     }
 
-    // Force redirection to Change Password page if verified recovery link is present
     if (_hasRecoveryRedirect) {
       return ChangePasswordPage(onPasswordChanged: _clearRecovery);
     }
 
     if (!auth.isInitialized) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFFDF8F5),
+      return const Scaffold(
+        backgroundColor: Color(0xFFFDF8F5),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(color: Color(0xFFC06C4D)),
-              const SizedBox(height: 24),
-              const Text(
+              CircularProgressIndicator(color: Color(0xFFC06C4D)),
+              SizedBox(height: 24),
+              Text(
                 'Restoring your session...',
                 style: TextStyle(
                   color: Color(0xFF32211A),
@@ -521,15 +578,15 @@ class _RootAppState extends State<RootApp> {
     return Consumer<DashboardViewModel>(
       builder: (context, dashboard, child) {
         if (!dashboard.isInitialized) {
-          return Scaffold(
-            backgroundColor: const Color(0xFFFDF8F5),
+          return const Scaffold(
+            backgroundColor: Color(0xFFFDF8F5),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(color: Color(0xFFC06C4D)),
-                  const SizedBox(height: 24),
-                  const Text(
+                  CircularProgressIndicator(color: Color(0xFFC06C4D)),
+                  SizedBox(height: 24),
+                  Text(
                     'Synchronizing your dashboard...',
                     style: TextStyle(
                       color: Color(0xFF32211A),
