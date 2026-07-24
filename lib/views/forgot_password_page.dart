@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Make sure supabase_flutter is imported
 import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import '../widgets/auth_text_field.dart';
@@ -20,18 +22,35 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeAnim;
 
+  // Stream subscription to listen to Supabase auth events
+  late final StreamSubscription<AuthState> _authSubscription;
+
   @override
   void initState() {
     super.initState();
     _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _animCtrl.forward();
+
+    // Listen for the password reset link click event from Supabase
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+
+      // This triggers the exact moment the recovery link is clicked and processed by the app
+      if (event == AuthChangeEvent.passwordRecovery) {
+        if (!mounted) return;
+
+        // TODO: Replace '/update-password' with your actual route or navigate to your Change Password screen
+        Navigator.pushReplacementNamed(context, '/update-password');
+      }
+    });
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _animCtrl.dispose();
+    _authSubscription.cancel(); // Clean up the listener when leaving the page
     super.dispose();
   }
 
