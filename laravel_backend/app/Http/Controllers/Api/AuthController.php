@@ -59,11 +59,11 @@ class AuthController extends Controller
     private function updateSupabasePassword($email, $newPassword)
     {
         try {
-            $supabaseUrl = config('services.supabase.url');
-            $serviceRoleKey = config('services.supabase.service_role_key');
+            $supabaseUrl = env('SUPABASE_URL') ?? config('services.supabase.url');
+            $serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY') ?? config('services.supabase.service_role_key');
 
             if (!$supabaseUrl || !$serviceRoleKey) {
-                Log::warning('Supabase configuration missing in config/services.php. Skipping remote sync.');
+                Log::warning('Supabase environment variables (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY) are missing. Skipping remote sync.');
                 return false;
             }
 
@@ -457,17 +457,17 @@ class AuthController extends Controller
         if (!$user) {
             Log::warning('Laravel Forgot Password Failed: Email not found', ['email' => $request->input('email')]);
             return response()->json([
-                'success' => false,
-                'message' => 'No, this email is not registered in our system.'
-            ], 404);
+                'success' => true,
+                'message' => 'If this email exists, a password reset link has been processed.'
+            ], 200);
         }
 
         $this->logAuth($user, 'Password Reset Request', $request);
 
         return response()->json([
             'success' => true,
-            'message' => 'Password reset is handled by Supabase. Please use the Supabase reset password flow.'
-        ]);
+            'message' => 'Password reset instructions processed successfully.'
+        ], 200);
     }
 
     public function verifyMfa(Request $request)
@@ -507,61 +507,4 @@ class AuthController extends Controller
         }
         return response()->json(['success' => true, 'message' => 'Logged out']);
     }
-    private function updateSupabasePassword($email, $newPassword)
-        {
-            try {
-                // 🔑 Read directly from environment variables (your .env file)
-                $supabaseUrl = env('SUPABASE_URL');
-                $serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY');
-
-                if (!$supabaseUrl || !$serviceRoleKey) {
-                    Log::warning('Supabase environment variables (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY) are missing. Skipping remote sync.');
-                    return false;
-                }
-
-                // 1. Find Supabase User ID by Email
-                $searchResponse = Http::withHeaders([
-                    'apikey' => $serviceRoleKey,
-                    'Authorization' => 'Bearer ' . $serviceRoleKey,
-                ])->get("{$supabaseUrl}/auth/v1/admin/users");
-
-                if (!$searchResponse->successful()) {
-                    Log::error('Failed to fetch users from Supabase Admin API', ['response' => $searchResponse->body()]);
-                    return false;
-                }
-
-                $users = $searchResponse->json('users') ?? [];
-                $supabaseUserId = null;
-                foreach ($users as $u) {
-                    if ($u['email'] === $email) {
-                        $supabaseUserId = $u['id'];
-                        break;
-                    }
-                }
-
-                if (!$supabaseUserId) {
-                    Log::warning('User not found in Supabase Auth during password sync', ['email' => $email]);
-                    return false;
-                }
-
-                // 2. Update password via Supabase Admin API
-                $updateResponse = Http::withHeaders([
-                    'apikey' => $serviceRoleKey,
-                    'Authorization' => 'Bearer ' . $serviceRoleKey,
-                    'Content-Type' => 'application/json',
-                ])->put("{$supabaseUrl}/auth/v1/admin/users/{$supabaseUserId}", [
-                    'password' => $newPassword
-                ]);
-
-                if (!$updateResponse->successful()) {
-                    Log::error('Failed to update Supabase password via Admin API', ['response' => $updateResponse->body()]);
-                    return false;
-                }
-
-                return true;
-            } catch (\Exception $e) {
-                Log::error('Exception during Supabase password sync: ' . $e->getMessage());
-                return false;
-            }
-        }
 }
