@@ -93,230 +93,334 @@ class CanteenApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
-        // ─── Repositories ──────
-        Provider(create: (_) => AuthRepository()),
-        Provider(create: (_) => StorageRepository()),
-        Provider(create: (_) => ActivityLogRepository(apiService)),
-        Provider(create: (_) => LendingRepository(apiService)),
-        Provider(create: (_) => ShareCapitalRepository(apiService)),
-        Provider(create: (_) => ShareholderRepository(apiService)),
-        Provider(create: (_) => TransactionRepository(apiService)),
-        Provider(create: (_) => NotificationRepository(apiService)),
-        Provider(create: (_) => UserRepository(apiService)),
-        Provider(create: (_) => ConsignmentProductsRepository(apiService)),
-        Provider(create: (_) => DailyInventoryRepository(apiService)),
 
-        // ─── ViewModels ────────────────────────────────────────────
-        ChangeNotifierProvider(
+        // ================= SERVICES =================
+
+        Provider<ApiService>.value(
+          value: apiService,
+        ),
+
+
+        // ================= REPOSITORIES =================
+
+        Provider<AuthRepository>(
+          create: (context) => AuthRepository(
+            context.read<ApiService>(),
+          ),
+        ),
+
+        Provider<StorageRepository>(
+          create: (_) => StorageRepository(),
+        ),
+
+        Provider<ActivityLogRepository>(
+          create: (_) => ActivityLogRepository(apiService),
+        ),
+
+        Provider<LendingRepository>(
+          create: (_) => LendingRepository(apiService),
+        ),
+
+        Provider<ShareCapitalRepository>(
+          create: (_) => ShareCapitalRepository(apiService),
+        ),
+
+        Provider<ShareholderRepository>(
+          create: (_) => ShareholderRepository(apiService),
+        ),
+
+        Provider<TransactionRepository>(
+          create: (_) => TransactionRepository(apiService),
+        ),
+
+        Provider<NotificationRepository>(
+          create: (_) => NotificationRepository(apiService),
+        ),
+
+        Provider<UserRepository>(
+          create: (_) => UserRepository(apiService),
+        ),
+
+        Provider<ConsignmentProductsRepository>(
+          create: (_) => ConsignmentProductsRepository(apiService),
+        ),
+
+        Provider<DailyInventoryRepository>(
+          create: (_) => DailyInventoryRepository(apiService),
+        ),
+
+
+        // ================= AUTH VIEWMODEL =================
+
+        ChangeNotifierProvider<AuthViewModel>(
           create: (context) {
-            final authVM = AuthViewModel(
+
+            final vm = AuthViewModel(
               context.read<AuthRepository>(),
               context.read<ActivityLogRepository>(),
               context.read<StorageRepository>(),
             );
 
-            authVM.restoreSession();
-            return authVM;
+            vm.restoreSession();
+
+            return vm;
           },
         ),
+
+
+        // ================= NAVIGATION =================
+
         ChangeNotifierProxyProvider<AuthViewModel, NavigationViewModel>(
-          create: (context) => NavigationViewModel(),
+          create: (_) => NavigationViewModel(),
+
           update: (context, auth, nav) {
-            if (auth.isAuthenticated && auth.currentUser != null) {
-              if (nav!.currentUserRole != auth.currentUser!.role) {
-                nav.setUserRole(auth.currentUser!.role);
+
+            if(auth.isAuthenticated &&
+                auth.currentUser != null) {
+
+              if(nav!.currentUserRole !=
+                  auth.currentUser!.role) {
+
+                nav.setUserRole(
+                  auth.currentUser!.role,
+                );
               }
             }
+
             return nav!;
           },
         ),
-        ChangeNotifierProvider(
-          create: (context) => AddShareholderViewModel(
-            shareholderRepository: context.read<ShareholderRepository>(),
-            storageRepository: context.read<StorageRepository>(),
-            authRepository: context.read<AuthRepository>(),
-            emailService: emailService,
-          ),
+
+
+        // ================= ADD SHAREHOLDER =================
+
+        ChangeNotifierProvider<AddShareholderViewModel>(
+          create: (context) =>
+              AddShareholderViewModel(
+                shareholderRepository:
+                context.read<ShareholderRepository>(),
+
+                storageRepository:
+                context.read<StorageRepository>(),
+
+                authRepository:
+                context.read<AuthRepository>(),
+
+                emailService:
+                emailService,
+              ),
         ),
 
-        // ─── Admin Management ViewModels (Only for Admin role) ───────
+
+        // ================= ADMIN DASHBOARD =================
+
         ChangeNotifierProxyProvider<AuthViewModel, DashboardViewModel>(
-          create: (context) => DashboardViewModel(
-            context.read<LendingRepository>(),
-            context.read<ShareholderRepository>(),
-            context.read<TransactionRepository>(),
-          ),
+          create: (context) =>
+              DashboardViewModel(
+                context.read<LendingRepository>(),
+                context.read<ShareholderRepository>(),
+                context.read<TransactionRepository>(),
+              ),
+
           update: (context, auth, model) {
-            if (auth.isAuthenticated &&
+
+            if(auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
-                model != null && !model.isInitialized) {
+                model != null &&
+                !model.isInitialized) {
+
               model.initDashboard();
             }
+
             return model!;
           },
         ),
+
 
         ChangeNotifierProxyProvider<AuthViewModel, LoanRequestViewModel>(
-          create: (context) => LoanRequestViewModel(
-            context.read<LendingRepository>(),
-          ),
+          create: (context) =>
+              LoanRequestViewModel(
+                context.read<LendingRepository>(),
+              ),
+
           update: (context, auth, model) {
-            if (auth.isAuthenticated &&
+
+            if(auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
-                model != null && !model.isInitialized) {
+                model != null &&
+                !model.isInitialized) {
+
               model.fetchLoanRequests();
             }
+
             return model!;
           },
         ),
+
 
         ChangeNotifierProxyProvider<AuthViewModel, ShareholderViewModel>(
-          create: (context) => ShareholderViewModel(
-            context.read<ShareholderRepository>(),
-          ),
+          create: (context) =>
+              ShareholderViewModel(
+                context.read<ShareholderRepository>(),
+              ),
+
           update: (context, auth, model) {
-            if (auth.isAuthenticated &&
+
+            if(auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
-                model != null && !model.isInitialized) {
+                model != null &&
+                !model.isInitialized) {
+
               model.fetchShareholders();
             }
+
             return model!;
           },
         ),
+
 
         ChangeNotifierProxyProvider<AuthViewModel, UserManagementViewModel>(
-          create: (context) => UserManagementViewModel(
-            context.read<UserRepository>(),
-          ),
+          create: (context) =>
+              UserManagementViewModel(
+                context.read<UserRepository>(),
+              ),
+
           update: (context, auth, model) {
-            if (auth.isAuthenticated &&
+
+            if(auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
-                model != null && !model.isInitialized) {
+                model != null &&
+                !model.isInitialized) {
+
               model.fetchUsers();
             }
+
             return model!;
           },
         ),
+
 
         ChangeNotifierProxyProvider<AuthViewModel, TransactionViewModel>(
-          create: (context) => TransactionViewModel(
-            context.read<TransactionRepository>(),
-          ),
+          create: (context) =>
+              TransactionViewModel(
+                context.read<TransactionRepository>(),
+              ),
+
           update: (context, auth, model) {
-            if (auth.isAuthenticated &&
+
+            if(auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
-                model != null && !model.isInitialized) {
+                model != null &&
+                !model.isInitialized) {
+
               model.fetchTransactions();
             }
+
             return model!;
           },
         ),
+
 
         ChangeNotifierProxyProvider<AuthViewModel, ActivityLogViewModel>(
-          create: (context) => ActivityLogViewModel(
-            context.read<ActivityLogRepository>(),
-          ),
+          create: (context) =>
+              ActivityLogViewModel(
+                context.read<ActivityLogRepository>(),
+              ),
+
           update: (context, auth, model) {
-            if (auth.isAuthenticated &&
+
+            if(auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
-                model != null && !model.isInitialized) {
+                model != null &&
+                !model.isInitialized) {
+
               model.fetchLogs();
             }
+
             return model!;
           },
         ),
+
 
         ChangeNotifierProxyProvider<AuthViewModel, UpdateInterestViewModel>(
-          create: (context) => UpdateInterestViewModel(
-            context.read<LendingRepository>(),
-          ),
+          create: (context) =>
+              UpdateInterestViewModel(
+                context.read<LendingRepository>(),
+              ),
+
           update: (context, auth, model) {
-            if (auth.isAuthenticated &&
+
+            if(auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
-                model != null && !model.isInitialized) {
+                model != null &&
+                !model.isInitialized) {
+
               model.loadData();
             }
+
             return model!;
           },
         ),
 
-        // 🚀 Registered with all 3 required repositories
-        ChangeNotifierProvider(
-          create: (context) => LoanDetailsViewModel(
-            context.read<LendingRepository>(),
-            context.read<TransactionRepository>(),
-            context.read<ShareholderRepository>(),
-          ),
-        ),
+
+        // ================= OTHER VIEWMODELS =================
 
         ChangeNotifierProvider(
-          create: (context) => ShareholderDetailViewModel(
-            context.read<ShareholderRepository>(),
-          ),
+          create: (context)=>
+              LoanDetailsViewModel(
+                context.read<LendingRepository>(),
+                context.read<TransactionRepository>(),
+                context.read<ShareholderRepository>(),
+              ),
         ),
+
+
         ChangeNotifierProvider(
-          create: (context) => ImportExportViewModel(apiService),
+          create: (context)=>
+              ShareholderDetailViewModel(
+                context.read<ShareholderRepository>(),
+              ),
         ),
-        ChangeNotifierProvider(create: (_) => ConsignmentProductsViewModel()),
+
+
         ChangeNotifierProvider(
-          create: (context) => ConsignmentDetailViewModel(
-            context.read<ConsignmentProductsRepository>(),
-            context.read<DailyInventoryRepository>(),
-          ),
-        ),
-        ChangeNotifierProvider(create: (_) => ConsigneeDetailViewModel()),
-        ChangeNotifierProvider(create: (_) => ConsigneeViewModel()),
-
-        // ─── Shareholder Personal ViewModels (Only for Shareholder role) ─────
-        ChangeNotifierProxyProvider<AuthViewModel, ShareCapitalViewModel>(
-          create: (context) => ShareCapitalViewModel(
-            context.read<ShareholderRepository>(),
-            context.read<TransactionRepository>(),
-            context.read<LendingRepository>(),
-          ),
-          update: (context, auth, model) {
-            if (auth.isAuthenticated && auth.currentUser?.role == UserRole.shareholder) {
-              model?.setUserId(auth.currentUser!.id);
-            } else if (!auth.isAuthenticated) {
-              model?.reset();
-            }
-            return model!;
-          },
+          create: (_) =>
+              ImportExportViewModel(apiService),
         ),
 
-        ChangeNotifierProxyProvider<AuthViewModel, NotificationViewModel>(
-          create: (context) => NotificationViewModel(
-            context.read<NotificationRepository>(),
-          ),
-          update: (context, auth, model) {
-            final shareholderId = auth.currentUser?.shareholder?.id;
-            if (auth.isAuthenticated && shareholderId != null) {
-              model?.loadNotifications(shareholderId: shareholderId);
-            } else if (!auth.isAuthenticated) {
-              model?.reset();
-            }
-            return model!;
-          },
+
+        ChangeNotifierProvider(
+          create: (_) =>
+              ConsignmentProductsViewModel(),
         ),
 
-        ChangeNotifierProxyProvider<AuthViewModel, ShareholderTransactionViewModel>(
-          create: (context) => ShareholderTransactionViewModel(
-            context.read<TransactionRepository>(),
-            context.read<ShareholderRepository>(),
-            context.read<LendingRepository>(),
-          ),
-          update: (context, auth, model) {
-            if (auth.isAuthenticated && auth.currentUser?.role == UserRole.shareholder) {
-              model?.setUserId(auth.currentUser!.id);
-            } else if (!auth.isAuthenticated) {
-              model?.reset();
-            }
-            return model!;
-          },
+
+        ChangeNotifierProvider(
+          create: (context)=>
+              ConsignmentDetailViewModel(
+                context.read<ConsignmentProductsRepository>(),
+                context.read<DailyInventoryRepository>(),
+              ),
         ),
+
+
+        ChangeNotifierProvider(
+          create: (_) =>
+              ConsigneeDetailViewModel(),
+        ),
+
+
+        ChangeNotifierProvider(
+          create: (_) =>
+              ConsigneeViewModel(),
+        ),
+
+
       ],
+
       child: const RootApp(),
     );
+
   }
 }
 

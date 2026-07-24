@@ -156,22 +156,40 @@ class AuthViewModel extends ChangeNotifier {
   Future<void> restoreSession() async {
     _isLoading = true;
     notifyListeners();
+
     try {
-      final session = _supabase.auth.currentSession;
-      if (session != null) {
-        _currentUser = await _authRepository.getCurrentUser();
+
+      final token = await _authRepository.getToken();
+
+      if (token != null) {
+
+        _currentUser =
+        await _authRepository.getCurrentUser();
+
       } else {
+
         _currentUser = null;
+
       }
+
     } catch (e) {
-      debugPrint('DEBUG: [AuthViewModel] Session restoration failed: $e');
+
+      debugPrint(
+        'DEBUG: [AuthViewModel] Session restoration failed: $e',
+      );
+
       _currentUser = null;
+
     } finally {
+
       _isInitialized = true;
       _isLoading = false;
+
       notifyListeners();
+
     }
   }
+
 
   String _mapAuthError(Object e) {
     if (e is AuthException) {

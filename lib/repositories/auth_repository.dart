@@ -1,256 +1,544 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/user_model.dart';
+import '../services/api_service.dart';
+
 
 class AuthRepository {
-  final _supabase = Supabase.instance.client;
 
-  AuthRepository();
+  final SupabaseClient _supabase =
+      Supabase.instance.client;
 
-  Future<Map<String, dynamic>> login(String email, {String? password, String? captchaToken}) async {
-    // If using Supabase Auth password sign in:
-    if (password != null) {
-      final response = await _supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
+  final ApiService _api;
+
+
+  AuthRepository(this._api);
+
+
+
+  // ===========================
+  // LOGIN
+  // Supabase -> Laravel Sanctum
+  // ===========================
+
+  Future<Map<String, dynamic>> login(
+      String email, {
+        String? password,
+        String? captchaToken,
+      }) async {
+
+
+    if(password == null || password.isEmpty){
+      throw Exception(
+          "Password required"
       );
-      return {
-        'user': response.user,
-        'session': response.session,
-      };
     }
 
-    // Fallback to OTP / Magic Link if password isn't provided
-    await _supabase.auth.signInWithOtp(
-      email: email,
-      // data: if you need to pass captcha token, use emailRedirectTo or options
-    );
 
-    return {'message': 'OTP sent successfully'};
-  }
-
-  Future<void> setToken(String token) async {
-    // Supabase manages its own session tokens locally,
-    // but you can set the session manually if needed:
-    // await _supabase.auth.setSession(token);
-  }
-
-  Future<String?> getToken() async {
-    return _supabase.auth.currentSession?.accessToken;
-  }
-
-  Future<Map<String, dynamic>> register({
-    required String username,
-    required String email,
-    required String password,
-    required String firstName,
-    required String lastName,
-    required UserRole role,
-    String? address,
-    String? phone,
-    String? idImageUrl,
-    double? initialShare,
-  }) async {
-    // 1. Sign up with Supabase Auth
-    final authResponse = await _supabase.auth.signUp(
+    //
+    // 1. Authenticate with Supabase
+    //
+    final supabaseResponse =
+    await _supabase.auth.signInWithPassword(
       email: email,
       password: password,
-      data: {
-        'username': username,
-        'firstname': firstName,
-        'lastname': lastName,
-        'role': role.name,
+    );
+
+
+    final session =
+        supabaseResponse.session;
+
+
+    if(session == null){
+      throw Exception(
+          "Supabase authentication failed"
+      );
+    }
+
+
+
+    //
+    // 2. Get Supabase JWT
+    //
+    final supabaseJwt =
+        session.accessToken;
+
+
+
+    //
+    // 3. Exchange JWT for Laravel Sanctum Token
+    //
+    final response =
+    await _api.post(
+      '/login',
+      body: {
+
+        'email': email,
+
+        'supabase_token': supabaseJwt,
+
       },
     );
 
-    final userId = authResponse.user?.id;
 
-    if (userId != null) {
-      // 2. Insert corresponding record directly into your users table
-      final profileData = {
-        'id': userId,
-        'username': username,
-        'email': email,
-        'firstname': firstName,
-        'lastname': lastName,
-        'role': role.name,
-        'address': address,
-        'phone': phone,
-        'id_image_url': idImageUrl,
-        if (initialShare != null) 'initial_share': initialShare,
-      };
 
-      await _supabase.from('users').upsert(profileData);
+    if(response == null ||
+        response['token'] == null){
+
+      throw Exception(
+          "Laravel authentication failed"
+      );
     }
+
+
+
+    //
+    // 4. Store Laravel Sanctum token
+    //
+    final sanctumToken =
+    response['token'];
+
+
+    await setToken(
+        sanctumToken
+    );
+
+
 
     return {
-      'user': authResponse.user,
-      'session': authResponse.session,
+
+      'success':true,
+
+      'user':response['user'],
+
+      'token':sanctumToken,
+
     };
-  }
 
-  Future<UserModel?> getCurrentUser() async {
-    try {
-      final authUser = _supabase.auth.currentUser;
-
-      debugPrint('==============================');
-      debugPrint('AUTH USER DEBUG');
-      debugPrint('ID    : ${authUser?.id}');
-      debugPrint('EMAIL : ${authUser?.email}');
-      debugPrint('==============================');
-
-      if (authUser == null) {
-        debugPrint('No authenticated user.');
-        return null;
-      }
-
-      // -------- Search by ID --------
-      final idRows = await _supabase
-          .from('users')
-          .select()
-          .eq('id', authUser.id);
-
-      debugPrint('Search by ID returned:');
-      debugPrint(idRows.toString());
-
-      // -------- Search by Email --------
-      final emailRows = await _supabase
-          .from('users')
-          .select()
-          .eq('email', authUser.email!);
-
-      debugPrint('Search by EMAIL returned:');
-      debugPrint(emailRows.toString());
-
-      if (idRows.isNotEmpty) {
-        debugPrint('Profile loaded using ID.');
-        return UserModel.fromJson(idRows.first);
-      }
-
-      if (emailRows.isNotEmpty) {
-        debugPrint('Profile loaded using EMAIL.');
-        return UserModel.fromJson(emailRows.first);
-      }
-
-      debugPrint('===================================');
-      debugPrint('NO USER PROFILE FOUND');
-      debugPrint('Auth ID    : ${authUser.id}');
-      debugPrint('Auth Email : ${authUser.email}');
-      debugPrint('===================================');
-
-      return null;
-    } catch (e, stack) {
-      debugPrint('===================================');
-      debugPrint('getCurrentUser ERROR');
-      debugPrint(e.toString());
-      debugPrint(stack.toString());
-      debugPrint('===================================');
-      return null;
-    }
   }
 
 
 
 
-  Future<UserModel?> getUserByEmail(String email) async {
-    try {
-      final response = await _supabase
-          .from('users')
-          .select()
-          .eq('email', email)
-          .maybeSingle();
 
-      if (response != null) {
-        return UserModel.fromJson(response);
-      }
-    } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] Error fetching user by email: $e');
-      return null;
-    }
-    return null;
+  // ===========================
+  // TOKEN HANDLING
+  // ===========================
+
+
+  Future<void> setToken(
+      String token
+      ) async {
+
+    await _api.setToken(token);
+
   }
 
-  Future<Map<String, dynamic>> verifyMfa(String email) async {
-    // Handled natively by Supabase Auth (e.g. OTP verification)
-    // Example for verifying an OTP token:
-    // final response = await _supabase.auth.verifyOTP(email: email, token: code, type: OtpType.signup);
-    return {'message': 'MFA verification should use supabase.auth.verifyOTP'};
+
+
+  Future<String?> getToken()
+  async {
+
+    return await _api.getToken();
+
   }
 
-  Future<Map<String, dynamic>> updateProfile({
+
+
+  Future<void> clearToken()
+  async {
+
+    await _api.clearToken();
+
+  }
+
+
+
+
+
+  // ===========================
+  // REGISTER
+  // ===========================
+
+
+  Future<Map<String, dynamic>> register({
+
+    required String username,
+
+    required String email,
+
+    required String password,
+
     required String firstName,
-    required String lastName,
-    required String address,
-    String? avatarUrl,
-  }) async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('No authenticated user found.');
 
-    final updateData = {
-      'firstname': firstName,
-      'lastname': lastName,
-      'address': address,
-      if (avatarUrl != null) 'avatar_url': avatarUrl,
+    required String lastName,
+
+    required UserRole role,
+
+    String? address,
+
+    String? phone,
+
+    String? idImageUrl,
+
+    double? initialShare,
+
+
+  }) async {
+
+
+
+    final authResponse =
+    await _supabase.auth.signUp(
+
+      email: email,
+
+      password: password,
+
+
+      data: {
+
+        'username':username,
+
+        'firstname':firstName,
+
+        'lastname':lastName,
+
+        'role':role.name,
+
+      },
+
+    );
+
+
+
+    return {
+
+
+      'user':
+      authResponse.user,
+
+
+      'session':
+      authResponse.session,
+
+
     };
 
-    final response = await _supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', userId)
-        .select()
-        .single();
+  }
+
+
+
+
+
+  // ===========================
+  // CURRENT USER
+  // FROM LARAVEL
+  // ===========================
+
+
+  Future<UserModel?> getCurrentUser()
+  async {
+
+
+    try {
+
+
+      final response =
+      await _api.get(
+          '/user'
+      );
+
+
+      if(response != null){
+
+        return UserModel.fromJson(
+            response
+        );
+
+      }
+
+
+
+    }
+    catch(e){
+
+      debugPrint(
+          "getCurrentUser error: $e"
+      );
+
+    }
+
+
+    return null;
+
+  }
+
+
+
+
+
+  // ===========================
+  // USER BY EMAIL
+  // ===========================
+
+
+  Future<UserModel?> getUserByEmail(
+      String email
+      ) async {
+
+
+    try {
+
+
+      final response =
+      await _api.get(
+        '/user/by-email',
+        queryParams: {
+
+          'email':email
+
+        },
+      );
+
+
+      if(response != null){
+
+        return UserModel.fromJson(
+            response
+        );
+
+      }
+
+
+    }
+    catch(e){
+
+      debugPrint(
+          "getUserByEmail error: $e"
+      );
+
+    }
+
+
+    return null;
+
+  }
+
+
+
+
+
+
+
+  // ===========================
+  // UPDATE PROFILE
+  // ===========================
+
+
+  Future<Map<String,dynamic>>
+  updateProfile({
+
+    required String firstName,
+
+    required String lastName,
+
+    required String address,
+
+    String? avatarUrl,
+
+
+  }) async {
+
+
+
+    final response =
+    await _api.post(
+
+      '/user/profile',
+
+      body: {
+
+
+        'firstname':
+        firstName,
+
+
+        'lastname':
+        lastName,
+
+
+        'address':
+        address,
+
+
+        if(avatarUrl != null)
+
+          'avatar_url':
+          avatarUrl,
+
+
+      },
+
+    );
+
 
     return response;
-  }
 
-  Future<void> logout() async {
-    await _supabase.auth.signOut();
-  }
-
-  Future<Map<String, dynamic>> forgotPassword(String email) async {
-    debugPrint('DEBUG: [AuthRepository] Calling Supabase resetPasswordForEmail for: $email');
-
-    try {
-      await _supabase.auth.resetPasswordForEmail(
-        email,
-        redirectTo: 'https://lendingpis-production.up.railway.app/PIS/',
-      );
-
-      return {
-        'success': true,
-        'message': 'Password reset email sent.',
-      };
-    } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] forgotPassword error: $e');
-      rethrow;
-    }
   }
 
 
-  Future<Map<String, dynamic>> resetPassword({
+
+
+
+  // ===========================
+  // FORGOT PASSWORD
+  // Supabase handles email
+  // ===========================
+
+
+  Future<Map<String,dynamic>>
+  forgotPassword(
+      String email
+      ) async {
+
+
+
+    await _supabase.auth
+        .resetPasswordForEmail(
+
+      email,
+
+
+      redirectTo:
+      'https://lendingpis-production.up.railway.app/PIS/',
+
+    );
+
+
+
+    return {
+
+
+      'success':true,
+
+
+      'message':
+      'Password reset email sent'
+
+
+    };
+
+
+  }
+
+
+
+
+
+
+
+  // ===========================
+  // RESET PASSWORD
+  // ===========================
+
+
+  Future<Map<String,dynamic>>
+  resetPassword({
+
     required String email,
+
     required String code,
+
     required String password,
+
+
   }) async {
-    debugPrint('DEBUG: [AuthRepository] Calling Supabase updateUser password');
-    try {
-      // Note: Typically Supabase handles recovery via a deep link session,
-      // but if using a custom token/code verification:
-      await _supabase.auth.verifyOTP(
-        email: email,
-        token: code,
-        type: OtpType.recovery,
-      );
 
-      final response = await _supabase.auth.updateUser(
-        UserAttributes(password: password),
-      );
 
-      return {'success': true, 'user': response.user};
-    } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] resetPassword error: $e');
-      rethrow;
-    }
+
+    await _supabase.auth.verifyOTP(
+
+      email:email,
+
+      token:code,
+
+      type:OtpType.recovery,
+
+    );
+
+
+
+    final result =
+    await _supabase.auth.updateUser(
+
+      UserAttributes(
+
+        password:password,
+
+      ),
+
+    );
+
+
+
+    return {
+
+
+      'success':true,
+
+
+      'user':
+      result.user,
+
+
+    };
+
   }
+
+
+
+
+
+  // ===========================
+  // LOGOUT
+  // ===========================
+
+
+  Future<void> logout()
+  async {
+
+
+    try {
+
+
+      await _api.post(
+          '/logout'
+      );
+
+
+    }
+    catch(e){
+
+      debugPrint(
+          "Laravel logout error: $e"
+      );
+
+    }
+
+
+
+    await _supabase.auth.signOut();
+
+
+
+    await clearToken();
+
+
+  }
+
+
+
 }

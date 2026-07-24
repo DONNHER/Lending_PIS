@@ -244,81 +244,83 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        Log::info('Laravel Login Attempt initiated', [
-            'email' => $request->input('email'),
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent()
+        $request->validate([
+            'email'=>'required|email',
+            'supabase_token'=>'required|string'
         ]);
 
-        // We only require the email now for backend session mapping
-        $request->validate(['email' => 'required|email']);
-        $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
-            Log::warning('Laravel Login Failed: Email does not exist in local database', [
-                'email' => $request->input('email')
-            ]);
-            return response()->json(['message' => 'Invalid credentials'], 401);
-        }
+        /*
+         |--------------------------------------------------------------------------
+         | Verify Supabase JWT
+         |--------------------------------------------------------------------------
+         */
 
-        if ($user->isLocked()) {
-            $minutes = now()->diffInMinutes($user->locked_until);
-            Log::warning('Laravel Login Blocked: Account is locked', [
-                'email' => $user->email,
-                'locked_until' => $user->locked_until
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => "Account is locked due to multiple failed attempts. Please try again in $minutes minutes."
-            ], 403);
-        }
+        $supabaseUrl = env('SUPABASE_URL');
 
-        if ($user->failed_attempts >= 3) {
-            if (!$request->has('captcha_token') || $request->captcha_token !== 'verified') {
-                Log::info('Laravel Login Blocked: CAPTCHA required', ['email' => $user->email, 'failed_attempts' => $user->failed_attempts]);
-                return response()->json([
-                    'success' => false,
-                    'captcha_required' => true,
-                    'message' => 'Security check required. Please complete the CAPTCHA.'
-                ], 403);
-            }
-        }
+        $response = Http::withToken(
+            $request->supabase_token
+        )->get(
+            $supabaseUrl.'/auth/v1/user'
+        );
 
-        // 🚀 Password check skipped here because Supabase Auth handled it successfully on the frontend!
-        // Reset failed attempts upon successful Supabase authentication match
-        User::withoutEvents(function () use ($user) {
-            $user->update(['failed_attempts' => 0, 'locked_until' => null]);
-        });
 
-        if ($user->status === 'active') {
-            $token = $user->createToken('auth_token')->plainTextToken;
-            $this->logAuth($user, 'User Login', $request);
-
-            Log::info('Laravel Login Successful (Active User via Supabase)', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'role' => $user->role
-            ]);
+        if (!$response->successful()) {
 
             return response()->json([
-                'success' => true,
-                'user' => $user->load('shareholder'),
-                'token' => $token,
-                'mfa_required' => false
-            ]);
+                'success'=>false,
+                'message'=>'Invalid Supabase token'
+            ],401);
+
         }
 
-        Log::info('Laravel Login Successful, but Pending Verification (MFA Required)', [
-            'user_id' => $user->id,
-            'email' => $user->email
-        ]);
+
+        $supabaseUser = $response->json();
+
+
+        /*
+         |--------------------------------------------------------------------------
+         | Find Laravel User using EMAIL
+         |--------------------------------------------------------------------------
+         */
+
+        $user = User::where(
+            'email',
+            $supabaseUser['email']
+        )->first();
+
+
+        if(!$user){
+
+            return response()->json([
+                'success'=>false,
+                'message'=>'Laravel user not found'
+            ],404);
+
+        }
+
+
+
+        /*
+         |--------------------------------------------------------------------------
+         | Create Sanctum Token
+         |--------------------------------------------------------------------------
+         */
+
+        $token = $user
+            ->createToken('mobile')
+            ->plainTextToken;
+
+
 
         return response()->json([
-            'success' => true,
-            'user' => $user->load('shareholder'),
-            'mfa_required' => true,
-            'email' => $user->email,
-            'message' => 'Verification required.'
+
+            'success'=>true,
+
+            'user'=>$user->load('shareholder'),
+
+            'token'=>$token
+
         ]);
     }
 
