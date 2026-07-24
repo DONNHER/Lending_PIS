@@ -92,24 +92,36 @@ class AuthRepository {
 
   Future<UserModel?> getCurrentUser() async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return null;
+      final email = _supabase.auth.currentUser?.email;
+
+      if (email == null) return null;
+
 
       final response = await _supabase
           .from('users')
           .select()
-          .eq('id', userId)
+          .eq('email', email)
           .maybeSingle();
+
 
       if (response != null) {
         return UserModel.fromJson(response);
       }
+
+
+      debugPrint(
+        'DEBUG: No profile found for email: $email',
+      );
+
     } catch (e) {
-      debugPrint('DEBUG: [AuthRepository] Error fetching current user from Supabase: $e');
-      return null;
+      debugPrint(
+        'DEBUG: [AuthRepository] Error fetching user by email: $e',
+      );
     }
+
     return null;
   }
+
 
   Future<UserModel?> getUserByEmail(String email) async {
     try {
