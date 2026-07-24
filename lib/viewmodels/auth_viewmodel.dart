@@ -165,6 +165,7 @@ class AuthViewModel extends ChangeNotifier {
         _currentUser = null;
       }
     } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Session restoration failed: $e');
       _currentUser = null;
     } finally {
       _isInitialized = true;
@@ -230,14 +231,19 @@ class AuthViewModel extends ChangeNotifier {
         _rememberedEmail = null;
       }
 
+      debugPrint('DEBUG: [AuthViewModel] Attempting Supabase sign-in for email: $email (isAdminLogin: $isAdminLogin)');
+
       // 1. Authenticate against Supabase Auth
       final supabaseResponse = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
+      debugPrint('DEBUG: [AuthViewModel] Supabase sign-in successful. User ID: ${supabaseResponse.user?.id}');
+
       if (supabaseResponse.session != null && supabaseResponse.user != null) {
 
+        debugPrint('DEBUG: [AuthViewModel] Proceeding to Laravel backend login...');
         // 2. Authenticate against Laravel Backend using Repository
         final laravelLoginResponse = await _authRepository.login(
           email,
@@ -245,8 +251,11 @@ class AuthViewModel extends ChangeNotifier {
           captchaToken: captchaToken,
         );
 
+        debugPrint('DEBUG: [AuthViewModel] Laravel backend login response received.');
+
         // 🚀 Check if Laravel backend blocked the user and requires a CAPTCHA
         if (laravelLoginResponse['captcha_required'] == true) {
+          debugPrint('DEBUG: [AuthViewModel] Laravel response indicates CAPTCHA required.');
           _isCaptchaRequired = true;
           _errorMessage = laravelLoginResponse['message'] ?? 'Security check required. Please complete the CAPTCHA.';
           _isLoading = false;
@@ -266,6 +275,7 @@ class AuthViewModel extends ChangeNotifier {
         }
 
         if (user == null) {
+          debugPrint('DEBUG: [AuthViewModel] Error: User profile data could not be retrieved.');
           _errorMessage = 'User profile data could not be retrieved.';
           await _supabase.auth.signOut();
           _isLoading = false;
@@ -273,9 +283,12 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         }
 
+        debugPrint('DEBUG: [AuthViewModel] User role resolved: ${user.role}. Validating permissions...');
+
         // Role validation checks...
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
+            debugPrint('DEBUG: [AuthViewModel] Access denied: Non-admin tried entering Admin Portal.');
             _errorMessage = 'Access denied. This login is for Administrators only.';
             await _supabase.auth.signOut();
             await _authRepository.logout();
@@ -285,6 +298,7 @@ class AuthViewModel extends ChangeNotifier {
           }
         } else {
           if (user.role == UserRole.admin) {
+            debugPrint('DEBUG: [AuthViewModel] Access denied: Admin tried logging in via regular portal.');
             _errorMessage = 'Administrators must use the secure Admin Login portal.';
             await _supabase.auth.signOut();
             await _authRepository.logout();
@@ -296,11 +310,17 @@ class AuthViewModel extends ChangeNotifier {
 
         _currentUser = user;
         _isCaptchaRequired = false; // Clear on success
+        debugPrint('DEBUG: [AuthViewModel] Login completed successfully for user: ${user.email}');
         notifyListeners();
         return true;
       }
       return false;
+    } on AuthException catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Supabase AuthException caught: ${e.message} (StatusCode: ${e.statusCode})');
+      _errorMessage = e.message;
+      return false;
     } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] General login exception caught: $e');
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
@@ -395,6 +415,7 @@ class AuthViewModel extends ChangeNotifier {
       await _supabase.auth.signInWithOtp(email: email);
       return true;
     } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Resend MFA error: $e');
       _errorMessage = _mapAuthError(e);
       return false;
     } finally {
@@ -409,6 +430,7 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('DEBUG: [AuthViewModel] Requesting password reset for: $email');
       await _supabase.auth.resetPasswordForEmail(
         email,
         redirectTo: 'https://lendingpis-production.up.railway.app/PIS/#/change-password',
@@ -416,9 +438,11 @@ class AuthViewModel extends ChangeNotifier {
 
       return true;
     } on AuthException catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Forgot password AuthException: ${e.message}');
       _errorMessage = e.message;
       return false;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Forgot password error: $e');
       _errorMessage = 'Unable to send reset email. Please try again.';
       return false;
     } finally {
@@ -473,6 +497,7 @@ class AuthViewModel extends ChangeNotifier {
       }
       return false;
     } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Profile update error: $e');
       _errorMessage = e.toString();
       return false;
     } finally {
@@ -493,11 +518,12 @@ class AuthViewModel extends ChangeNotifier {
       final email = _supabase.auth.currentUser?.email;
 
       if (email == null) {
+        debugPrint('DEBUG: [AuthViewModel] Change password error: No authenticated user.');
         _errorMessage = 'No authenticated user.';
         return false;
       }
 
-      // 1. Authenticate and update password in Supabase Auth
+      debugPrint('DEBUG: [AuthViewModel] Authenticating user in Supabase to change password...');
       await _supabase.auth.signInWithPassword(
         email: email,
         password: currentPassword,
@@ -507,19 +533,19 @@ class AuthViewModel extends ChangeNotifier {
         UserAttributes(password: newPassword),
       );
 
-      // 2. 🚀 Sync the new password hash with your Laravel backend database
+      debugPrint('DEBUG: [AuthViewModel] Syncing new password hash with Laravel backend...');
       await _authRepository.resetPassword(
         email: email,
-        code: '', // Pass any required code or leave empty depending on your backend route
+        code: '',
         password: newPassword,
       );
 
-      // 3. Sign out so the user logs in fresh with their new password
       await _supabase.auth.signOut();
       await _authRepository.logout();
 
       return true;
     } on AuthException catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Change password AuthException: ${e.message}');
       if (e.message.toLowerCase().contains('invalid login credentials')) {
         _errorMessage = 'Current password is incorrect.';
       } else {
@@ -527,6 +553,7 @@ class AuthViewModel extends ChangeNotifier {
       }
       return false;
     } catch (e) {
+      debugPrint('DEBUG: [AuthViewModel] Change password error: $e');
       _errorMessage = 'Unable to change password: ${e.toString().replaceAll('Exception: ', '')}';
       return false;
     } finally {
