@@ -15,9 +15,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
+  bool _linkSent = false; // Track if the reset email has been successfully triggered
+
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeAnim;
-
 
   @override
   void initState() {
@@ -35,32 +36,28 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
   }
 
   Future<void> _handleSendResetLink() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  final viewModel = context.read<AuthViewModel>();
+    final viewModel = context.read<AuthViewModel>();
 
-  final success = await viewModel.forgotPassword(
-    _emailController.text.trim(),
-  );
-
-  if (!mounted) return;
-
-  if (success) {
-    _showSnackbar(
-      'Password reset link sent. Please check your email.',
-      isError: false,
+    final success = await viewModel.forgotPassword(
+      _emailController.text.trim(),
     );
 
-    Navigator.pop(context);
-  } else {
-    _showSnackbar(
-      viewModel.errorMessage ?? 'Unable to send reset email.',
-      isError: true,
-    );
+    if (!mounted) return;
+
+    if (success) {
+      // Instead of popping, change local state to show the "Waiting/Check Email" view
+      setState(() {
+        _linkSent = true;
+      });
+    } else {
+      _showSnackbar(
+        viewModel.errorMessage ?? 'Unable to send reset email.',
+        isError: true,
+      );
+    }
   }
-}
-
-  
 
   void _showSnackbar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -120,19 +117,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
                 opacity: _fadeAnim,
                 child: Consumer<AuthViewModel>(
                   builder: (context, viewModel, _) {
-                    return Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                                _buildIconHeader(),
-                                const SizedBox(height: 32),
-                                _buildEmailStep(viewModel),
-                                const SizedBox(height: 32),
-                                _buildSubmitButton(viewModel),
-                              ],
-                      ),
-                    );
+                    // Toggle view based on whether the email was sent or not
+                    return _linkSent ? _buildCheckEmailView() : _buildFormView(viewModel);
                   },
                 ),
               ),
@@ -143,7 +129,114 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
     );
   }
 
-  Widget _buildIconHeader() {
+  /// View shown BEFORE sending the reset link
+  Widget _buildFormView(AuthViewModel viewModel) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildIconHeader(Icons.lock_reset_rounded),
+          const SizedBox(height: 32),
+          const Text(
+            'Reset Password',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.textDark),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Enter your email address and we\'ll send you a password reset link.',
+            style: TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.5),
+          ),
+          const SizedBox(height: 32),
+          AuthTextField(
+            label: 'Email Address',
+            hint: 'Enter your registered email',
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            prefixIcon: const Icon(
+              Icons.email_outlined,
+              color: AppTheme.textMuted,
+              size: 20,
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your email';
+              }
+              final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+              if (!emailRegex.hasMatch(value.trim())) {
+                return 'Enter a valid email address';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 32),
+          _buildSubmitButton(viewModel),
+        ],
+      ),
+    );
+  }
+
+  /// View shown AFTER the link is sent, keeping the screen open so they can wait/check email
+  Widget _buildCheckEmailView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildIconHeader(Icons.mark_email_unread_rounded),
+        const SizedBox(height: 32),
+        const Text(
+          'Check Your Email',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.textDark),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'We have sent a password reset verification link to:\n${_emailController.text.trim()}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.5),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: AppTheme.primary, size: 20),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Click the link inside the email. Your browser/app will automatically redirect you here to change your password.',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textDark, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+        OutlinedButton(
+          onPressed: () {
+            setState(() {
+              _linkSent = false; // Allow user to re-enter email if they made a typo
+            });
+          },
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            side: const BorderSide(color: AppTheme.primary),
+          ),
+          child: const Text(
+            'Try another email',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primary),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIconHeader(IconData icon) {
     return Center(
       child: Container(
         width: 80,
@@ -152,8 +245,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
           color: AppTheme.primary.withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
-        child: const Icon(
-          Icons.lock_reset_rounded,
+        child: Icon(
+          icon,
           size: 44,
           color: AppTheme.primary,
         ),
@@ -161,79 +254,34 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with SingleTick
     );
   }
 
-  Widget _buildEmailStep(AuthViewModel viewModel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Reset Password',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.textDark),
+  Widget _buildSubmitButton(AuthViewModel viewModel) {
+    return ElevatedButton(
+      onPressed: viewModel.isLoading ? null : _handleSendResetLink,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Enter your email address and we\'ll send you a password reset link.',
-          style: TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.5),
+        elevation: 0,
+      ),
+      child: viewModel.isLoading
+          ? const SizedBox(
+        height: 24,
+        width: 24,
+        child: CircularProgressIndicator(
+          color: Colors.white,
+          strokeWidth: 2,
         ),
-        const SizedBox(height: 32),
-       AuthTextField(
-          label: 'Email Address',
-          hint: 'Enter your registered email',
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          prefixIcon: const Icon(
-            Icons.email_outlined,
-            color: AppTheme.textMuted,
-            size: 20,
-          ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Please enter your email';
-            }
-        
-            final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-        
-            if (!emailRegex.hasMatch(value.trim())) {
-              return 'Enter a valid email address';
-            }
-        
-            return null;
-          },
+      )
+          : const Text(
+        'Send Reset Link',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
         ),
-      ],
+      ),
     );
   }
-
- 
- Widget _buildSubmitButton(AuthViewModel viewModel) {
-  return ElevatedButton(
-    onPressed: viewModel.isLoading
-        ? null
-        : _handleSendResetLink,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: AppTheme.primary,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-      elevation: 0,
-    ),
-    child: viewModel.isLoading
-        ? const SizedBox(
-            height: 24,
-            width: 24,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
-            ),
-          )
-        : const Text(
-            'Send Reset Link',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-  );
-}
 }
