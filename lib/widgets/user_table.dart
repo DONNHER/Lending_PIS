@@ -39,24 +39,22 @@ class UserTable extends StatelessWidget {
         ),
         // Table Body
         Expanded(
-          child: isLoading 
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)))
-            : users.isEmpty 
+          child: users.isEmpty
               ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Text('No users found', style: TextStyle(color: AppTheme.textMuted)),
-                  ),
-                )
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text('No users found', style: TextStyle(color: AppTheme.textMuted)),
+            ),
+          )
               : ListView.separated(
-                  itemCount: users.length,
-                  padding: EdgeInsets.zero,
-                  separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                  itemBuilder: (context, index) {
-                    final user = users[index];
-                    return _buildRow(context, user);
-                  },
-                ),
+            itemCount: users.length,
+            padding: EdgeInsets.zero,
+            separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+            itemBuilder: (context, index) {
+              final user = users[index];
+              return _buildRow(context, user);
+            },
+          ),
         ),
       ],
     );
@@ -79,13 +77,13 @@ class UserTable extends StatelessWidget {
             ),
             Expanded(flex: 3, child: Text(user.email, style: const TextStyle(fontSize: 12, color: AppTheme.textDark))),
             Expanded(
-              flex: 2, 
-              child: Text(
-                user.role.name.toUpperCase(), 
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textMuted)
-              )
+                flex: 2,
+                child: Text(
+                    user.role.name.toUpperCase(),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textMuted)
+                )
             ),
-            
+
             Expanded(
               flex: 2,
               child: Align(
@@ -102,22 +100,22 @@ class UserTable extends StatelessWidget {
                   if (onImpersonate != null && user.role != UserRole.admin)
                     IconButton(
                       icon: Icon(
-                        Icons.login_rounded, 
-                        size: 18, 
-                        color: user.status == UserStatus.active ? const Color(0xFFC06C4D) : Colors.grey.withOpacity(0.5)
+                          Icons.login_rounded,
+                          size: 18,
+                          color: user.status == UserStatus.active ? const Color(0xFFC06C4D) : Colors.grey.withOpacity(0.5)
                       ),
-                      onPressed: user.status == UserStatus.active 
-                          ? () => onImpersonate!(user) 
+                      onPressed: user.status == UserStatus.active
+                          ? () => onImpersonate!(user)
                           : () {
-                              final scaffoldMessenger = ScaffoldMessenger.of(context);
-                              scaffoldMessenger.hideCurrentSnackBar();
-                              scaffoldMessenger.showSnackBar(
-                                SnackBar(
-                                  content: Text('Cannot impersonate ${user.status.name} accounts. Please activate the user first.'),
-                                  backgroundColor: Colors.orange,
-                                ),
-                              );
-                            },
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.hideCurrentSnackBar();
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Cannot impersonate ${user.status.name} accounts. Please activate the user first.'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      },
                       visualDensity: VisualDensity.compact,
                       tooltip: user.status == UserStatus.active ? 'Impersonate' : 'Cannot impersonate ${user.status.name} user',
                     ),

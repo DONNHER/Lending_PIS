@@ -36,28 +36,26 @@ class ActivityLogTable extends StatelessWidget {
         ),
         // Table Body
         Expanded(
-          child: isLoading 
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)))
-            : logs.isEmpty 
+          child: logs.isEmpty
               ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Text('No activity logs found', style: TextStyle(color: AppTheme.textMuted)),
-                  ),
-                )
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text('No activity logs found', style: TextStyle(color: AppTheme.textMuted)),
+            ),
+          )
               : ListView.separated(
-                  itemCount: logs.length,
-                  padding: EdgeInsets.zero,
-                  separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                  itemBuilder: (context, index) {
-                    final log = logs[index];
-                    return InkWell(
-                      onTap: () => _showLogDetails(context, log),
-                      hoverColor: const Color(0xFFC06C4D).withValues(alpha: 0.05),
-                      child: _buildRow(log),
-                    );
-                  },
-                ),
+            itemCount: logs.length,
+            padding: EdgeInsets.zero,
+            separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+            itemBuilder: (context, index) {
+              final log = logs[index];
+              return InkWell(
+                onTap: () => _showLogDetails(context, log),
+                hoverColor: const Color(0xFFC06C4D).withValues(alpha: 0.05),
+                child: _buildRow(log),
+              );
+            },
+          ),
         ),
       ],
     );
@@ -65,7 +63,7 @@ class ActivityLogTable extends StatelessWidget {
 
   Widget _buildRow(ActivityLog log) {
     final dateFormat = DateFormat('MMM dd, HH:mm:ss');
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       child: Row(
@@ -100,7 +98,7 @@ class ActivityLogTable extends StatelessWidget {
     final dateFormat = DateFormat('MMMM dd, yyyy');
     final timeFormat = DateFormat('hh:mm:ss a');
     final typeColor = _getTypeColor(log.type);
-    
+
     IconData getTitleIcon(String type) {
       final t = type.toLowerCase();
       if (t == 'access') return Icons.visibility_rounded;
@@ -193,16 +191,16 @@ class ActivityLogTable extends StatelessWidget {
                         _detailRow('User', log.userName),
                         _detailRow('Date', dateFormat.format(log.createdAt)),
                         _detailRow('Time', timeFormat.format(log.createdAt)),
-                        if (log.ipAddress != null && log.ipAddress != 'null') 
+                        if (log.ipAddress != null && log.ipAddress != 'null')
                           _detailRow('IP Address', log.ipAddress!),
                         if (log.deviceInfo != null && log.deviceInfo != 'null')
                           _detailRow('Device Info', log.deviceInfo!),
-                        
+
                         const Divider(height: 32, color: Color(0xFFF3F4F6)),
                         const Text('Description', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textMuted, fontSize: 11, letterSpacing: 0.5)),
                         const SizedBox(height: 8),
                         Text(log.details, style: const TextStyle(fontSize: 14, height: 1.5, color: AppTheme.textDark)),
-                        
+
                         if (log.oldValues != null || log.newValues != null) ...[
                           const SizedBox(height: 24),
                           const Text('DATA CHANGES', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textMuted, fontSize: 11, letterSpacing: 0.5)),
@@ -317,10 +315,9 @@ class ActivityLogTable extends StatelessWidget {
   Widget _buildChangesSection(ActivityLog log) {
     final oldData = log.oldValues ?? {};
     final newData = log.newValues ?? {};
-    
-    // Get unique keys from both maps
+
     final allKeys = {...oldData.keys, ...newData.keys}.toList();
-    
+
     if (allKeys.isEmpty) {
       return const Text('No identifiable field changes.', style: TextStyle(fontSize: 13, color: AppTheme.textMuted, fontStyle: FontStyle.italic));
     }
@@ -329,8 +326,7 @@ class ActivityLogTable extends StatelessWidget {
       children: allKeys.map((key) {
         final oldValue = oldData[key]?.toString() ?? '(empty)';
         final newValue = newData[key]?.toString() ?? '(empty)';
-        
-        // Skip if values are identical
+
         if (oldValue == newValue) return const SizedBox.shrink();
 
         return Padding(
@@ -370,21 +366,6 @@ class ActivityLogTable extends StatelessWidget {
           ),
         );
       }).toList(),
-    );
-  }
-
-  Widget _detailItem(String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: AppTheme.textDark, fontSize: 14),
-          children: [
-            TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textMuted)),
-            TextSpan(text: value, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
-          ],
-        ),
-      ),
     );
   }
 

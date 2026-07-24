@@ -120,8 +120,8 @@ class RecentLoansTable extends StatelessWidget {
     final statusColor = _getStatusColor(tx.status);
     final statusBg = statusColor.withOpacity(0.1);
     final refId = tx.referenceId ?? tx.id;
-    final displayId = refId.length > 7 
-        ? '${refId.substring(0, 7)}...' 
+    final displayId = refId.length > 7
+        ? '${refId.substring(0, 7)}...'
         : refId;
 
     return Container(
@@ -133,9 +133,13 @@ class RecentLoansTable extends StatelessWidget {
         children: [
           Expanded(
             flex: 2,
-            child: Text(
-              displayId,
-              style: const TextStyle(fontSize: 11, color: AppTheme.textDark, fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: refId,
+              preferBelow: false,
+              child: Text(
+                displayId,
+                style: const TextStyle(fontSize: 11, color: AppTheme.textDark, fontWeight: FontWeight.w500),
+              ),
             ),
           ),
           Expanded(

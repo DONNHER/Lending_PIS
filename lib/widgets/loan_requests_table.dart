@@ -40,28 +40,26 @@ class LoanRequestsTable extends StatelessWidget {
         ),
         // Table Body
         Expanded(
-          child: isLoading 
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFC06C4D)))
-            : requests.isEmpty 
+          child: requests.isEmpty
               ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Text('No loan requests found', style: TextStyle(color: AppTheme.textMuted)),
-                  ),
-                )
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text('No loan requests found', style: TextStyle(color: AppTheme.textMuted)),
+            ),
+          )
               : ListView.separated(
-                  itemCount: requests.length,
-                  padding: EdgeInsets.zero,
-                  separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                  itemBuilder: (context, index) {
-                    final req = requests[index];
-                    return InkWell(
-                      onTap: () => onView(req),
-                      hoverColor: const Color(0xFFC06C4D).withValues(alpha: 0.05),
-                      child: _buildRow(req),
-                    );
-                  },
-                ),
+            itemCount: requests.length,
+            padding: EdgeInsets.zero,
+            separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+            itemBuilder: (context, index) {
+              final req = requests[index];
+              return InkWell(
+                onTap: () => onView(req),
+                hoverColor: const Color(0xFFC06C4D).withValues(alpha: 0.05),
+                child: _buildRow(req),
+              );
+            },
+          ),
         ),
       ],
     );
@@ -102,13 +100,13 @@ class LoanRequestsTable extends StatelessWidget {
           ),
           Expanded(flex: 2, child: Text('${req.months} mo.', style: const TextStyle(fontSize: 12, color: AppTheme.textDark))),
           Expanded(
-            flex: 2, 
-            child: Text(
-              req.purpose.isEmpty ? 'N/A' : req.purpose, 
-              style: const TextStyle(fontSize: 11, color: AppTheme.textDark),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            )
+              flex: 2,
+              child: Text(
+                req.purpose.isEmpty ? 'N/A' : req.purpose,
+                style: const TextStyle(fontSize: 11, color: AppTheme.textDark),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
           ),
 
           // Status Badge
