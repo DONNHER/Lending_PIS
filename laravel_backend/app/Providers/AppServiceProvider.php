@@ -21,16 +21,29 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
+    use Illuminate\Support\Facades\Storage;
+    use Spatie\Dropbox\Client as DropboxClient;
+    use Spatie\FlysystemDropbox\DropboxAdapter;
+    use League\Flysystem\Filesystem as Flysystem;
+    use Illuminate\Filesystem\FilesystemAdapter;
+
     public function boot(): void
     {
         if (config('app.env') === 'production') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        // Register Dropbox driver for Flysystem / Spatie Backup
+        // Register Dropbox driver correctly for Laravel 10/11
         Storage::extend('dropbox', function ($app, $config) {
             $adapter = new DropboxAdapter(new DropboxClient($config['authorization_token']));
-            return new Filesystem($adapter, $config);
+
+            $filesystem = new Flysystem($adapter, $config);
+
+            return new FilesystemAdapter(
+                $filesystem,
+                $adapter,
+                $config
+            );
         });
 
         view()->composer('layouts.dashboard', function ($view) {
