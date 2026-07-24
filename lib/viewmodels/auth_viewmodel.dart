@@ -213,7 +213,7 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  Future<bool> login(String email, String password, {bool isAdminLogin = false}) async {
+  Future<bool> login(String email, String password, {String? captchaToken, bool isAdminLogin = false}) async {
     _isLoading = true;
     _errorMessage = null;
     _isMfaRequired = false;
@@ -238,14 +238,26 @@ class AuthViewModel extends ChangeNotifier {
 
       if (supabaseResponse.session != null && supabaseResponse.user != null) {
 
-        // 2. Authenticate against Laravel Backend
-        final laravelLoginResponse = await _authRepository.login(email, password);
+        // 2. Authenticate against Laravel Backend using Repository
+        final laravelLoginResponse = await _authRepository.login(
+          email,
+          password,
+          captchaToken: captchaToken,
+        );
+
+        // 🚀 Check if Laravel backend blocked the user and requires a CAPTCHA
+        if (laravelLoginResponse['captcha_required'] == true) {
+          _isCaptchaRequired = true;
+          _errorMessage = laravelLoginResponse['message'] ?? 'Security check required. Please complete the CAPTCHA.';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
 
         if (laravelLoginResponse['token'] != null) {
           await _authRepository.setToken(laravelLoginResponse['token']);
         }
 
-        // 🚀 3. FIX: Get current user via standard session token call instead of email query
         UserModel? user;
         if (laravelLoginResponse['user'] != null) {
           user = UserModel.fromJson(laravelLoginResponse['user']);
@@ -261,7 +273,7 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         }
 
-        // 4. Role validation check
+        // Role validation checks...
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
             _errorMessage = 'Access denied. This login is for Administrators only.';
@@ -283,25 +295,9 @@ class AuthViewModel extends ChangeNotifier {
         }
 
         _currentUser = user;
-
-        try {
-          await _activityLogRepository.logActivity(
-            action: 'Login',
-            details: 'User ${_currentUser!.email} logged in',
-          );
-        } catch (e) {
-          debugPrint('DEBUG: [AuthViewModel] Activity logging failed: $e');
-        }
-
+        _isCaptchaRequired = false; // Clear on success
         notifyListeners();
         return true;
-      }
-      return false;
-    } on AuthException catch (e) {
-      if (e.message.toLowerCase().contains('email not confirmed')) {
-        _errorMessage = 'Account not verified. Please check your inbox for the verification link.';
-      } else {
-        _errorMessage = _mapAuthError(e);
       }
       return false;
     } catch (e) {

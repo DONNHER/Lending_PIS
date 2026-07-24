@@ -84,6 +84,7 @@ class _LoginContentState extends State<_LoginContent>
     final success = await viewModel.login(
       _emailController.text,
       _passwordController.text,
+      captchaToken: viewModel.isCaptchaRequired ? 'verified' : null,
       isAdminLogin: false,
     );
 
