@@ -220,7 +220,7 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 🚀 Save or clear "Remember Me" credentials based on toggle status
+      // 🚀 Save or clear "Remember Me" credentials
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remember_me_flag', _rememberMe);
       if (_rememberMe) {
@@ -231,17 +231,20 @@ class AuthViewModel extends ChangeNotifier {
         _rememberedEmail = null;
       }
 
-      // Directly sign in using Supabase Auth
+      // 1. Authenticate against Supabase Auth
       final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
       if (response.session != null && response.user != null) {
-        final userModelResponse = await _authRepository.getCurrentUser();
+
+        // 2. 🔍 SEARCH BY EMAIL USING REPOSITORY
+        final userModelResponse = await _authRepository.getUserByEmail(email);
 
         if (userModelResponse == null) {
-          _errorMessage = 'User profile data could not be retrieved.';
+          _errorMessage = 'User profile data could not be retrieved by email.';
+          await _supabase.auth.signOut();
           _isLoading = false;
           notifyListeners();
           return false;
@@ -249,6 +252,7 @@ class AuthViewModel extends ChangeNotifier {
 
         final user = userModelResponse;
 
+        // 3. Role validation check
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
             _errorMessage = 'Access denied. This login is for Administrators only.';

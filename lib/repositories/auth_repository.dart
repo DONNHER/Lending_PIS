@@ -136,4 +136,20 @@ class AuthRepository {
     });
     return response;
   }
+  Future<UserModel?> getUserByEmail(String email) async {
+    try {
+      // Assuming your backend has an endpoint like GET /user/by-email?email=...
+      // or you can adjust the path to match your backend route structure.
+      final response = await _apiService.get('/user/by-email', headers: {
+        'email': email, // or pass as query parameter depending on your API setup
+      });
+      if (response != null) {
+        return UserModel.fromJson(response);
+      }
+    } catch (e) {
+      debugPrint('DEBUG: [AuthRepository] Error fetching user by email: $e');
+      return null;
+    }
+    return null;
+  }
 }
