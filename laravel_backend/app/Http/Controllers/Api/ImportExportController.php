@@ -19,7 +19,7 @@ use App\Exports\ActivityLogsExport;
 use App\Imports\LoansImport;
 use App\Imports\TransactionsImport;
 use App\Imports\UsersImport;
-use App\Imports\ActivityLogsImport; // Added this import
+use App\Imports\ActivityLogsImport;
 
 // Models
 use App\Models\Transaction;
@@ -42,7 +42,7 @@ class ImportExportController extends Controller
                 'transactions'  => Excel::download(new TransactionsExport(), $filename . '.' . $format),
                 'users'         => Excel::download(new UsersExport(), $filename . '.' . $format),
                 'loans'         => Excel::download(new LoansExport(), $filename . '.' . $format),
-                'activity-logs' => Excel::download(new ActivityLogsExport(), $filename . '.' . $format), // Updated key
+                'activity-logs' => Excel::download(new ActivityLogsExport(), $filename . '.' . $format),
                 default         => response()->json(['error' => 'Format/Type not supported'], 400),
             };
         }
@@ -55,24 +55,26 @@ class ImportExportController extends Controller
     }
 
     /**
-     * Preview Import (Dry Run)
+     * Preview Import (Dry Run with Validation, Duplicate Checking & Metrics)
      */
     public function previewImport(Request $request, $type)
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,csv']);
 
         $import = $this->getImportInstance($type);
-
-        if (!$import) return response()->json(['message' => 'Type not supported'], 404);
+        if (!$import) {
+            return response()->json(['message' => 'Type not supported'], 404);
+        }
 
         try {
             $import->isPreview = true;
             Excel::import($import, $request->file('file'));
 
             return response()->json([
-                'success' => empty($import->errors),
-                'errors' => $import->errors ?? [],
-                'count' => count($import->errors ?? [])
+                'success'       => empty($import->errors),
+                'success_count' => $import->successCount ?? 0,
+                'failure_count' => $import->failureCount ?? count($import->errors ?? []),
+                'error_report'  => $import->errors ?? [],
             ]);
         } catch (\Exception $e) {
             Log::error("Import Preview Error [{$type}]: " . $e->getMessage());
@@ -81,20 +83,27 @@ class ImportExportController extends Controller
     }
 
     /**
-     * Confirm Import (Final Save)
+     * Confirm Import (Final Save with Metrics)
      */
     public function confirmImport(Request $request, $type)
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,csv']);
 
         $import = $this->getImportInstance($type);
-
-        if (!$import) return response()->json(['message' => 'Type not supported'], 404);
+        if (!$import) {
+            return response()->json(['message' => 'Type not supported'], 404);
+        }
 
         try {
             $import->isPreview = false;
             Excel::import($import, $request->file('file'));
-            return response()->json(['message' => 'Import completed successfully']);
+
+            return response()->json([
+                'message'       => 'Import completed successfully',
+                'success_count' => $import->successCount ?? 0,
+                'failure_count' => $import->failureCount ?? count($import->errors ?? []),
+                'error_report'  => $import->errors ?? [],
+            ]);
         } catch (\Exception $e) {
             Log::error("Import Confirmation Error [{$type}]: " . $e->getMessage());
             return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 500);
@@ -110,10 +119,41 @@ class ImportExportController extends Controller
             'loans'         => new LoansImport(),
             'transactions'  => new TransactionsImport(),
             'users'         => new UsersImport(),
-            'activity-logs' => new ActivityLogsImport(), // Added mapping
+            'activity-logs' => new ActivityLogsImport(),
             default         => null,
         };
     }
 
-    private function generatePdfReport($type, $filename) { /* ... keep existing implementation ... */ }
+    /**
+     * Generate PDF Reports
+     */
+    private function generatePdfReport($type, $filename)
+    {
+        try {
+            $data = match($type) {
+                'transactions'  => Transaction::all(),
+                'users'         => User::all(),
+                'loans'         => Loan::with('shareholder.user')->get(),
+                'activity-logs' => [], // Replace with your ActivityLog model if needed
+                default         => null,
+            };
+
+            if (is_null($data)) {
+                return response()->json(['error' => 'PDF Type not supported'], 400);
+            }
+
+            // Ensure you have a matching blade view in resources/views/pdf/{type}_report.blade.php
+            $viewName = 'pdf.' . $type . '_report';
+            if (!view()->exists($viewName)) {
+                $viewName = 'pdf.generic_report'; // Fallback view if specific view doesn't exist
+            }
+
+            $pdf = Pdf::loadView($viewName, ['data' => $data, 'title' => ucwords(str_replace('-', ' ', $type))]);
+
+            return $pdf->download($filename . '.pdf');
+        } catch (\Exception $e) {
+            Log::error("PDF Generation Error [{$type}]: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
+        }
+    }
 }

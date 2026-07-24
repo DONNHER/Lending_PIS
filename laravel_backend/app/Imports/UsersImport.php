@@ -11,18 +11,36 @@ use Illuminate\Support\Collection;
 
 class UsersImport implements ToCollection, WithHeadingRow
 {
-    public $errors = [];
-    public $isPreview = false;
+    public array $errors = [];
+    public bool $isPreview = false;
+    public int $successCount = 0;
+    public int $failureCount = 0;
 
     public function collection(Collection $rows)
     {
         $validated = $this->validateData($rows->toArray());
-        $this->errors = $validated['errors'];
 
+        $this->errors = $validated['errors'];
+        $this->failureCount = count($validated['errors']);
+
+        // If it's a preview, valid rows count toward expected successes
+        // If it's a real run, we actually create the records
         if (!$this->isPreview) {
             foreach ($validated['valid'] as $row) {
-                $this->createUser($row);
+                try {
+                    $this->createUser($row);
+                    $this->successCount++;
+                } catch (\Exception $e) {
+                    $this->failureCount++;
+                    $this->errors[] = [
+                        'row' => $row['row_number'] ?? 0,
+                        'messages' => [$e->getMessage()],
+                        'data' => $row
+                    ];
+                }
             }
+        } else {
+            $this->successCount = count($validated['valid']);
         }
     }
 
@@ -32,6 +50,8 @@ class UsersImport implements ToCollection, WithHeadingRow
         $errors = [];
 
         foreach ($rows as $index => $row) {
+            $rowNumber = $index + 2;
+
             // Mapping CSV keys (which include spaces) to internal keys
             $data = [
                 'username'  => $row['username'] ?? null,
@@ -40,6 +60,7 @@ class UsersImport implements ToCollection, WithHeadingRow
                 'lastname'  => $row['last_name'] ?? null,
                 'role'      => strtolower($row['role'] ?? ''),
                 'status'    => strtolower($row['status'] ?? ''),
+                'row_number' => $rowNumber,
             ];
 
             $validator = Validator::make($data, [
@@ -53,17 +74,25 @@ class UsersImport implements ToCollection, WithHeadingRow
 
             if ($validator->fails()) {
                 $errors[] = [
-                    'row' => $index + 2,
+                    'row' => $rowNumber,
                     'messages' => $validator->errors()->all(),
                     'data' => $row
                 ];
                 continue;
             }
 
-            // Duplicate check
-            if (User::where('username', $data['username'])->orWhere('email', $data['email'])->exists()) {
+            // Duplicate check (against DB and previously collected valid batch items)
+            $existsInDb = User::where('username', $data['username'])
+                ->orWhere('email', $data['email'])
+                ->exists();
+
+            $existsInBatch = collect($valid)->contains(function ($item) use ($data) {
+                return $item['username'] === $data['username'] || $item['email'] === $data['email'];
+            });
+
+            if ($existsInDb || $existsInBatch) {
                 $errors[] = [
-                    'row' => $index + 2,
+                    'row' => $rowNumber,
                     'messages' => ["Username or Email already exists."],
                     'data' => $row
                 ];
