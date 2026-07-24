@@ -247,7 +247,6 @@ class AuthViewModel extends ChangeNotifier {
         // 2. Authenticate against Laravel Backend using Repository
         final laravelLoginResponse = await _authRepository.login(
           email,
-          password,
           captchaToken: captchaToken,
         );
 

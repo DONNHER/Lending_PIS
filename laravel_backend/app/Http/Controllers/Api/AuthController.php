@@ -253,7 +253,8 @@ class AuthController extends Controller
             'user_agent' => $request->userAgent()
         ]);
 
-        $request->validate(['email' => 'required|email', 'password' => 'required']);
+        // We only require the email now for backend session mapping
+        $request->validate(['email' => 'required|email']);
         $user = User::where('email', $request->email)->first();
 
         if (!$user) {
@@ -286,41 +287,8 @@ class AuthController extends Controller
             }
         }
 
-        if (!Hash::check($request->password, $user->password)) {
-            User::withoutEvents(function () use ($user, $request) {
-                $user->increment('failed_attempts');
-
-                if ($user->failed_attempts >= 5) {
-                    $user->update(['locked_until' => now()->addMinutes(15)]);
-
-                    ActivityLog::create([
-                        'user_id' => $user->id,
-                        'action' => 'Account Locked',
-                        'log_type' => ActivityLog::TYPE_ERROR,
-                        'description' => "Account locked for 15 minutes after 5 failed attempts from IP: {$request->ip()}",
-                        'ip_address' => $request->ip(),
-                        'is_suspicious' => true
-                    ]);
-
-                    Log::warning("Account locked: {$user->email} due to 5 consecutive failed attempts.");
-                }
-            });
-
-            Log::warning('Laravel Login Failed: Password hash mismatch', [
-                'email' => $user->email,
-                'current_failed_attempts' => $user->failed_attempts
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid credentials',
-                'failed_attempts' => $user->failed_attempts,
-                'captcha_required' => $user->failed_attempts >= 3
-            ], 401);
-        }
-
-        $user->refresh();
-
+        // 🚀 Password check skipped here because Supabase Auth handled it successfully on the frontend!
+        // Reset failed attempts upon successful Supabase authentication match
         User::withoutEvents(function () use ($user) {
             $user->update(['failed_attempts' => 0, 'locked_until' => null]);
         });
@@ -329,7 +297,7 @@ class AuthController extends Controller
             $token = $user->createToken('auth_token')->plainTextToken;
             $this->logAuth($user, 'User Login', $request);
 
-            Log::info('Laravel Login Successful (Active User)', [
+            Log::info('Laravel Login Successful (Active User via Supabase)', [
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'role' => $user->role

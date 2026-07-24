@@ -17,10 +17,9 @@ class AuthRepository {
     };
   }
 
-  Future<Map<String, dynamic>> login(String email, String password, {String? captchaToken}) async {
+  Future<Map<String, dynamic>> login(String email, {String? captchaToken}) async {
     final response = await _apiService.post('/login', body: {
       'email': email,
-      'password': password,
       if (captchaToken != null) 'captcha_token': captchaToken,
     });
 
