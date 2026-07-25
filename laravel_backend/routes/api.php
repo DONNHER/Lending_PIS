@@ -83,13 +83,17 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         Route::get('/admin/users/count', [UserController::class, 'count']);
-        Route::apiResource('admin/users', UserController::class)->names([
-            'index' => 'api.admin.users.index',
-            'store' => 'api.admin.users.store',
-            'show' => 'api.admin.users.show',
-            'update' => 'api.admin.users.update',
-            'destroy' => 'api.admin.users.destroy',
-        ]);
+
+                // 🚀 REGISTER BULK DELETE FIRST SO IT TAKES PRECEDENCE
+                Route::post('/admin/users/bulk-delete', [UserController::class, 'bulkDelete']);
+
+                Route::apiResource('admin/users', UserController::class)->names([
+                    'index' => 'api.admin.users.index',
+                    'store' => 'api.admin.users.store',
+                    'show' => 'api.admin.users.show',
+                    'update' => 'api.admin.users.update',
+                    'destroy' => 'api.admin.users.destroy',
+                ]);
         Route::get('/admin/users/{id}/login-history', [UserController::class, 'loginHistory']);
         Route::post('/admin/users/{id}/impersonate', [UserController::class, 'impersonate']);
 
