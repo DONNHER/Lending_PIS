@@ -164,9 +164,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Notifications & Email
     Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::match(['PUT', 'POST'], '/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::match(['PUT', 'POST'], '/notifications/{id}/mark-as-read', [NotificationController::class, 'markAsRead']);
+    Route::match(['PUT', 'POST'], '/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
     Route::post('/send-email', [NotificationController::class, 'sendEmail']);
-
     // File Upload
     Route::post('/upload', [FileUploadController::class, 'upload']);
 });

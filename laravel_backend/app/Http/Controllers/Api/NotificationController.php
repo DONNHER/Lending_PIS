@@ -33,6 +33,21 @@ class NotificationController extends Controller
             return response()->json(['success' => false, 'message' => 'Failed to fetch notifications'], 500);
         }
     }
+    /**
+     * Delete all notifications for a shareholder
+     */
+    public function destroyAll(Request $request)
+    {
+        $request->validate(['shareholder_id' => 'required|exists:shareholders,id']);
+
+        try {
+            Notification::where('shareholder_id', $request->shareholder_id)->delete();
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error("Error deleting notifications: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete notifications'], 500);
+        }
+    }
 
     /**
      * Mark a notification as read
@@ -41,23 +56,20 @@ class NotificationController extends Controller
     {
         try {
             $notification = Notification::findOrFail($id);
-            $notification->update(['is_read' => true]);
+            $notification->update(['is_unread' => false]);
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Notification not found'], 404);
         }
     }
 
-    /**
-     * Mark all notifications as read for a shareholder
-     */
     public function markAllAsRead(Request $request)
     {
         $request->validate(['shareholder_id' => 'required|exists:shareholders,id']);
-        
+
         Notification::where('shareholder_id', $request->shareholder_id)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
+            ->where('is_unread', true)
+            ->update(['is_unread' => false]);
 
         return response()->json(['success' => true]);
     }
