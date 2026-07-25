@@ -294,32 +294,28 @@ class AuthController extends Controller
          |--------------------------------------------------------------------------
          */
 
-        $user = User::where(
-            'email',
-            $supabaseUser['email']
-        )->first();
-        if ($user->status === 'pending') {
-            return response()->json([
-                'success' => false,
-                'verification_required' => true,
-                'message' => 'Please verify your email before logging in.'
-            ], 403);
-        }
-        // Sync Laravel status only after Supabase confirms the email
-        if ($user->status === 'pending') {
-            $user->update([
-                'status' => 'active',
-            ]);
-        }
+       $user = User::where('email', $supabaseUser['email'])->first();
 
-        if(!$user){
+       if (!$user) {
+           return response()->json([
+               'success' => false,
+               'message' => 'Laravel user not found'
+           ], 404);
+       }
 
-            return response()->json([
-                'success'=>false,
-                'message'=>'Laravel user not found'
-            ],404);
+       // Supabase has already confirmed this email (we verified the JWT above),
+       // so sync the local status if it's still marked pending.
+       if ($user->status === 'pending') {
+           $user->update(['status' => 'active']);
+       }
 
-        }
+       $token = $user->createToken('mobile')->plainTextToken;
+
+       return response()->json([
+           'success' => true,
+           'user' => $user->load('shareholder'),
+           'token' => $token
+       ]);
 
 
 
