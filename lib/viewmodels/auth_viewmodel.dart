@@ -260,7 +260,7 @@ class AuthViewModel extends ChangeNotifier {
       debugPrint('==============================');
       debugPrint('LOGIN SUCCESS');
       debugPrint('Login User    : ${loginResult['user']}');
-      debugPrint('Login Session : ${loginResult['session']}');
+      debugPrint('Login Token : ${loginResult['token']}');
       debugPrint('Supabase ID   : ${_supabase.auth.currentUser?.id}');
       debugPrint('Supabase Email: ${_supabase.auth.currentUser?.email}');
       debugPrint('==============================');
