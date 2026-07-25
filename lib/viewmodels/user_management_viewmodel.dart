@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../repositories/user_repository.dart';
 import '../models/user_model.dart';
 import '../utils/csv_exporter.dart';
+import '../services/snackbar_service.dart'; // 🚀 Import your global SnackbarService
 import 'package:intl/intl.dart';
 
 class UserManagementViewModel extends ChangeNotifier {
@@ -10,7 +11,7 @@ class UserManagementViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool _isInitialized = false;
   List<UserModel> _users = [];
-  
+
   // Pagination
   int _currentPage = 1;
   int _lastPage = 1;
@@ -28,7 +29,7 @@ class UserManagementViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
   List<UserModel> get users => _users;
-  
+
   int get currentPage => _currentPage;
   int get lastPage => _lastPage;
   int get totalRows => _totalRows;
@@ -55,12 +56,12 @@ class UserManagementViewModel extends ChangeNotifier {
         role: _roleFilter,
         status: _statusFilter,
       );
-      
+
       _users = result['users'];
       _totalRows = result['total'];
       _lastPage = result['last_page'];
       _currentPage = result['current_page'];
-      
+
       _isInitialized = true;
     } catch (e) {
       debugPrint('Error fetching users: $e');
@@ -98,7 +99,8 @@ class UserManagementViewModel extends ChangeNotifier {
     _currentPage = 1;
     fetchUsers(forceRefresh: true);
   }
-  // 1. Single Delete / Move to Trash with Debug Logs
+
+  // 1. Single Delete / Move to Trash with Global Snackbar Feedback
   Future<void> deleteUser(String id) async {
     debugPrint('🗑️ [ViewModel] deleteUser called with ID: $id');
     try {
@@ -108,17 +110,20 @@ class UserManagementViewModel extends ChangeNotifier {
       await _userRepository.deleteUser(id);
       debugPrint('✅ [ViewModel] deleteUser successful for ID: $id');
 
+      SnackbarService.showSuccess('User moved to trash successfully');
+
       await fetchUsers(forceRefresh: true);
     } catch (e, stackTrace) {
       debugPrint('❌ [ViewModel] ERROR deleting user ID $id: $e');
       debugPrint('🔍 [ViewModel] Stack trace: $stackTrace');
+      SnackbarService.showError('Failed to delete user: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  // 2. Bulk Delete / Move to Trash with Debug Logs
+  // 2. Bulk Delete / Move to Trash with Global Snackbar Feedback
   Future<void> deleteUsers(List<String> ids) async {
     debugPrint('🗑️ [ViewModel] bulkDeleteUsers called with IDs: $ids');
     if (ids.isEmpty) {
@@ -133,10 +138,13 @@ class UserManagementViewModel extends ChangeNotifier {
       await _userRepository.bulkDeleteUsers(ids);
       debugPrint('✅ [ViewModel] bulkDeleteUsers successful for IDs: $ids');
 
+      SnackbarService.showSuccess('Users moved to trash successfully');
+
       await fetchUsers(forceRefresh: true);
     } catch (e, stackTrace) {
       debugPrint('❌ [ViewModel] ERROR bulk deleting users: $e');
       debugPrint('🔍 [ViewModel] Stack trace: $stackTrace');
+      SnackbarService.showError('Failed to bulk delete users: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
