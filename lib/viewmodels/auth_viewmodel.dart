@@ -413,7 +413,7 @@ class AuthViewModel extends ChangeNotifier {
       final res = await _supabase.auth.verifyOTP(
         email: email,
         token: code,
-        type: OtpType.signup,
+        type: OtpType.email,
       );
 
       if (res.session != null) {
