@@ -144,12 +144,58 @@ class ImportExportController extends Controller
 
             // Ensure you have a matching blade view in resources/views/pdf/{type}_report.blade.php
             $viewName = 'pdf.' . $type . '_report';
+
             if (!view()->exists($viewName)) {
-                $viewName = 'pdf.generic_report'; // Fallback view if specific view doesn't exist
+                $viewName = 'reports.generic';
             }
 
-            $pdf = Pdf::loadView($viewName, ['data' => $data, 'title' => ucwords(str_replace('-', ' ', $type))]);
+            $rows = [];
 
+            foreach ($data as $item) {
+
+                $rows[] = [
+                    'id' => $item->id ?? '',
+                    'reference_id' => $item->reference_id ?? '',
+                    'shareholder' => $item->shareholder->user->name ?? '',
+                    'method' => $item->method ?? '',
+                    'type' => $item->type ?? '',
+                    'amount' => $item->amount ?? '',
+                    'status' => $item->status ?? '',
+                    'date' => $item->created_at ?? '',
+                ];
+
+            }
+
+
+            $pdf = Pdf::loadView('reports.generic', [
+
+                'title' => ucwords(str_replace('-', ' ', $type)),
+
+                'subtitle' => 'Generated Report',
+
+                'generatedAt' => now()->format('Y-m-d H:i:s'),
+
+                'summary' => [
+                    [
+                        'label' => 'Total Records',
+                        'value' => count($rows)
+                    ]
+                ],
+
+                'headers' => [
+                    'ID',
+                    'Reference ID',
+                    'Shareholder',
+                    'Method',
+                    'Type',
+                    'Amount',
+                    'Status',
+                    'Date'
+                ],
+
+                'rows' => $rows,
+
+            ]);
             return $pdf->download($filename . '.pdf');
         } catch (\Exception $e) {
             Log::error("PDF Generation Error [{$type}]: " . $e->getMessage());
