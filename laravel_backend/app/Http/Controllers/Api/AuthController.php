@@ -258,11 +258,21 @@ class AuthController extends Controller
 
         $supabaseUrl = env('SUPABASE_URL');
 
-        $response = Http::withToken(
-            $request->supabase_token
-        )->get(
+        $response = Http::withHeaders([
+            'apikey' => env('SUPABASE_ANON_KEY'),
+            'Authorization' => 'Bearer '.$request->supabase_token,
+        ])->get(
             $supabaseUrl.'/auth/v1/user'
         );
+        Log::info('Supabase token received', [
+            'token_length' => strlen($request->supabase_token),
+            'token_start' => substr($request->supabase_token,0,20)
+        ]);
+
+        Log::info('Supabase response', [
+            'status'=>$response->status(),
+            'body'=>$response->body()
+        ]);
 
 
         if (!$response->successful()) {

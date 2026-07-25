@@ -64,19 +64,42 @@ class ApiService {
   }
 
   // 🚀 Added optional {Map<String, String>? headers} parameter
-  Future<dynamic> post(String endpoint, {Map<String, dynamic>? body, Map<String, String>? headers, bool triggerUnauthorized = true}) async {
-    final token = await getToken();
+  Future<dynamic> post(
+      String endpoint, {
+        Map<String, dynamic>? body,
+        Map<String, String>? headers,
+        bool triggerUnauthorized = true,
+      }) async {
+
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
+
+    String? token;
+
+    // Do not attach Laravel Sanctum token when exchanging Supabase JWT
+    if (_cleanEndpoint(endpoint) != 'login') {
+      token = await getToken();
+    }
+
     final requestHeaders = _headers(token, headers);
-    debugPrint('DEBUG: [ApiService] Request POST $url with token: ${token != null ? "${token.substring(0, 6)}..." : "NULL"}');
+
+    debugPrint(
+        'DEBUG: [ApiService] Request POST $url with token: ${token != null ? "${token.substring(0,6)}..." : "NULL"}'
+    );
 
     final response = await http.post(
       Uri.parse(url),
       headers: requestHeaders,
       body: body != null ? jsonEncode(body) : null,
     );
-    return _handleResponse(response, 'POST', url, triggerUnauthorized: triggerUnauthorized);
+
+    return _handleResponse(
+      response,
+      'POST',
+      url,
+      triggerUnauthorized: triggerUnauthorized,
+    );
   }
+
 
   Future<dynamic> put(String endpoint, {Map<String, dynamic>? body, Map<String, String>? headers, bool triggerUnauthorized = true}) async {
     final token = await getToken();
