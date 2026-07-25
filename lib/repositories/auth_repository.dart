@@ -42,7 +42,7 @@ class AuthRepository {
     }
 
     // Check if user status is pending (adjust depending on how your model handles status values)
-    bool isPending = userProfile.status == 'pending';
+    bool isPending = userProfile.status == UserStatus.pending;
 
     AuthResponse supabaseResponse;
 
