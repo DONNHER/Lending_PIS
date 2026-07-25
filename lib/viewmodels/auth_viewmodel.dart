@@ -268,36 +268,51 @@ class AuthViewModel extends ChangeNotifier {
         UserModel? user = await _authRepository.getCurrentUser();
 
         if (user == null) {
-          debugPrint('DEBUG: [AuthViewModel] Error: User profile data could not be retrieved.');
-          _errorMessage = 'User profile data could not be retrieved.';
-          await _supabase.auth.signOut();
-          _isLoading = false;
-          notifyListeners();
+          debugPrint(
+            'DEBUG: [AuthViewModel] Error: User profile data could not be retrieved.',
+          );
+
+          _errorMessage =
+          'User profile data could not be retrieved.';
+
+          await logout();
+
           return false;
         }
+
 
         debugPrint('DEBUG: [AuthViewModel] User role resolved: ${user.role}. Validating permissions...');
 
       // Role validation checks...
         if (isAdminLogin) {
           if (user.role != UserRole.admin) {
-            debugPrint('DEBUG: [AuthViewModel] Access denied: Non-admin tried entering Admin Portal.');
-            _errorMessage = 'Access denied. This login is for Administrators only.';
-            await _supabase.auth.signOut();
-            _isLoading = false;
-            notifyListeners();
-            return false;
-          }
-        } else {
-          if (user.role == UserRole.admin) {
-            debugPrint('DEBUG: [AuthViewModel] Access denied: Admin tried logging in via regular portal.');
-            _errorMessage = 'Administrators must use the secure Admin Login portal.';
-            await _supabase.auth.signOut();
-            _isLoading = false;
-            notifyListeners();
+            debugPrint(
+              'DEBUG: [AuthViewModel] Access denied: Non-admin tried entering Admin Portal.',
+            );
+
+            _errorMessage =
+            'Access denied. This login is for Administrators only.';
+
+            await logout();
+
             return false;
           }
         }
+        else {
+          if (user.role == UserRole.admin) {
+            debugPrint(
+              'DEBUG: [AuthViewModel] Access denied: Admin tried logging in via regular portal.',
+            );
+
+            _errorMessage =
+            'Administrators must use the secure Admin Login portal.';
+
+            await logout();
+
+            return false;
+          }
+        }
+
 
         _currentUser = user;
         _isCaptchaRequired = false; // Clear on success

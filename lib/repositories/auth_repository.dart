@@ -79,6 +79,8 @@ class AuthRepository {
 
         'supabase_token': supabaseJwt,
 
+        if (captchaToken != null)
+          'captcha_token': captchaToken,
       },
     );
 
