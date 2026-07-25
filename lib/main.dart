@@ -71,38 +71,42 @@ void main() async {
   final emailService = EmailService(apiService);
 
   runApp(
-    MultiProvider(
-      providers: [
-        Provider<ApiService>.value(value: apiService),
-        Provider<LocalCacheService>.value(value: cacheService),
-        Provider<EmailService>.value(value: emailService),
-      ],
-      child: const CanteenApp(),
+    CanteenApp(
+      apiService: apiService,
+      cacheService: cacheService,
+      emailService: emailService,
     ),
   );
 }
 
 class CanteenApp extends StatelessWidget {
-  const CanteenApp({super.key});
+  final ApiService apiService;
+  final LocalCacheService cacheService;
+  final EmailService emailService;
+
+  const CanteenApp({
+    super.key,
+    required this.apiService,
+    required this.cacheService,
+    required this.emailService,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final apiService = context.read<ApiService>();
-    final cacheService = context.read<LocalCacheService>();
-    final emailService = context.read<EmailService>();
-
     return MultiProvider(
       providers: [
-
         // ================= SERVICES =================
-
         Provider<ApiService>.value(
           value: apiService,
         ),
-
+        Provider<LocalCacheService>.value(
+          value: cacheService,
+        ),
+        Provider<EmailService>.value(
+          value: emailService,
+        ),
 
         // ================= REPOSITORIES =================
-
         Provider<AuthRepository>(
           create: (context) => AuthRepository(
             context.read<ApiService>(),
@@ -149,12 +153,9 @@ class CanteenApp extends StatelessWidget {
           create: (_) => DailyInventoryRepository(apiService),
         ),
 
-
         // ================= AUTH VIEWMODEL =================
-
         ChangeNotifierProvider<AuthViewModel>(
           create: (context) {
-
             final vm = AuthViewModel(
               context.read<AuthRepository>(),
               context.read<ActivityLogRepository>(),
@@ -167,260 +168,186 @@ class CanteenApp extends StatelessWidget {
           },
         ),
 
-
         // ================= NAVIGATION =================
-
         ChangeNotifierProxyProvider<AuthViewModel, NavigationViewModel>(
           create: (_) => NavigationViewModel(),
-
           update: (context, auth, nav) {
-
-            if(auth.isAuthenticated &&
-                auth.currentUser != null) {
-
-              if(nav!.currentUserRole !=
-                  auth.currentUser!.role) {
-
+            if (auth.isAuthenticated && auth.currentUser != null) {
+              if (nav!.currentUserRole != auth.currentUser!.role) {
                 nav.setUserRole(
                   auth.currentUser!.role,
                 );
               }
             }
-
             return nav!;
           },
         ),
 
-
         // ================= ADD SHAREHOLDER =================
-
         ChangeNotifierProvider<AddShareholderViewModel>(
-          create: (context) =>
-              AddShareholderViewModel(
-                shareholderRepository:
-                context.read<ShareholderRepository>(),
-
-                storageRepository:
-                context.read<StorageRepository>(),
-
-                authRepository:
-                context.read<AuthRepository>(),
-
-                emailService:
-                emailService,
-              ),
+          create: (context) => AddShareholderViewModel(
+            shareholderRepository: context.read<ShareholderRepository>(),
+            storageRepository: context.read<StorageRepository>(),
+            authRepository: context.read<AuthRepository>(),
+            emailService: emailService,
+          ),
         ),
-
 
         // ================= ADMIN DASHBOARD =================
-
         ChangeNotifierProxyProvider<AuthViewModel, DashboardViewModel>(
-          create: (context) =>
-              DashboardViewModel(
-                context.read<LendingRepository>(),
-                context.read<ShareholderRepository>(),
-                context.read<TransactionRepository>(),
-              ),
-
+          create: (context) => DashboardViewModel(
+            context.read<LendingRepository>(),
+            context.read<ShareholderRepository>(),
+            context.read<TransactionRepository>(),
+          ),
           update: (context, auth, model) {
-
-            if(auth.isAuthenticated &&
+            if (auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
                 model != null &&
                 !model.isInitialized) {
-
               model.initDashboard();
             }
-
             return model!;
           },
         ),
-
 
         ChangeNotifierProxyProvider<AuthViewModel, LoanRequestViewModel>(
-          create: (context) =>
-              LoanRequestViewModel(
-                context.read<LendingRepository>(),
-              ),
-
+          create: (context) => LoanRequestViewModel(
+            context.read<LendingRepository>(),
+          ),
           update: (context, auth, model) {
-
-            if(auth.isAuthenticated &&
+            if (auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
                 model != null &&
                 !model.isInitialized) {
-
               model.fetchLoanRequests();
             }
-
             return model!;
           },
         ),
-
 
         ChangeNotifierProxyProvider<AuthViewModel, ShareholderViewModel>(
-          create: (context) =>
-              ShareholderViewModel(
-                context.read<ShareholderRepository>(),
-              ),
-
+          create: (context) => ShareholderViewModel(
+            context.read<ShareholderRepository>(),
+          ),
           update: (context, auth, model) {
-
-            if(auth.isAuthenticated &&
+            if (auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
                 model != null &&
                 !model.isInitialized) {
-
               model.fetchShareholders();
             }
-
             return model!;
           },
         ),
-
 
         ChangeNotifierProxyProvider<AuthViewModel, UserManagementViewModel>(
-          create: (context) =>
-              UserManagementViewModel(
-                context.read<UserRepository>(),
-              ),
-
+          create: (context) => UserManagementViewModel(
+            context.read<UserRepository>(),
+          ),
           update: (context, auth, model) {
-
-            if(auth.isAuthenticated &&
+            if (auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
                 model != null &&
                 !model.isInitialized) {
-
               model.fetchUsers();
             }
-
             return model!;
           },
         ),
-
 
         ChangeNotifierProxyProvider<AuthViewModel, TransactionViewModel>(
-          create: (context) =>
-              TransactionViewModel(
-                context.read<TransactionRepository>(),
-              ),
-
+          create: (context) => TransactionViewModel(
+            context.read<TransactionRepository>(),
+          ),
           update: (context, auth, model) {
-
-            if(auth.isAuthenticated &&
+            if (auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
                 model != null &&
                 !model.isInitialized) {
-
               model.fetchTransactions();
             }
-
             return model!;
           },
         ),
 
+        // ================= NOTIFICATION =================
+        ChangeNotifierProvider<NotificationViewModel>(
+          create: (context) => NotificationViewModel(
+            context.read<NotificationRepository>(),
+          ),
+        ),
 
         ChangeNotifierProxyProvider<AuthViewModel, ActivityLogViewModel>(
-          create: (context) =>
-              ActivityLogViewModel(
-                context.read<ActivityLogRepository>(),
-              ),
-
+          create: (context) => ActivityLogViewModel(
+            context.read<ActivityLogRepository>(),
+          ),
           update: (context, auth, model) {
-
-            if(auth.isAuthenticated &&
+            if (auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
                 model != null &&
                 !model.isInitialized) {
-
               model.fetchLogs();
             }
-
             return model!;
           },
         ),
 
-
         ChangeNotifierProxyProvider<AuthViewModel, UpdateInterestViewModel>(
-          create: (context) =>
-              UpdateInterestViewModel(
-                context.read<LendingRepository>(),
-              ),
-
+          create: (context) => UpdateInterestViewModel(
+            context.read<LendingRepository>(),
+          ),
           update: (context, auth, model) {
-
-            if(auth.isAuthenticated &&
+            if (auth.isAuthenticated &&
                 auth.currentUser?.role == UserRole.admin &&
                 model != null &&
                 !model.isInitialized) {
-
               model.loadData();
             }
-
             return model!;
           },
         ),
 
-
         // ================= OTHER VIEWMODELS =================
-
         ChangeNotifierProvider(
-          create: (context)=>
-              LoanDetailsViewModel(
-                context.read<LendingRepository>(),
-                context.read<TransactionRepository>(),
-                context.read<ShareholderRepository>(),
-              ),
+          create: (context) => LoanDetailsViewModel(
+            context.read<LendingRepository>(),
+            context.read<TransactionRepository>(),
+            context.read<ShareholderRepository>(),
+          ),
         ),
 
-
         ChangeNotifierProvider(
-          create: (context)=>
-              ShareholderDetailViewModel(
-                context.read<ShareholderRepository>(),
-              ),
+          create: (context) => ShareholderDetailViewModel(
+            context.read<ShareholderRepository>(),
+          ),
         ),
 
-
         ChangeNotifierProvider(
-          create: (_) =>
-              ImportExportViewModel(apiService),
+          create: (_) => ImportExportViewModel(apiService),
         ),
 
-
         ChangeNotifierProvider(
-          create: (_) =>
-              ConsignmentProductsViewModel(),
+          create: (_) => ConsignmentProductsViewModel(),
         ),
 
-
         ChangeNotifierProvider(
-          create: (context)=>
-              ConsignmentDetailViewModel(
-                context.read<ConsignmentProductsRepository>(),
-                context.read<DailyInventoryRepository>(),
-              ),
+          create: (context) => ConsignmentDetailViewModel(
+            context.read<ConsignmentProductsRepository>(),
+            context.read<DailyInventoryRepository>(),
+          ),
         ),
 
-
         ChangeNotifierProvider(
-          create: (_) =>
-              ConsigneeDetailViewModel(),
+          create: (_) => ConsigneeDetailViewModel(),
         ),
 
-
         ChangeNotifierProvider(
-          create: (_) =>
-              ConsigneeViewModel(),
+          create: (_) => ConsigneeViewModel(),
         ),
-
-
       ],
-
       child: const RootApp(),
     );
-
   }
 }
 
@@ -443,17 +370,21 @@ class _RootAppState extends State<RootApp> {
 
     _handleInitialSessionForRecovery();
 
-    _authSubscription =
-        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-          if (data.event == AuthChangeEvent.passwordRecovery) {
-            if (!mounted) return;
+    try {
+      _authSubscription =
+          Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+            if (data.event == AuthChangeEvent.passwordRecovery) {
+              if (!mounted) return;
 
-            setState(() {
-              _hasRecoveryRedirect = true;
-              _isVerifyingRecovery = false;
-            });
-          }
-        });
+              setState(() {
+                _hasRecoveryRedirect = true;
+                _isVerifyingRecovery = false;
+              });
+            }
+          });
+    } catch (_) {
+      // Supabase not initialized or unavailable
+    }
   }
 
   @override
@@ -462,16 +393,12 @@ class _RootAppState extends State<RootApp> {
     super.dispose();
   }
 
-
   Future<void> _handleInitialSessionForRecovery() async {
     try {
       final uri = Uri.base;
-
       final code = uri.queryParameters['code'];
-
       final isRecovery =
           code != null || uri.fragment.contains('type=recovery');
-
 
       if (!isRecovery) {
         setState(() {
@@ -480,31 +407,23 @@ class _RootAppState extends State<RootApp> {
         return;
       }
 
-
       setState(() {
         _isVerifyingRecovery = true;
       });
-
 
       // PKCE recovery flow
       if (code != null) {
         await Supabase.instance.client.auth.exchangeCodeForSession(code);
       }
 
-
       if (!mounted) return;
-
 
       setState(() {
         _hasRecoveryRedirect = true;
         _isVerifyingRecovery = false;
       });
-
-
     } catch (e) {
-      debugPrint(
-        'Recovery session error: $e',
-      );
+      debugPrint('Recovery session error: $e');
 
       if (!mounted) return;
 
@@ -515,7 +434,6 @@ class _RootAppState extends State<RootApp> {
     }
   }
 
-
   void _clearRecovery() {
     if (!mounted) return;
 
@@ -524,10 +442,8 @@ class _RootAppState extends State<RootApp> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
-
     final auth = context.watch<AuthViewModel>();
 
     return MaterialApp(
@@ -535,171 +451,108 @@ class _RootAppState extends State<RootApp> {
       title: 'Lending System',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-
       home: _getHome(auth),
-
       routes: {
-
-        '/login': (context) =>
-        const LoginPage(),
-
-        '/admin-login': (context) =>
-        const AdminLoginPage(),
-
-        '/register': (context) =>
-        const RegistrationPage(),
-
-
-        '/dashboard': (context) =>
-            _protectedRouteGuard(
-              auth,
-              const AppShell(),
-              UserRole.admin,
-            ),
-
-
-        '/users': (context) =>
-            _protectedRouteGuard(
-              auth,
-              const AppShell(),
-              UserRole.admin,
-            ),
-
-
-        '/shareholder-dashboard': (context) =>
-            _protectedRouteGuard(
-              auth,
-              const AppLayout(),
-              UserRole.shareholder,
-            ),
-
-
-        '/notifications': (context) =>
-            _protectedRouteGuard(
-              auth,
-              const NotificationScreen(),
-              null,
-            ),
-
+        '/login': (context) => const LoginPage(),
+        '/admin-login': (context) => const AdminLoginPage(),
+        '/register': (context) => const RegistrationPage(),
+        '/dashboard': (context) => _protectedRouteGuard(
+          auth,
+          const AppShell(),
+          UserRole.admin,
+        ),
+        '/users': (context) => _protectedRouteGuard(
+          auth,
+          const AppShell(),
+          UserRole.admin,
+        ),
+        '/shareholder-dashboard': (context) => _protectedRouteGuard(
+          auth,
+          const AppLayout(),
+          UserRole.shareholder,
+        ),
+        '/notifications': (context) => _protectedRouteGuard(
+          auth,
+          const NotificationScreen(),
+          null,
+        ),
       },
     );
   }
 
-
-
   Widget _getHome(AuthViewModel auth) {
-
-
     if (_isVerifyingRecovery) {
-
       return const Scaffold(
         backgroundColor: Color(0xFFFDF8F5),
         body: Center(
           child: Column(
-            mainAxisAlignment:
-            MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-
               CircularProgressIndicator(
                 color: Color(0xFFC06C4D),
               ),
-
-              SizedBox(height:24),
-
+              SizedBox(height: 24),
               Text(
                 'Preparing password recovery...',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                 ),
               ),
-
             ],
           ),
         ),
       );
     }
 
-
-
     if (_hasRecoveryRedirect) {
-
       return ChangePasswordPage(
         onPasswordChanged: _clearRecovery,
       );
-
     }
 
-
-
     if (!auth.isInitialized) {
-
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
         ),
       );
-
     }
-
-
 
     if (!auth.isAuthenticated) {
-
       return const LoginPage();
-
     }
-
-
 
     if (auth.isImpersonating) {
-
       return const AppShell();
-
     }
 
-
-
-    if (auth.currentUser?.role ==
-        UserRole.shareholder) {
-
+    if (auth.currentUser?.role == UserRole.shareholder) {
       return const AppLayout();
-
     }
-
-
 
     return Consumer<DashboardViewModel>(
       builder: (context, dashboard, child) {
-
         if (!dashboard.isInitialized) {
-
           return const Scaffold(
-            backgroundColor:
-            Color(0xFFFDF8F5),
-
+            backgroundColor: Color(0xFFFDF8F5),
             body: Center(
-              child:
-              CircularProgressIndicator(
-                color:
-                Color(0xFFC06C4D),
+              child: CircularProgressIndicator(
+                color: Color(0xFFC06C4D),
               ),
             ),
           );
-
         }
 
-
         return const AppShell();
-
       },
     );
   }
+
   Widget _protectedRouteGuard(
       AuthViewModel auth,
       Widget targetScreen,
       UserRole? requiredRole,
       ) {
-
     if (!auth.isInitialized || _isVerifyingRecovery) {
       return const Scaffold(
         backgroundColor: Color(0xFFFDF8F5),
@@ -711,57 +564,42 @@ class _RootAppState extends State<RootApp> {
       );
     }
 
-
     if (!auth.isAuthenticated) {
       return const LoginPage();
     }
 
-
     if (requiredRole != null &&
         auth.currentUser?.role != requiredRole &&
         !auth.isImpersonating) {
-
       return Scaffold(
         backgroundColor: const Color(0xFFFDF8F5),
         body: Center(
           child: Column(
-            mainAxisAlignment:
-            MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-
               const Icon(
                 Icons.lock_outline,
-                size:48,
-                color:Color(0xFFC06C4D),
+                size: 48,
+                color: Color(0xFFC06C4D),
               ),
-
-              const SizedBox(height:16),
-
+              const SizedBox(height: 16),
               const Text(
                 'Access Denied',
-                style:TextStyle(
-                  fontSize:20,
-                  fontWeight:FontWeight.bold,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-
-              const SizedBox(height:24),
-
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
-
-                  final route =
-                      auth.dashboardRoute ?? '/login';
-
-                  Navigator.of(context)
-                      .pushNamedAndRemoveUntil(
+                  final route = auth.dashboardRoute ?? '/login';
+                  Navigator.of(context).pushNamedAndRemoveUntil(
                     route,
-                        (route)=>false,
+                        (route) => false,
                   );
                 },
-
-                child:
-                const Text(
+                child: const Text(
                   'Return to Dashboard',
                 ),
               ),
@@ -770,7 +608,6 @@ class _RootAppState extends State<RootApp> {
         ),
       );
     }
-
 
     return targetScreen;
   }
