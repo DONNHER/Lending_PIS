@@ -90,7 +90,7 @@ class _LoginContentState extends State<_LoginContent>
 
     debugPrint('DEBUG: [LoginPage] Login success status: $success');
 
-    if (success && mounted) {
+    if (success && mounted && !viewModel.isMfaRequired) {
       // 🚀 BOOTSTRAP SYNC: Load all management data before leaving the login page
       try {
         await Future.wait([
