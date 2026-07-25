@@ -616,6 +616,13 @@ class AuthViewModel extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
+      debugPrint("========== IMPERSONATION ==========");
+      debugPrint("User ID: ${targetUser.id}");
+      debugPrint("Email: ${targetUser.email}");
+      debugPrint("Role: ${targetUser.role}");
+      debugPrint("Shareholder: ${targetUser.shareholder}");
+      debugPrint("Shareholder ID: ${targetUser.shareholder?.id}");
+      debugPrint("===================================");
 
       _originalAdminUser = _currentUser;
       _currentUser = targetUser;
