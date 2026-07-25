@@ -56,8 +56,8 @@ class UserRepository {
 
   /// 🚀 Added: Bulk delete users matching the Laravel bulkDelete endpoint
   Future<void> bulkDeleteUsers(List<String> ids) async {
-    await _apiService.delete(
-      '/admin/users/bulk-delete',
+    await _apiService.post(
+      '/admin/bulk-delete-users', // 🚀 Changed path away from users/{id} conflict
       body: {'ids': ids},
     );
   }

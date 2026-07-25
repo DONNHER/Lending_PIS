@@ -85,8 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/users/count', [UserController::class, 'count']);
 
                 // 🚀 REGISTER BULK DELETE FIRST SO IT TAKES PRECEDENCE
-                Route::post('/admin/users/bulk-delete', [UserController::class, 'bulkDelete']);
-
+                Route::post('/admin/bulk-delete-users', [UserController::class, 'bulkDelete']);
                 Route::apiResource('admin/users', UserController::class)->names([
                     'index' => 'api.admin.users.index',
                     'store' => 'api.admin.users.store',
