@@ -195,44 +195,53 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     final int duration = loan.tenureMonths;
     final double interestTotal = principal * (loan.interestRate / 100);
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        children: [
-          _buildRequestHeader(principal, loan),
-          Padding(
-            padding: const EdgeInsets.all(20.0),
+    // Wrap in LayoutBuilder and ConstrainedBox to fix vertical overflow and missing view issues
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _buildSectionTitle("Borrower Details"),
-                _buildProfileCard(
-                    borrower?.fullName ?? loan.shareholderName,
-                    "ID: ${loan.shareholderId.substring(0, loan.shareholderId.length > 8 ? 8 : loan.shareholderId.length)}"
+                _buildRequestHeader(principal, loan),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle("Borrower Details"),
+                      _buildProfileCard(
+                          borrower?.fullName ?? loan.shareholderName,
+                          "ID: ${loan.shareholderId.substring(0, loan.shareholderId.length > 8 ? 8 : loan.shareholderId.length)}"
+                      ),
+
+                      const SizedBox(height: 24),
+                      _buildSectionTitle("Loan Summary"),
+                      _buildInfoCard([
+                        _buildDetailRow("Principal Amount", currencyFormat.format(principal)),
+                        _buildDetailRow("Interest (${loan.interestRate}%)", currencyFormat.format(interestTotal)),
+                        _buildDetailRow("Duration", "$duration Months"),
+                        const Divider(height: 24),
+                        _buildDetailRow("Total Repayable",
+                            currencyFormat.format(principal + interestTotal), isBold: true),
+                      ]),
+
+                      const SizedBox(height: 24),
+                      _buildSectionTitle("Purpose"),
+                      _buildInfoCard([
+                        Text(loan.purpose, style: const TextStyle(color: Colors.black87, fontSize: 14)),
+                      ]),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: 24),
-                _buildSectionTitle("Loan Summary"),
-                _buildInfoCard([
-                  _buildDetailRow("Principal Amount", currencyFormat.format(principal)),
-                  _buildDetailRow("Interest (${loan.interestRate}%)", currencyFormat.format(interestTotal)),
-                  _buildDetailRow("Duration", "$duration Months"),
-                  const Divider(height: 24),
-                  _buildDetailRow("Total Repayable",
-                      currencyFormat.format(principal + interestTotal), isBold: true),
-                ]),
-
-                const SizedBox(height: 24),
-                _buildSectionTitle("Purpose"),
-                _buildInfoCard([
-                  Text(loan.purpose, style: const TextStyle(color: Colors.black87, fontSize: 14)),
-                ]),
-                const SizedBox(height: 40),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
