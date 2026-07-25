@@ -417,11 +417,19 @@ class AuthViewModel extends ChangeNotifier {
       );
 
       if (res.session != null) {
-        final userModel = await _authRepository.getCurrentUser();
-        if (userModel != null) {
-          _currentUser = userModel;
-          _isMfaRequired = false;
-          return true;
+        // 🔧 Exchange the fresh Supabase session for a new Laravel Sanctum token
+        final supabaseJwt = res.session!.accessToken;
+        final loginResponse = await _authRepository.exchangeSupabaseToken(supabaseJwt);
+
+        if (loginResponse != null && loginResponse['token'] != null) {
+          await _authRepository.setToken(loginResponse['token']);
+
+          final userModel = await _authRepository.getCurrentUser();
+          if (userModel != null) {
+            _currentUser = userModel;
+            _isMfaRequired = false;
+            return true;
+          }
         }
       }
       return false;

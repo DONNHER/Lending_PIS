@@ -191,7 +191,13 @@ class AuthRepository {
   // FROM LARAVEL
   // ===========================
 
-
+  Future<Map<String, dynamic>?> exchangeSupabaseToken(String supabaseJwt) async {
+    final response = await _api.post('/login', body: {
+      'email': _supabase.auth.currentUser?.email,
+      'supabase_token': supabaseJwt,
+    });
+    return response;
+  }
   Future<UserModel?> getCurrentUser() async {
     try {
       final response = await _api.get('/user');
