@@ -190,7 +190,6 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-
   String _mapAuthError(Object e) {
     if (e is AuthException) {
       final message = e.message.toLowerCase();
@@ -260,12 +259,12 @@ class AuthViewModel extends ChangeNotifier {
       debugPrint('==============================');
       debugPrint('LOGIN SUCCESS');
       debugPrint('Login User    : ${loginResult['user']}');
-      debugPrint('Login Token : ${loginResult['token']}');
+      debugPrint('Login Session : ${loginResult['session']}');
       debugPrint('Supabase ID   : ${_supabase.auth.currentUser?.id}');
       debugPrint('Supabase Email: ${_supabase.auth.currentUser?.email}');
       debugPrint('==============================');
 
-      if (loginResult['user'] != null && loginResult['token'] != null) {
+      if (loginResult['user'] != null && loginResult['session'] != null) {
         UserModel? user = await _authRepository.getCurrentUser();
 
         if (user == null) {

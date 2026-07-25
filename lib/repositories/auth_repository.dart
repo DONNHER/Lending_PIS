@@ -114,7 +114,7 @@ class AuthRepository {
       'user':response['user'],
 
       'token':sanctumToken,
-
+      'session': session,
     };
 
   }
