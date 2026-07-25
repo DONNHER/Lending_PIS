@@ -121,7 +121,7 @@ class _UserTableState extends State<UserTable> {
                     ),
                     if (_selectedIds.isNotEmpty)
                       InkWell(
-                        onLongPress: () => confirmDelete(context),
+                        onTap: () => confirmDelete(context),
                         child: Row(
                           children: [
                             const Icon(Icons.delete, color: Colors.white, size: 14),
