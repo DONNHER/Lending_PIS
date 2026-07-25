@@ -369,11 +369,30 @@ class CanteenApp extends StatelessWidget {
 
         // ================= NOTIFICATION =================
 
-        ChangeNotifierProvider<NotificationViewModel>(
+        ChangeNotifierProxyProvider<AuthViewModel, NotificationViewModel>(
           create: (context) =>
               NotificationViewModel(
                 context.read<NotificationRepository>(),
               ),
+
+          update: (context, auth, model) {
+            final shareholderId = auth.currentUser?.shareholder?.id;
+
+            if (auth.isAuthenticated &&
+                shareholderId != null &&
+                model != null &&
+                model.shareholderId != shareholderId) {
+              // Loads on first login, and reloads if the shareholder identity changes
+              // (e.g. impersonation switch, or logging in as a different user)
+              model.loadNotifications(shareholderId: shareholderId);
+            }
+
+            if (!auth.isAuthenticated && model != null) {
+              model.reset();
+            }
+
+            return model!;
+          },
         ),
 
         ChangeNotifierProxyProvider<AuthViewModel, ActivityLogViewModel>(

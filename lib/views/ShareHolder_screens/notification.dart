@@ -21,24 +21,6 @@ class NotificationScreen extends StatefulWidget {
 
 class _NotificationScreenState extends State<NotificationScreen> {
   @override
-  void initState() {
-    super.initState();
-    _triggerFetch();
-  }
-
-  void _triggerFetch() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final auth = context.read<AuthViewModel>();
-      final viewModel = context.read<NotificationViewModel>();
-      final shareholderId = auth.currentUser?.shareholder?.id;
-      if (shareholderId != null) {
-        viewModel.loadNotifications(shareholderId: shareholderId);
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -79,9 +61,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       body: Consumer2<NotificationViewModel, AuthViewModel>(
         builder: (context, viewModel, auth, _) {
           final shareholderId = auth.currentUser?.shareholder?.id;
-          if (shareholderId != null && viewModel.shareholderId == null && !viewModel.isLoading) {
-            Future.microtask(() => viewModel.loadNotifications(shareholderId: shareholderId));
-          }
+
 
           if (viewModel.isLoading && viewModel.notifications.isEmpty) {
             return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
