@@ -22,12 +22,12 @@ class LoanRequestDetailsScreen extends StatefulWidget {
 
 class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
   // Creamy / Warm App Theme Colors
-  static const Color primaryCream = Color(0xFFFFFFFF);
-  static const Color accentCream = Color(0xFFBCAAA4);
+  static const Color primaryCream = Color(0xFF8D6E63); // Warm brown/taupe for primary elements
+  static const Color accentCream = Color(0xFFBCAAA4); // Lighter warm tone
   static const Color accentRed = Color(0xFFD32F2F);
-  static const Color bgLight = Color(0xFFFDF8F5);
+  static const Color bgLight = Color(0xFFFDF8F5); // Creamy warm background
   static const Color cardColor = Color(0xFFFFFFFF);
-  static const Color textGrey = Color(0xFFFFFFFF);
+  static const Color textGrey = Color(0xFF8D8580);
 
   final currencyFormat = NumberFormat.currency(locale: 'en_PH', symbol: '₱');
   late Future<Map<String, dynamic>> _loanDataFuture;
