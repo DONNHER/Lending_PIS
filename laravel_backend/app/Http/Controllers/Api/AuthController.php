@@ -308,6 +308,10 @@ class AuthController extends Controller
             ],404);
 
         }
+        if ($user->status === 'pending') {
+            $user->status = 'active';
+            $user->save();
+        }
 
 
 
