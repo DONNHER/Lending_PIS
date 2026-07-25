@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:capstone_application/app_theme.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/models/shareholder_model.dart';
 import 'package:capstone_application/repositories/lending_repository.dart';
 import 'package:capstone_application/repositories/shareholder_repository.dart';
@@ -19,12 +19,13 @@ class LoanRequestDetailsScreen extends StatefulWidget {
 }
 
 class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
-  // Color Palette Updates
-  static const Color primaryGreen = Color(0xFF2E7D32);
-  static const Color accentGreen = Color(0xFF43A047);
+  // Creamy / Warm App Theme Colors
+  static const Color primaryCream = Color(0xFF8D6E63); // Warm brown/taupe for primary elements
+  static const Color accentCream = Color(0xFFBCAAA4); // Lighter warm tone
   static const Color accentRed = Color(0xFFD32F2F);
-  static const Color bgLight = Color(0xFFF5F7FA);
-  static const Color textGrey = Color(0xFF9CA3AF);
+  static const Color bgLight = Color(0xFFFDF8F5); // Creamy warm background
+  static const Color cardColor = Color(0xFFFFFFFF);
+  static const Color textGrey = Color(0xFF8D8580);
 
   final currencyFormat = NumberFormat.currency(locale: 'en_PH', symbol: '₱');
   late Future<Map<String, dynamic>> _loanDataFuture;
@@ -40,7 +41,8 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     if (_isSubmitting) return;
 
     final lendingRepo = context.read<LendingRepository>();
-    final shareholderId = context.read<NotificationViewModel>().shareholderId;
+    final shareholderId =
+        context.read<AuthViewModel>().currentUser?.shareholder?.id;
 
     if (shareholderId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -69,7 +71,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Request ${status == ComakerStatus.rejected ? 'cancelled' : 'approved'} successfully'),
-            backgroundColor: status == ComakerStatus.rejected ? accentRed : primaryGreen,
+            backgroundColor: status == ComakerStatus.rejected ? accentRed : primaryCream,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -111,7 +113,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
             backgroundColor: bgLight,
-            body: const Center(child: CircularProgressIndicator(color: primaryGreen)),
+            body: const Center(child: CircularProgressIndicator(color: primaryCream)),
           );
         }
 
@@ -129,7 +131,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
           backgroundColor: bgLight,
           body: Column(
             children: [
-              _buildColoredHeader(loan),
+              _buildCreamyHeader(loan),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -178,8 +180,8 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  // 1. Colored Header Component
-  Widget _buildColoredHeader(dynamic loan) {
+  // 1. Creamy / Warm Gradient Header Component
+  Widget _buildCreamyHeader(dynamic loan) {
     final double principal = loan?.requestedAmount ?? 0.0;
 
     return Container(
@@ -188,8 +190,8 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            primaryGreen,
-            accentGreen,
+            Color(0xFF6D4C41), // Deep warm mocha
+            Color(0xFF8D6E63), // Creamy taupe/brown accent
           ],
         ),
         borderRadius: BorderRadius.only(
@@ -242,20 +244,20 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
 
   Widget _buildStatusTag(dynamic loan) {
     String label = "Pending Approval";
-    Color color = const Color(0xFFFB8C00);
+    Color color = const Color(0xFFFFA726); // Warm amber
     IconData iconData = Icons.hourglass_bottom;
 
     if (loan is LoanRequestModel) {
       switch (loan.status) {
         case LoanStatus.approved:
           label = "Approved";
-          color = Colors.green;
+          color = const Color(0xFF4CAF50);
           iconData = Icons.check_circle;
           break;
         case LoanStatus.released:
         case LoanStatus.active:
           label = "Live / Released";
-          color = primaryGreen;
+          color = primaryCream;
           iconData = Icons.bolt;
           break;
         case LoanStatus.rejected:
@@ -280,7 +282,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
           break;
         case LoanStatus.pending:
           label = "Pending Approval";
-          color = const Color(0xFFFB8C00);
+          color = const Color(0xFFFFA726);
           iconData = Icons.hourglass_bottom;
           break;
       }
@@ -289,12 +291,12 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     return Chip(
       avatar: Icon(iconData, color: color, size: 18),
       label: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-      backgroundColor: color.withOpacity(0.1),
+      backgroundColor: color.withOpacity(0.15),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
     );
   }
 
-  // 2. Improved Borrower Card Component
+  // 2. Borrower Card Component
   Widget _buildBorrowerCard(ShareholderModel? borrower, dynamic loan) {
     final name = borrower?.fullName ?? loan.shareholderName;
     final shareholderIdFormatted = loan.shareholderId.length > 8 ? loan.shareholderId.substring(0, 8) : loan.shareholderId;
@@ -302,7 +304,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(blurRadius: 15, color: Colors.black12, offset: Offset(0, 6)),
@@ -313,15 +315,15 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
         children: [
           const Text(
             "Borrower Information",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryGreen),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryCream),
           ),
           const Divider(height: 24),
           Row(
             children: [
               const CircleAvatar(
-                backgroundColor: Color(0xFFE8F5E9),
+                backgroundColor: Color(0xFFEFEBE9),
                 radius: 28,
-                child: Icon(Icons.person, color: primaryGreen, size: 32),
+                child: Icon(Icons.person, color: primaryCream, size: 32),
               ),
               const SizedBox(width: 16),
               Column(
@@ -329,7 +331,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
                 children: [
                   Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  const Text("Shareholder", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                  const Text("Shareholder", style: TextStyle(color: textGrey, fontSize: 14)),
                 ],
               ),
             ],
@@ -348,16 +350,16 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.grey.shade600),
+        Icon(icon, size: 20, color: textGrey),
         const SizedBox(width: 12),
-        Text("$label:", style: const TextStyle(color: Colors.grey, fontSize: 14)),
+        Text("$label:", style: const TextStyle(color: textGrey, fontSize: 14)),
         const Spacer(),
         Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
       ],
     );
   }
 
-  // 3. Better Loan Summary Grid Metrics Component
+  // 3. Loan Summary Grid Metrics Component
   Widget _buildLoanSummaryCard(dynamic loan) {
     final double principal = loan.requestedAmount;
     final int duration = loan.tenureMonths;
@@ -367,7 +369,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(blurRadius: 15, color: Colors.black12, offset: Offset(0, 6)),
@@ -378,7 +380,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
         children: [
           const Text(
             "Loan Summary",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryGreen),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryCream),
           ),
           const Divider(height: 24),
           GridView.count(
@@ -406,26 +408,26 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
       decoration: BoxDecoration(
         color: bgLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.brown.shade50),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(title, style: const TextStyle(color: textGrey, fontSize: 12)),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: primaryGreen)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: primaryCream)),
         ],
       ),
     );
   }
 
-  // 4. Highlighted Purpose Container Component
+  // 4. Purpose Card Component
   Widget _buildPurposeCard(dynamic loan) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(blurRadius: 15, color: Colors.black12, offset: Offset(0, 6)),
@@ -436,15 +438,15 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
         children: [
           const Text(
             "Loan Purpose",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryGreen),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryCream),
           ),
           const Divider(height: 24),
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              color: bgLight,
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: Colors.brown.shade100),
             ),
             child: Text(
               loan.purpose,
@@ -463,7 +465,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(blurRadius: 15, color: Colors.black12, offset: Offset(0, 6)),
@@ -474,11 +476,11 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
         children: [
           const Text(
             "Co-makers",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryGreen),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryCream),
           ),
           const Divider(height: 24),
           if (decisions.isEmpty)
-            const Text("No co-makers assigned.", style: TextStyle(color: Colors.grey))
+            const Text("No co-makers assigned.", style: TextStyle(color: textGrey))
           else
             ...decisions.entries.map((entry) {
               final String comakerId = entry.key;
@@ -495,12 +497,12 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
               }
 
               String statusText = "Pending";
-              Color statusColor = Colors.orange;
+              Color statusColor = Colors.orange.shade700;
               IconData statusIcon = Icons.hourglass_bottom;
 
               if (status == ComakerStatus.approved) {
                 statusText = "Approved";
-                statusColor = Colors.green;
+                statusColor = Colors.green.shade700;
                 statusIcon = Icons.check_circle;
               } else if (status == ComakerStatus.rejected) {
                 statusText = "Rejected";
@@ -515,7 +517,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
                     const CircleAvatar(
                       backgroundColor: bgLight,
                       radius: 18,
-                      child: Icon(Icons.person, size: 18, color: Colors.grey),
+                      child: Icon(Icons.person, size: 18, color: textGrey),
                     ),
                     const SizedBox(width: 16),
                     Text(
@@ -546,14 +548,14 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           border: Border(top: BorderSide(color: Colors.black12)),
         ),
         child: const SafeArea(
           child: SizedBox(
             height: 54,
             child: Center(
-              child: CircularProgressIndicator(color: primaryGreen),
+              child: CircularProgressIndicator(color: primaryCream),
             ),
           ),
         ),
@@ -583,7 +585,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           border: Border(top: BorderSide(color: Colors.black12)),
         ),
         child: SafeArea(
@@ -599,7 +601,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Colors.black54,
+                color: textGrey,
                 fontSize: 15,
               ),
             ),
@@ -611,7 +613,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         border: Border(top: BorderSide(color: Colors.black12)),
       ),
       child: SafeArea(
@@ -639,7 +641,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
                 child: ElevatedButton(
                   onPressed: () => _submitDecision(ComakerStatus.approved),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryGreen,
+                    backgroundColor: primaryCream,
                     foregroundColor: Colors.white,
                     elevation: 2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

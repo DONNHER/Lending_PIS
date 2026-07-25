@@ -192,41 +192,22 @@ class AuthRepository {
   // ===========================
 
 
-  Future<UserModel?> getCurrentUser()
-  async {
-
-
+  Future<UserModel?> getCurrentUser() async {
     try {
+      final response = await _api.get('/user');
 
+      debugPrint("========== /user ==========");
+      debugPrint(response.toString());
+      debugPrint("===========================");
 
-      final response =
-      await _api.get(
-          '/user'
-      );
-
-
-      if(response != null){
-
-        return UserModel.fromJson(
-            response
-        );
-
+      if (response != null) {
+        return UserModel.fromJson(response);
       }
-
-
-
+    } catch (e) {
+      debugPrint("getCurrentUser error: $e");
     }
-    catch(e){
-
-      debugPrint(
-          "getCurrentUser error: $e"
-      );
-
-    }
-
 
     return null;
-
   }
 
 
