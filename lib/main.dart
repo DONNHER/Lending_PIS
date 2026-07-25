@@ -324,7 +324,6 @@ class CanteenApp extends StatelessWidget {
             return model!;
           },
         ),
-        // ================= SHAREHOLDER TRANSACTIONS =================
 
         // ================= SHAREHOLDER TRANSACTION =================
         ChangeNotifierProvider<ShareholderTransactionViewModel>(
