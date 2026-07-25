@@ -617,16 +617,18 @@ class AuthViewModel extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
+
+      // 🔧 Refetch full profile (with shareholder relation) instead of trusting
+      // the partial UserModel from the admin's user list
+      final fullUser = await _authRepository.getUserByEmail(targetUser.email) ?? targetUser;
+
       debugPrint("========== IMPERSONATION ==========");
-      debugPrint("User ID: ${targetUser.id}");
-      debugPrint("Email: ${targetUser.email}");
-      debugPrint("Role: ${targetUser.role}");
-      debugPrint("Shareholder: ${targetUser.shareholder}");
-      debugPrint("Shareholder ID: ${targetUser.shareholder?.id}");
+      debugPrint("User ID: ${fullUser.id}");
+      debugPrint("Shareholder ID: ${fullUser.shareholder?.id}");
       debugPrint("===================================");
 
       _originalAdminUser = _currentUser;
-      _currentUser = targetUser;
+      _currentUser = fullUser;
 
       notifyListeners();
     } catch (e) {
