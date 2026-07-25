@@ -256,6 +256,7 @@ class AuthViewModel extends ChangeNotifier {
         captchaToken: captchaToken,
       );
       if (loginResult['requiresOtp'] == true) {
+        _currentUser = null;
         _pendingMfaEmail = email;
         _isMfaRequired = true;
 
