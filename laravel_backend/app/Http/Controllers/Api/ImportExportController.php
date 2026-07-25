@@ -71,10 +71,24 @@ class ImportExportController extends Controller
             Excel::import($import, $request->file('file'));
 
             return response()->json([
-                'success'       => empty($import->errors),
+                'success' => true,
+
+                // Flutter PreviewDialog expects these
+                'total_rows' =>
+                    ($import->successCount ?? 0) +
+                    count($import->errors ?? []),
+
+                'valid_rows' => $import->successCount ?? 0,
+
+                'error_rows' => count($import->errors ?? []),
+
+                'duplicates' => [],
+
+                // keep old fields too
                 'success_count' => $import->successCount ?? 0,
-                'failure_count' => $import->failureCount ?? count($import->errors ?? []),
-                'error_report'  => $import->errors ?? [],
+                'failure_count' => $import->failureCount ?? 0,
+
+                'errors' => $import->errors ?? [],
             ]);
         } catch (\Exception $e) {
             Log::error("Import Preview Error [{$type}]: " . $e->getMessage());
