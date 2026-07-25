@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Services;
-
+use Illuminate\Support\Facades\Artisan;
 use App\Models\SiteSetting;
 use App\Mail\BackupNotificationMail;
 use Illuminate\Support\Facades\Storage;
@@ -42,7 +42,7 @@ class BackupService
                     Log::info('Starting full backup...');
 
                     Artisan::call('backup:run', [
-                        '--only-to' => 'disk',
+                        '--only-to-disk' => 'dropbox',
                     ]);
 
                     Log::info(Artisan::output());
