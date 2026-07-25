@@ -43,7 +43,10 @@ class _LoanPaymentDialogBody extends StatefulWidget {
 
 class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
   final _amountController = TextEditingController();
-  String _method = LoanPaymentViewModel.paymentMethods.first;
+
+  // 🔒 Payment method is fixed to Cash only
+  final String _method = 'Cash';
+
   bool _amountInitialized = false;
 
   @override
@@ -174,7 +177,10 @@ class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
                           TextField(
                             controller: _amountController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                            // 🔒 Allow digits with up to 2 decimal places only
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                            ],
                             decoration: InputDecoration(
                               hintText: '0.00',
                               filled: true,
@@ -192,20 +198,24 @@ class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
                           const SizedBox(height: 20),
                           _buildLabel('Payment method'),
                           const SizedBox(height: 8),
+                          // 🔒 Fixed to Cash only — no dropdown, not editable
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF9FAFB),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: const Color(0xFFE5E7EB)),
                             ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _method,
-                                isExpanded: true,
-                                items: LoanPaymentViewModel.paymentMethods.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
-                                onChanged: (v) => setState(() => _method = v ?? _method),
-                              ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.payments_outlined, size: 18, color: AppTheme.textMuted),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Cash',
+                                  style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textDark),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -228,8 +238,23 @@ class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
                             child: ElevatedButton(
                               onPressed: viewModel.isSubmitting ? null : () async {
                                 final amt = _parseAmount();
+
                                 if (amt == null || amt <= 0) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid amount')));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Enter a valid amount')),
+                                  );
+                                  return;
+                                }
+
+                                // 🔒 Payment cannot exceed the outstanding balance
+                                if (amt > totalDue) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Amount cannot exceed the outstanding balance of ${currencyFormat.format(totalDue)}',
+                                      ),
+                                    ),
+                                  );
                                   return;
                                 }
 
@@ -241,7 +266,10 @@ class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
                                   if (tx.method == 'N/A') tx = tx.copyWith(method: _method);
 
                                   await showDialog(context: context, builder: (context) => TransactionDetailDialog(transaction: tx));
-                                  if (context.mounted) Navigator.pop(context, true);
+
+                                  // 🔒 Close only this dialog — do not pop the previous screen
+                                  // or signal a reload via a return value.
+                                  if (context.mounted) Navigator.pop(context);
                                 }
                               },
                               style: ElevatedButton.styleFrom(
@@ -251,9 +279,9 @@ class _LoanPaymentDialogBodyState extends State<_LoanPaymentDialogBody> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                               ),
-                              child: viewModel.isSubmitting 
-                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: viewModel.isSubmitting
+                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  : const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],
