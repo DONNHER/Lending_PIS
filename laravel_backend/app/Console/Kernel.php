@@ -22,12 +22,6 @@ class Kernel extends ConsoleKernel
         $backupDay = SiteSetting::get('backup_day', 'Monday');
         $backupTime = SiteSetting::get('backup_time', '02:00');
 
-        $schedule->command('backup:run --only-to-disk=dropbox')
-            ->days([$backupDay])
-            ->at($backupTime)
-            ->withoutOverlapping()
-            ->onFailure(fn() => \Log::error('Weekly automated backup failed.'))
-            ->onSuccess(fn() => \Log::info('Weekly automated backup completed.'));
 
         // 🚀 Monthly Full System Backup using Spatie
         $schedule->command('backup:run --only-to-disk=dropbox')
