@@ -38,9 +38,7 @@ class PageTurner extends StatelessWidget {
   }
 
   Widget _buildRowsSelector() {
-    // Standard rows options
     final options = [10, 20, 50];
-    // Ensure the value is in the list to prevent dropdown crash
     final val = options.contains(rowsPerPage) ? rowsPerPage : 10;
 
     return Row(
@@ -52,7 +50,11 @@ class PageTurner extends StatelessWidget {
           underline: const SizedBox(),
           style: const TextStyle(fontSize: 11, color: AppTheme.textDark, fontWeight: FontWeight.bold),
           items: options.map((int v) => DropdownMenuItem<int>(value: v, child: Text('$v'))).toList(),
-          onChanged: onRowsPerPageChanged,
+          onChanged: (newValue) {
+            if (newValue != null && newValue != rowsPerPage) {
+              onRowsPerPageChanged(newValue);
+            }
+          },
         ),
         const SizedBox(width: 8),
         Text('of $totalRows', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
@@ -61,16 +63,19 @@ class PageTurner extends StatelessWidget {
   }
 
   Widget _buildSimplePager() {
+    final safeTotalPages = totalPages > 0 ? totalPages : 1;
+    final safeCurrentPage = currentPage.clamp(1, safeTotalPages);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _btn(Icons.chevron_left, currentPage - 1, currentPage > 1),
+        _btn(Icons.chevron_left, safeCurrentPage - 1, safeCurrentPage > 1),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text('$currentPage / ${totalPages > 0 ? totalPages : 1}', 
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+          child: Text('$safeCurrentPage / $safeTotalPages',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
         ),
-        _btn(Icons.chevron_right, currentPage + 1, currentPage < totalPages),
+        _btn(Icons.chevron_right, safeCurrentPage + 1, safeCurrentPage < safeTotalPages),
       ],
     );
   }

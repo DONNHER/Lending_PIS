@@ -67,9 +67,7 @@ class _UserTableState extends State<UserTable> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context, false);
-              },
+              onPressed: () => Navigator.pop(context, false),
               child: const Text("Cancel"),
             ),
             ElevatedButton.icon(
@@ -78,9 +76,7 @@ class _UserTableState extends State<UserTable> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
+              onPressed: () => Navigator.pop(context, true),
               label: const Text("Delete"),
             ),
           ],
@@ -109,16 +105,48 @@ class _UserTableState extends State<UserTable> {
           ),
           child: Row(
             children: [
+              // Checkbox + Header Delete count text (Actions column left untouched)
               SizedBox(
-                width: 40,
-                child: Checkbox(
-                  value: isAllSelected,
-                  onChanged: toggleSelectAll,
-                  side: const BorderSide(color: Colors.white),
-                  checkColor: Colors.white,
-                  fillColor: WidgetStateProperty.resolveWith(
-                        (states) => Colors.white.withOpacity(0.2),
-                  ),
+                width: 140,
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: isAllSelected,
+                      onChanged: toggleSelectAll,
+                      side: const BorderSide(color: Colors.white),
+                      checkColor: Colors.white,
+                      fillColor: WidgetStateProperty.resolveWith(
+                            (states) => Colors.white.withOpacity(0.2),
+                      ),
+                    ),
+                    if (_selectedIds.isNotEmpty)
+                      InkWell(
+                        onLongPress: () => confirmDelete(context),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.delete, color: Colors.white, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Delete (${_selectedIds.length})',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      const Text(
+                        'Select All',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const Expanded(
@@ -137,21 +165,11 @@ class _UserTableState extends State<UserTable> {
                 flex: 2,
                 child: Text('Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
               ),
-              Expanded(
+              const Expanded(
                 flex: 2,
                 child: Align(
                   alignment: Alignment.centerRight,
-                  child: _selectedIds.isNotEmpty
-                      ? IconButton(
-                    icon: const Icon(
-                      Icons.delete,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    tooltip: "Delete ${_selectedIds.length} selected",
-                    onPressed: () => confirmDelete(context),
-                  )
-                      : const Text(
+                  child: Text(
                     'Actions',
                     style: TextStyle(
                       color: Colors.white,
@@ -200,12 +218,13 @@ class _UserTableState extends State<UserTable> {
         child: Row(
           children: [
             SizedBox(
-              width: 40,
-              child: Checkbox(
-                value: _selectedIds.contains(user.id),
-                onChanged: (value) {
-                  toggleSelect(user, value);
-                },
+              width: 140,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Checkbox(
+                  value: _selectedIds.contains(user.id),
+                  onChanged: (value) => toggleSelect(user, value),
+                ),
               ),
             ),
             Expanded(
