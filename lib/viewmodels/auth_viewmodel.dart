@@ -275,6 +275,18 @@ class AuthViewModel extends ChangeNotifier {
 
       if (loginResult['user'] != null && loginResult['session'] != null) {
         UserModel? user = await _authRepository.getCurrentUser();
+        if (user?.status == UserStatus.pending) {
+          debugPrint(
+              'DEBUG: [AuthViewModel] User account is pending verification.');
+
+          _pendingMfaEmail = user?.email;
+          _isMfaRequired = true;
+          _errorMessage = null;
+
+          await logout(); // optional, see note below
+
+          return true;
+        }
 
         if (user == null) {
           debugPrint(
