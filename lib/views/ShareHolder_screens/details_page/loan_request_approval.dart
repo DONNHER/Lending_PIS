@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
+import 'package:capstone_application/app_theme.dart';
 import 'package:capstone_application/models/shareholder_model.dart';
 import 'package:capstone_application/repositories/lending_repository.dart';
 import 'package:capstone_application/repositories/shareholder_repository.dart';
+import 'package:capstone_application/repositories/auth_repository.dart';
 import 'package:capstone_application/models/lending_models.dart';
 import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
 import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
+import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 
 class LoanRequestDetailsScreen extends StatefulWidget {
   final String loanRequestId;
@@ -20,10 +22,10 @@ class LoanRequestDetailsScreen extends StatefulWidget {
 
 class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
   // Creamy / Warm App Theme Colors
-  static const Color primaryCream = Color(0xFF8D6E63); // Warm brown/taupe for primary elements
-  static const Color accentCream = Color(0xFFBCAAA4); // Lighter warm tone
+  static const Color primaryCream = Color(0xFF8D6E63);
+  static const Color accentCream = Color(0xFFBCAAA4);
   static const Color accentRed = Color(0xFFD32F2F);
-  static const Color bgLight = Color(0xFFFDF8F5); // Creamy warm background
+  static const Color bgLight = Color(0xFFFDF8F5);
   static const Color cardColor = Color(0xFFFFFFFF);
   static const Color textGrey = Color(0xFF8D8580);
 
@@ -37,26 +39,69 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     _loanDataFuture = _fetchFullLoanData();
   }
 
+  Future<String?> _resolveComakerShareholderId(
+      ShareholderRepository shareholderRepo,
+      AuthRepository authRepo,
+      ) async {
+    try {
+      final authVm = context.read<AuthViewModel>();
+      final currentUser = authVm.currentUser;
+
+      if (currentUser != null) {
+        // 1. If shareholder object and its ID are directly available on the current/impersonated user model
+        if (currentUser.shareholder?.id != null && currentUser.shareholder!.id.isNotEmpty) {
+          return currentUser.shareholder!.id;
+        }
+
+        // 2. Use email from current user, fetch target user via AuthRepository, then link to shareholder
+        if (currentUser.email != null && currentUser.email!.isNotEmpty) {
+          final targetUserModel = await authRepo.getUserByEmail(
+              currentUser.email!);
+
+          if (targetUserModel?.shareholder?.id != null &&
+              targetUserModel!.shareholder!.id.isNotEmpty) {
+            return targetUserModel.shareholder!.id;
+          }
+        }
+
+        // 3. Fallback to matching by user ID on shareholder repository
+        if (currentUser.id.isNotEmpty) {
+          final shareholderById = await shareholderRepo.getShareholderById(currentUser.id);
+          if (shareholderById != null && shareholderById.id.isNotEmpty) {
+            return shareholderById.id;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Fallback to NotificationViewModel shareholderId if available
+    final notificationVm = context.read<NotificationViewModel>();
+    if (notificationVm.shareholderId != null && notificationVm.shareholderId!.isNotEmpty) {
+      return notificationVm.shareholderId;
+    }
+
+    return null;
+  }
+
   Future<void> _submitDecision(ComakerStatus status) async {
     if (_isSubmitting) return;
 
     final lendingRepo = context.read<LendingRepository>();
-    final shareholderId =
-        context.read<AuthViewModel>().currentUser?.shareholder?.id;
-
-    if (shareholderId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User profile not found.')),
-      );
-      return;
-    }
+    final shareholderRepo = context.read<ShareholderRepository>();
+    final authRepo = context.read<AuthRepository>();
 
     setState(() => _isSubmitting = true);
 
     try {
+      final resolvedShareholderId = await _resolveComakerShareholderId(shareholderRepo, authRepo);
+
+      if (resolvedShareholderId == null || resolvedShareholderId.isEmpty) {
+        throw Exception('Shareholder profile could not be resolved for the impersonated user.');
+      }
+
       await lendingRepo.setComakerDecision(
         loanRequestId: widget.loanRequestId,
-        comakerShareholderId: shareholderId,
+        comakerShareholderId: resolvedShareholderId,
         status: status,
       );
 
@@ -105,6 +150,15 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     };
   }
 
+  void _handleBackAction(BuildContext context) {
+    final navViewModel = context.read<NavigationViewModel>();
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      navViewModel.clearLoanReview();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
@@ -131,46 +185,46 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
           backgroundColor: bgLight,
           body: Column(
             children: [
-              _buildCreamyHeader(loan),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1000),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Side-by-side Cards: Borrower & Loan Summary
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: _buildBorrowerCard(borrower, loan)),
-                              const SizedBox(width: 20),
-                              Expanded(child: _buildLoanSummaryCard(loan)),
-                            ],
+                  child: Column(
+                    children: [
+                      _buildCreamyHeader(context, loan),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1000),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: _buildBorrowerCard(borrower, loan)),
+                                    const SizedBox(width: 20),
+                                    Expanded(child: _buildLoanSummaryCard(loan)),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                _buildPurposeCard(loan),
+                                const SizedBox(height: 20),
+                                _buildComakersCard(loan),
+                                const SizedBox(height: 32),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 20),
-
-                          // Purpose Card
-                          _buildPurposeCard(loan),
-                          const SizedBox(height: 20),
-
-                          // Co-makers Card
-                          _buildComakersCard(loan),
-                          const SizedBox(height: 32),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-              // Bottom Actions Container
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1000),
-                  child: _buildBottomActionButtons(loan),
+                  child: _buildBottomActionButtons(context, loan),
                 ),
               ),
             ],
@@ -180,8 +234,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  // 1. Creamy / Warm Gradient Header Component
-  Widget _buildCreamyHeader(dynamic loan) {
+  Widget _buildCreamyHeader(BuildContext context, dynamic loan) {
     final double principal = loan?.requestedAmount ?? 0.0;
 
     return Container(
@@ -190,8 +243,8 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Color(0xFF6D4C41), // Deep warm mocha
-            Color(0xFF8D6E63), // Creamy taupe/brown accent
+            Color(0xFF6D4C41),
+            Color(0xFF8D6E63),
           ],
         ),
         borderRadius: BorderRadius.only(
@@ -205,7 +258,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => context.read<NavigationViewModel>().clearLoanReview(),
+                onPressed: () => _handleBackAction(context),
               ),
               const SizedBox(width: 8),
               const Text(
@@ -244,7 +297,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
 
   Widget _buildStatusTag(dynamic loan) {
     String label = "Pending Approval";
-    Color color = const Color(0xFFFFA726); // Warm amber
+    Color color = const Color(0xFFFFA726);
     IconData iconData = Icons.hourglass_bottom;
 
     if (loan is LoanRequestModel) {
@@ -296,7 +349,6 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  // 2. Borrower Card Component
   Widget _buildBorrowerCard(ShareholderModel? borrower, dynamic loan) {
     final name = borrower?.fullName ?? loan.shareholderName;
     final shareholderIdFormatted = loan.shareholderId.length > 8 ? loan.shareholderId.substring(0, 8) : loan.shareholderId;
@@ -359,7 +411,6 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  // 3. Loan Summary Grid Metrics Component
   Widget _buildLoanSummaryCard(dynamic loan) {
     final double principal = loan.requestedAmount;
     final int duration = loan.tenureMonths;
@@ -422,7 +473,6 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  // 4. Purpose Card Component
   Widget _buildPurposeCard(dynamic loan) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -458,7 +508,6 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  // 5. Co-makers Card Component
   Widget _buildComakersCard(dynamic loan) {
     final Map<String, dynamic> decisions = loan.comakerDecisionsMap ?? {};
 
@@ -540,8 +589,7 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     );
   }
 
-  // 6. Action Buttons Component
-  Widget _buildBottomActionButtons(dynamic loan) {
+  Widget _buildBottomActionButtons(BuildContext context, dynamic loan) {
     if (loan == null) return const SizedBox.shrink();
 
     if (_isSubmitting) {
@@ -562,14 +610,29 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
       );
     }
 
-    final shareholderId = context.read<NotificationViewModel>().shareholderId;
+    final authVm = context.read<AuthViewModel>();
+    final currentUser = authVm.currentUser;
+    final targetEmail = currentUser?.email;
 
-    if (loan.shareholderId == shareholderId) {
+    if (loan.shareholderId == currentUser?.shareholder?.id) {
       return const SizedBox.shrink();
     }
 
     final decisions = loan.comakerDecisionsMap ?? {};
-    final decisionVal = decisions[shareholderId ?? ''];
+
+    // Check decisions map against current target user's ID or Email mapping
+    dynamic decisionVal;
+    if (currentUser?.shareholder?.id != null) {
+      decisionVal = decisions[currentUser!.shareholder!.id];
+    }
+    if (decisionVal == null && targetEmail != null) {
+      for (var entry in decisions.entries) {
+        if (entry.key.contains(targetEmail)) {
+          decisionVal = entry.value;
+          break;
+        }
+      }
+    }
 
     ComakerStatus? status;
     if (decisionVal is ComakerStatus) {
