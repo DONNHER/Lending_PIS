@@ -195,7 +195,6 @@ class _LoanRequestDetailsScreenState extends State<LoanRequestDetailsScreen> {
     final int duration = loan.tenureMonths;
     final double interestTotal = principal * (loan.interestRate / 100);
 
-    // Wrap in LayoutBuilder and ConstrainedBox to fix vertical overflow and missing view issues
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
