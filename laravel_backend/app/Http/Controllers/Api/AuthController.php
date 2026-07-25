@@ -298,7 +298,19 @@ class AuthController extends Controller
             'email',
             $supabaseUser['email']
         )->first();
-
+        if ($user->status === 'pending') {
+            return response()->json([
+                'success' => false,
+                'verification_required' => true,
+                'message' => 'Please verify your email before logging in.'
+            ], 403);
+        }
+        // Sync Laravel status only after Supabase confirms the email
+        if ($user->status === 'pending') {
+            $user->update([
+                'status' => 'active',
+            ]);
+        }
 
         if(!$user){
 
@@ -308,10 +320,7 @@ class AuthController extends Controller
             ],404);
 
         }
-        if ($user->status === 'pending') {
-            $user->status = 'active';
-            $user->save();
-        }
+
 
 
 
