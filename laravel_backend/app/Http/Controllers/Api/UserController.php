@@ -156,11 +156,38 @@ class UserController extends Controller
         return response()->json(['success' => true, 'message' => 'User soft-deleted successfully']);
     }
 
+    /**
+     * Bulk remove multiple resources from storage using Soft Delete.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'ids' => 'required|array',
+            'ids.*' => 'exists:users,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        // Prevent admin from bulk deleting their own account if included in the IDs
+        if (in_array(auth()->id(), $request->ids)) {
+            return response()->json(['success' => false, 'message' => 'Cannot include your own account in bulk deletion'], 403);
+        }
+
+        User::whereIn('id', $request->ids)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Users moved to trash successfully'
+        ]);
+    }
+
     public function impersonate($id)
     {
         $targetUser = User::findOrFail($id);
 
-        // 🚀 Create a new token for the target user
+        // Create a new token for the target user
         $token = $targetUser->createToken('impersonation_token')->plainTextToken;
 
         return response()->json([

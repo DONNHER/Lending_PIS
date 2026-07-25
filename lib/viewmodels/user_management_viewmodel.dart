@@ -98,6 +98,41 @@ class UserManagementViewModel extends ChangeNotifier {
     _currentPage = 1;
     fetchUsers(forceRefresh: true);
   }
+  // 1. Single Delete / Move to Trash
+  Future<void> deleteUser(String id) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      await _userRepository.deleteUser(id); // Calls your repository method
+
+      // Refresh the current page or list
+      await fetchUsers(forceRefresh: true);
+    } catch (e) {
+      debugPrint('Error deleting user: $e');
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // 2. Bulk Delete / Move to Trash (Multiple IDs)
+  Future<void> deleteUsers(List<String> ids) async {
+    if (ids.isEmpty) return;
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      await _userRepository.bulkDeleteUsers(ids); // Calls your repository method
+
+      // Refresh list and reset page if needed
+      await fetchUsers(forceRefresh: true);
+    } catch (e) {
+      debugPrint('Error bulk deleting users: $e');
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   void refresh() => fetchUsers(forceRefresh: true);
 

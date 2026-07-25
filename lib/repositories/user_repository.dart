@@ -7,8 +7,8 @@ class UserRepository {
   UserRepository(this._apiService);
 
   Future<Map<String, dynamic>> getPaginatedUsers({
-    int page = 1, 
-    int perPage = 10, 
+    int page = 1,
+    int perPage = 10,
     String? search,
     String? role,
     String? status,
@@ -26,10 +26,10 @@ class UserRepository {
     if (status != null && status != 'All') {
       queryParams['status'] = status.toLowerCase();
     }
-    
+
     final response = await _apiService.get('/admin/users', queryParams: queryParams);
     final List dataList = response['data'] ?? [];
-    
+
     return {
       'users': dataList.map((e) => UserModel.fromJson(e)).toList(),
       'total': response['meta']?['total'] ?? dataList.length,
@@ -52,6 +52,14 @@ class UserRepository {
 
   Future<void> deleteUser(String id) async {
     await _apiService.delete('/admin/users/$id');
+  }
+
+  /// 🚀 Added: Bulk delete users matching the Laravel bulkDelete endpoint
+  Future<void> bulkDeleteUsers(List<String> ids) async {
+    await _apiService.delete(
+      '/admin/users/bulk-delete',
+      body: {'ids': ids},
+    );
   }
 
   Future<Map<String, dynamic>> impersonate(String id) async {
