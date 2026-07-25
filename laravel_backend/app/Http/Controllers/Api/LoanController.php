@@ -43,27 +43,40 @@ class LoanController extends Controller
 
         return response()->json(Loan::getPaginatedResponse($query, $request));
     }
-
-    public function show($id)
-    {
-        $loan = Loan::with(['shareholder.user'])->findOrFail($id);
+public function show($id)
+{
+    if (!\Illuminate\Support\Str::isUuid($id)) {
         return response()->json([
-            'success' => true,
-            'data' => $loan
-        ]);
+            'success' => false,
+            'message' => 'Loan not found'
+        ], 404);
     }
 
-    public function showByRequest($requestId)
-    {
-        $loan = Loan::with(['shareholder.user'])
-            ->where('loan_request_id', $requestId)
-            ->firstOrFail();
-            
+    $loan = Loan::with(['shareholder.user'])->findOrFail($id);
+    return response()->json([
+        'success' => true,
+        'data' => $loan
+    ]);
+}
+
+public function showByRequest($requestId)
+{
+    if (!\Illuminate\Support\Str::isUuid($requestId)) {
         return response()->json([
-            'success' => true,
-            'data' => $loan
-        ]);
+            'success' => false,
+            'message' => 'Loan not found'
+        ], 404);
     }
+
+    $loan = Loan::with(['shareholder.user'])
+        ->where('loan_request_id', $requestId)
+        ->firstOrFail();
+
+    return response()->json([
+        'success' => true,
+        'data' => $loan
+    ]);
+}
 
     public function getByShareholder($shareholderId)
     {
@@ -108,6 +121,13 @@ class LoanController extends Controller
 
     public function showRequest($id)
     {
+        if (!\Illuminate\Support\Str::isUuid($id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Loan request not found'
+            ], 404);
+        }
+
         $loanRequest = LoanRequest::with(['shareholder.user'])->findOrFail($id);
         return response()->json([
             'success' => true,
