@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart'; 
 import 'dart:async';
+import 'details_page/loan_details.dart';
 import '../../app_theme.dart';
 import 'package:capstone_application/viewmodels/share_capital_viewmodel.dart';
 import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
@@ -185,13 +186,22 @@ class _MainCapitalCard extends StatelessWidget {
                 ),
                 _buildCardButton(
                   context: context,
-                  label: 'Apply Loan',
-                  icon: Icons.assignment_outlined,
+                  label: activeLoan != null ? 'View Active Loan' : 'Apply Loan',
+                  icon: activeLoan != null ? Icons.visibility_outlined : Icons.assignment_outlined,
                   bgColor: Colors.white,
                   textColor: const Color(0xFFC06C4D),
                   onTap: () {
-                    final nav = context.read<NavigationViewModel>();
-                    nav.navigateToLoanApplication(viewModel.currentShareholder);
+                    if (activeLoan != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ActiveLoanDetailsScreen(loanId: activeLoan.id),
+                        ),
+                      );
+                    } else {
+                      final nav = context.read<NavigationViewModel>();
+                      nav.navigateToLoanApplication(viewModel.currentShareholder);
+                    }
                   },
                 ),
               ],
