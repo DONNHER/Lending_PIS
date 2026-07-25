@@ -120,7 +120,7 @@ class AuthController extends Controller
 
         $validator = Validator::make($request->all(), [
             'username' => 'required|string|unique:users',
-            'email' => 'required|string|email|unique:users',
+            'email' => 'required|string|email',
             'password' => $this->passwordPolicy,
             'firstname' => 'required|string',
             'lastname' => 'required|string',

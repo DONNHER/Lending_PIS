@@ -164,71 +164,36 @@ class AuthRepository {
   // REGISTER
   // ===========================
 
-
   Future<Map<String, dynamic>> register({
-
     required String username,
-
     required String email,
-
     required String password,
-
     required String firstName,
-
     required String lastName,
-
     required UserRole role,
-
     String? address,
-
     String? phone,
-
     String? idImageUrl,
-
     double? initialShare,
-
-
   }) async {
 
-
-
-    final authResponse =
-    await _supabase.auth.signUp(
-
-      email: email,
-
-      password: password,
-
-
-      data: {
-
-        'username':username,
-
-        'firstname':firstName,
-
-        'lastname':lastName,
-
-        'role':role.name,
-
+    final response = await _api.post(
+      '/register',
+      body: {
+        'username': username,
+        'email': email,
+        'password': password,
+        'firstname': firstName,
+        'lastname': lastName,
+        'role': role.name,
+        'address': address,
+        'phone': phone,
+        'id_image_url': idImageUrl,
+        'initial_share': initialShare,
       },
-
     );
 
-
-
-    return {
-
-
-      'user':
-      authResponse.user,
-
-
-      'session':
-      authResponse.session,
-
-
-    };
-
+    return response;
   }
 
 
