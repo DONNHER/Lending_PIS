@@ -325,13 +325,23 @@ class CanteenApp extends StatelessWidget {
           },
         ),
 
-        // ================= SHAREHOLDER TRANSACTION =================
-        ChangeNotifierProvider<ShareholderTransactionViewModel>(
+       // ================= SHAREHOLDER TRANSACTION =================
+        ChangeNotifierProxyProvider<AuthViewModel, ShareholderTransactionViewModel>(
           create: (context) => ShareholderTransactionViewModel(
             context.read<TransactionRepository>(),
             context.read<ShareholderRepository>(),
             context.read<LendingRepository>(),
           ),
+          update: (context, auth, model) {
+            if (auth.isAuthenticated &&
+                auth.currentUser?.role == UserRole.shareholder &&
+                auth.currentUser?.id != null &&
+                model != null &&
+                !model.isInitialized) {
+              model.setUserId(auth.currentUser!.id!);
+            }
+            return model!;
+          },
         ),
 
 
