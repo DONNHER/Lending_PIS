@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Services;
-
+use Illuminate\Support\Facades\Artisan;
 use App\Models\SiteSetting;
 use App\Mail\BackupNotificationMail;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +38,29 @@ class BackupService
                     $filename = $this->backupFiles();
                     break;
                 case 'full':
-                    $filename = $this->backupFullSystem();
+
+                                Log::info('Starting Dropbox backup...');
+
+                                Artisan::call('backup:run', [
+                                    '--only-to-disk' => 'dropbox',
+                                ]);
+
+                                Log::info(Artisan::output());
+
+                                $this->notify(
+                                    'success',
+                                    'full',
+                                    'Dropbox Backup',
+                                    null,
+                                    null
+                                );
+
+                                return [
+                                    'success' => true,
+                                    'filename' => 'Dropbox Backup',
+                                    'output' => Artisan::output(),
+                                ];
+
                     break;
                 default:
                     throw new Exception("Invalid backup type: $type");
