@@ -26,8 +26,7 @@ class _UserTableState extends State<UserTable> {
   final Set<String> _selectedIds = {};
 
   bool get isAllSelected =>
-      widget.users.isNotEmpty &&
-          _selectedIds.length == widget.users.length;
+      widget.users.isNotEmpty && _selectedIds.length == widget.users.length;
 
   void toggleSelectAll(bool? value) {
     setState(() {
@@ -96,7 +95,6 @@ class _UserTableState extends State<UserTable> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Table Header
         Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
           decoration: const BoxDecoration(
@@ -105,7 +103,6 @@ class _UserTableState extends State<UserTable> {
           ),
           child: Row(
             children: [
-              // Checkbox + Header Delete count text (Actions column left untouched)
               SizedBox(
                 width: 140,
                 child: Row(
@@ -182,7 +179,6 @@ class _UserTableState extends State<UserTable> {
             ],
           ),
         ),
-        // Table Body
         Expanded(
           child: widget.users.isEmpty
               ? const Center(
