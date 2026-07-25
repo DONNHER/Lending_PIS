@@ -50,6 +50,8 @@ import 'package:capstone_application/viewmodels/user_management_viewmodel.dart';
 import 'package:capstone_application/repositories/user_repository.dart';
 import 'package:capstone_application/viewmodels/import_export_viewmodel.dart';
 
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "assets/env");
@@ -585,6 +587,7 @@ class _RootAppState extends State<RootApp> {
 
     return MaterialApp(
       navigatorKey: AuthViewModel.navigatorKey,
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       title: 'Lending System',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,

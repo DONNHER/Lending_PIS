@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
+import '../services/snackbar_service.dart';
+
 class BackupSettingsViewModel extends ChangeNotifier {
   final ApiService _apiService;
 
@@ -86,15 +88,57 @@ class BackupSettingsViewModel extends ChangeNotifier {
   Future<bool> runManualBackup(String type) async {
     _isProcessing = true;
     notifyListeners();
+
     try {
-      final response = await _apiService.post('/backups/run', body: {'type': type});
-      return response['success'] == true;
+
+      // Show loading snackbar
+      SnackbarService.showLoading(
+        "Running backup...",
+      );
+
+
+      final response = await _apiService.post(
+        '/backups/run',
+        body: {'type': type},
+      );
+
+
+      if (response['success'] == true) {
+
+        SnackbarService.showSuccess(
+          "Backup completed successfully",
+        );
+
+        return true;
+
+      } else {
+
+        SnackbarService.showError(
+          response['error'] ?? "Backup failed",
+        );
+
+        return false;
+      }
+
+
     } catch (e) {
-      debugPrint('Error running manual backup: $e');
+
+      SnackbarService.showError(
+        "Backup failed: $e",
+      );
+
+      debugPrint(
+        'Error running manual backup: $e',
+      );
+
       return false;
+
+
     } finally {
+
       _isProcessing = false;
       notifyListeners();
+
     }
   }
 }
