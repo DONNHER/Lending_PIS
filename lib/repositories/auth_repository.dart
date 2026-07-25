@@ -23,102 +23,88 @@ class AuthRepository {
   // Supabase -> Laravel Sanctum
   // ===========================
 
+  // ===========================
+  // LOGIN (Conditional: Pending -> OTP, Else -> Password)
+  // Supabase -> Laravel Sanctum
+  // ===========================
+
   Future<Map<String, dynamic>> login(
       String email, {
         String? password,
         String? captchaToken,
       }) async {
 
+    // 1. First, check the user's details via your backend or database route to verify status
+    UserModel? userProfile = await getUserByEmail(email);
 
-    if(password == null || password.isEmpty){
-      throw Exception(
-          "Password required"
+    if (userProfile == null) {
+      throw Exception("User account not found");
+    }
+
+    // Check if user status is pending (adjust depending on how your model handles status values)
+    bool isPending = userProfile.status == 'pending';
+
+    AuthResponse supabaseResponse;
+
+    if (isPending) {
+      // 2A. If pending, trigger passwordless OTP sign-in via Supabase
+      await _supabase.auth.signInWithOtp(
+        email: email,
+        captchaToken: captchaToken,
+      );
+
+      return {
+        'success': true,
+        'requiresOtp': true, // Signal to the viewmodel/UI that an OTP code must be entered next
+        'message': 'Account is pending. OTP sent to your email.',
+      };
+    } else {
+      // 2B. If not pending, password is required for normal sign-in
+      if (password == null || password.isEmpty) {
+        throw Exception("Password required");
+      }
+
+      supabaseResponse = await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+        captchaToken: captchaToken,
       );
     }
 
+    final session = supabaseResponse.session;
 
-    //
-    // 1. Authenticate with Supabase
-    //
-    final supabaseResponse =
-    await _supabase.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
-
-
-    final session =
-        supabaseResponse.session;
-
-
-    if(session == null){
-      throw Exception(
-          "Supabase authentication failed"
-      );
+    if (session == null) {
+      throw Exception("Supabase authentication failed");
     }
 
+    // 3. Get Supabase JWT
+    final supabaseJwt = session.accessToken;
 
-
-    //
-    // 2. Get Supabase JWT
-    //
-    final supabaseJwt =
-        session.accessToken;
-
-
-
-    //
-    // 3. Exchange JWT for Laravel Sanctum Token
-    //
-    final response =
-    await _api.post(
+    // 4. Exchange JWT for Laravel Sanctum Token
+    final response = await _api.post(
       '/login',
       body: {
-
         'email': email,
-
         'supabase_token': supabaseJwt,
-
-        if (captchaToken != null)
-          'captcha_token': captchaToken,
+        if (captchaToken != null) 'captcha_token': captchaToken,
       },
     );
 
-
-
-    if(response == null ||
-        response['token'] == null){
-
-      throw Exception(
-          "Laravel authentication failed"
-      );
+    if (response == null || response['token'] == null) {
+      throw Exception("Laravel authentication failed");
     }
 
-
-
-    //
-    // 4. Store Laravel Sanctum token
-    //
-    final sanctumToken =
-    response['token'];
-
-
-    await setToken(
-        sanctumToken
-    );
-
-
+    // 5. Store Laravel Sanctum token
+    final sanctumToken = response['token'];
+    await setToken(sanctumToken);
 
     return {
-
-      'success':true,
-
-      'user':response['user'],
-
-      'token':sanctumToken,
+      'success': true,
+      'requiresOtp': false,
+      'user': response['user'],
+      'token': sanctumToken,
       'session': session,
     };
-
   }
 
 
