@@ -18,6 +18,12 @@ import 'package:capstone_application/viewmodels/auth_viewmodel.dart';
 import 'package:capstone_application/viewmodels/navigation_viewmodel.dart';
 import 'package:capstone_application/viewmodels/notification_viewmodel.dart';
 import 'dashboard_page.dart';
+import 'package:capstone_application/viewmodels/loan_request_viewmodel.dart';
+import 'package:capstone_application/viewmodels/transaction_viewmodel.dart';
+import 'package:capstone_application/viewmodels/user_management_viewmodel.dart';
+import 'package:capstone_application/viewmodels/update_interest_viewmodel.dart';
+import 'package:capstone_application/viewmodels/activity_log_viewmodel.dart';
+import 'package:capstone_application/widgets/badge_icon.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -33,7 +39,7 @@ class _AppShellState extends State<AppShell> {
       builder: (context, auth, nav, _) {
         return Column(
           children: [
-            if (auth.isImpersonating) 
+            if (auth.isImpersonating)
               _buildImpersonationBanner(context, auth, nav),
             Expanded(
               child: LayoutBuilder(
@@ -54,7 +60,7 @@ class _AppShellState extends State<AppShell> {
       builder: (context, nav, auth, _) {
         final filteredItems = nav.getFilteredNavItems();
         debugPrint('DEBUG: [AppShell] Phone Layout - Filtered Items: ${filteredItems.length}, Selected Index: ${nav.selectedIndex}');
-        
+
         if (filteredItems.isEmpty) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
@@ -64,6 +70,10 @@ class _AppShellState extends State<AppShell> {
         final bottomItems = nav.getBottomNavItems();
         final drawerItems = nav.getDrawerItems();
         final bottomIndex = nav.getBottomNavIndex();
+
+        final badgeCounts = <String, int>{
+          for (final item in bottomItems) item.route: _badgeCountForRoute(context, item.route)
+        };
 
         return Scaffold(
           backgroundColor: const Color(0xFFF7F8FA),
@@ -76,7 +86,8 @@ class _AppShellState extends State<AppShell> {
               ? _CompactBottomNav(
             items: bottomItems,
             selectedIndex: bottomIndex,
-            onTap: nav.navigateTo,
+            onTap: (i) => _handleNavTap(context, nav, filteredItems, i),
+            badgeCounts: badgeCounts,
           )
               : null,
         );
@@ -96,6 +107,10 @@ class _AppShellState extends State<AppShell> {
           );
         }
 
+        final badgeCounts = <String, int>{
+          for (final item in filteredItems) item.route: _badgeCountForRoute(context, item.route)
+        };
+
         return Scaffold(
           body: SafeArea(
             child: Row(
@@ -103,7 +118,8 @@ class _AppShellState extends State<AppShell> {
                 _TabletRail(
                   items: filteredItems,
                   selectedIndex: nav.selectedIndex,
-                  onDestinationSelected: nav.navigateTo,
+                  onDestinationSelected: (i) => _handleNavTap(context, nav, filteredItems, i),
+                  badgeCounts: badgeCounts,
                 ),
                 const VerticalDivider(width: 1),
                 Expanded(child: _buildPage(filteredItems, nav.selectedIndex)),
@@ -117,7 +133,7 @@ class _AppShellState extends State<AppShell> {
 
   AppBar _buildPhoneAppBar(BuildContext context) {
     final auth = context.read<AuthViewModel>();
-    
+
     // 🚀 Use original admin user if impersonating
     final user = auth.isImpersonating ? auth.originalAdminUser : auth.currentUser;
     final displayUser = auth.currentUser; // Always show current impersonated user avatar if desired, or admin's?
@@ -166,7 +182,7 @@ class _AppShellState extends State<AppShell> {
               } else {
                 // For non-admins (like Cashier) in AppShell, maybe show a snackbar or separate page
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile settings coming soon for your role.'))
+                    const SnackBar(content: Text('Profile settings coming soon for your role.'))
                 );
               }
             },
@@ -191,6 +207,44 @@ class _AppShellState extends State<AppShell> {
         child: Container(height: 1, color: const Color(0xFFF0F1F5)),
       ),
     );
+  }
+
+  int _badgeCountForRoute(BuildContext context, String route) {
+    switch (route) {
+      case '/loans':
+        return context.watch<LoanRequestViewModel>().newCount;
+      case '/transactions':
+        return context.watch<TransactionViewModel>().newCount;
+      case '/users':
+        return context.watch<UserManagementViewModel>().newCount;
+      case '/update-interest':
+        return context.watch<UpdateInterestViewModel>().newCount;
+      case '/activity-logs':
+        return context.watch<ActivityLogViewModel>().newCount;
+      default:
+        return 0;
+    }
+  }
+
+  void _handleNavTap(BuildContext context, NavigationViewModel nav, List<NavItemModel> items, int index) {
+    nav.navigateTo(index);
+    switch (items[index].route) {
+      case '/loans':
+        context.read<LoanRequestViewModel>().markAsViewed();
+        break;
+      case '/transactions':
+        context.read<TransactionViewModel>().markAsViewed();
+        break;
+      case '/users':
+        context.read<UserManagementViewModel>().markAsViewed();
+        break;
+      case '/update-interest':
+        context.read<UpdateInterestViewModel>().markAsViewed();
+        break;
+      case '/activity-logs':
+        context.read<ActivityLogViewModel>().markAsViewed();
+        break;
+    }
   }
 
   Widget _buildDrawer(
@@ -303,7 +357,7 @@ class _AppShellState extends State<AppShell> {
                         ),
                         onTap: () {
                           Navigator.pop(context);
-                          nav.navigateTo(itemIndex);
+                          _handleNavTap(context, nav, allItems, itemIndex);
                         },
                       ),
                     );
@@ -360,7 +414,7 @@ class _AppShellState extends State<AppShell> {
     if (nav.isReviewingLoanRequest && nav.loanRequestIdToReview != null) {
       return LoanRequestDetailsScreen(loanRequestId: nav.loanRequestIdToReview!);
     }
-    
+
     if (nav.isViewingAdminSettings) {
       return const AdminSettingsScreen();
     }
@@ -486,11 +540,13 @@ class _CompactBottomNav extends StatelessWidget {
   final List<NavItemModel> items;
   final int selectedIndex;
   final ValueChanged<int> onTap;
+  final Map<String, int> badgeCounts;
 
   const _CompactBottomNav({
     required this.items,
     required this.selectedIndex,
     required this.onTap,
+    required this.badgeCounts,
   });
 
   @override
@@ -517,6 +573,7 @@ class _CompactBottomNav extends StatelessWidget {
             children: List.generate(items.length, (i) {
               final item = items[i];
               final isSelected = i == selectedIndex;
+              final count = badgeCounts[item.route] ?? 0;
               return Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -535,12 +592,15 @@ class _CompactBottomNav extends StatelessWidget {
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Icon(
-                          isSelected ? item.activeIcon : item.icon,
-                          color: isSelected
-                              ? AppTheme.primary
-                              : AppTheme.textMuted,
-                          size: 22,
+                        child: BadgeIcon(
+                          count: count,
+                          child: Icon(
+                            isSelected ? item.activeIcon : item.icon,
+                            color: isSelected
+                                ? AppTheme.primary
+                                : AppTheme.textMuted,
+                            size: 22,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -574,11 +634,13 @@ class _TabletRail extends StatefulWidget {
   final List<NavItemModel> items;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final Map<String, int> badgeCounts;
 
   const _TabletRail({
     required this.items,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    required this.badgeCounts,
   });
 
   @override
@@ -639,7 +701,7 @@ class _TabletRailState extends State<_TabletRail> {
                   extended: _extended,
                   selectedIndex: widget.selectedIndex,
                   onDestinationSelected: widget.onDestinationSelected,
-                  labelType: NavigationRailLabelType.all, 
+                  labelType: NavigationRailLabelType.all,
                   unselectedLabelTextStyle: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -724,12 +786,12 @@ class _TabletRailState extends State<_TabletRail> {
                               onPressed: () {
                                 final auth = context.read<AuthViewModel>();
                                 final effectiveUser = auth.isImpersonating ? auth.originalAdminUser : auth.currentUser;
-                                
+
                                 if (effectiveUser?.role == UserRole.admin) {
                                   context.read<NavigationViewModel>().navigateToAdminSettings();
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Access restricted to Administrators.'))
+                                      const SnackBar(content: Text('Access restricted to Administrators.'))
                                   );
                                 }
                               },
@@ -745,17 +807,18 @@ class _TabletRailState extends State<_TabletRail> {
                     final item = entry.value;
                     final bool isHovered = _hoveredIndex == idx;
                     final bool isSelected = widget.selectedIndex == idx;
+                    final count = widget.badgeCounts[item.route] ?? 0;
 
                     return NavigationRailDestination(
                       icon: MouseRegion(
                         onEnter: (_) => setState(() => _hoveredIndex = idx),
                         onExit: (_) => setState(() => _hoveredIndex = null),
-                        child: Icon(item.icon),
+                        child: BadgeIcon(count: count, child: Icon(item.icon)),
                       ),
                       selectedIcon: MouseRegion(
                         onEnter: (_) => setState(() => _hoveredIndex = idx),
                         onExit: (_) => setState(() => _hoveredIndex = null),
-                        child: Icon(item.activeIcon),
+                        child: BadgeIcon(count: count, child: Icon(item.activeIcon)),
                       ),
                       label: AnimatedOpacity(
                         duration: const Duration(milliseconds: 200),

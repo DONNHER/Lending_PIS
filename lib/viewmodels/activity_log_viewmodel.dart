@@ -37,6 +37,18 @@ class ActivityLogViewModel extends ChangeNotifier {
   String get sortOrder => _sortOrder;
   String get searchQuery => _searchQuery;
 
+  DateTime? _lastViewedAt;
+
+  int get newCount {
+    if (_lastViewedAt == null) return 0;
+    return _allLogs.where((l) => l.createdAt.isAfter(_lastViewedAt!)).length;
+  }
+
+  void markAsViewed() {
+    _lastViewedAt = DateTime.now();
+    notifyListeners();
+  }
+
   Future<void> fetchLogs({int? page, int? perPage, bool forceRefresh = false}) async {
     if (_isLoading) return;
     if (_isInitialized && !forceRefresh && page == null && perPage == null) return;

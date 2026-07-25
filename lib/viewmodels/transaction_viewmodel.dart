@@ -38,6 +38,18 @@ class TransactionViewModel extends ChangeNotifier {
   String get statusFilter => _statusFilter;
   String get sortOrder => _sortOrder;
 
+  DateTime? _lastViewedAt;
+
+  int get newCount {
+    if (_lastViewedAt == null) return 0;
+    return _transactions.where((t) => t.date.isAfter(_lastViewedAt!)).length;
+  }
+
+  void markAsViewed() {
+    _lastViewedAt = DateTime.now();
+    notifyListeners();
+  }
+
   Future<void> fetchTransactions({int? page, int? perPage, bool forceRefresh = false}) async {
     if (_isLoading) return;
     if (_isInitialized && !forceRefresh && page == null && perPage == null) return;

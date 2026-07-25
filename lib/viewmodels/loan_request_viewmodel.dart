@@ -38,6 +38,18 @@ class LoanRequestViewModel extends ChangeNotifier {
   String get purposeFilter => _purposeFilter;
   String get sortOrder => _sortOrder;
 
+  DateTime? _lastViewedAt;
+
+  int get newCount {
+    if (_lastViewedAt == null) return 0;
+    return _loanRequests.where((r) => r.createdAt.isAfter(_lastViewedAt!)).length;
+  }
+
+  void markAsViewed() {
+    _lastViewedAt = DateTime.now();
+    notifyListeners();
+  }
+
   Future<void> fetchLoanRequests({int? page, int? perPage, bool forceRefresh = false}) async {
     if (_isLoading) return;
     if (_isInitialized && !forceRefresh && page == null && perPage == null) return;

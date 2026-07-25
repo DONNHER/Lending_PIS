@@ -39,6 +39,19 @@ class UserManagementViewModel extends ChangeNotifier {
   String get statusFilter => _statusFilter;
   String get sortOrder => _sortOrder;
 
+  int? _lastSeenTotal;
+
+  int get newCount {
+    if (_lastSeenTotal == null) return 0;
+    final diff = _totalRows - _lastSeenTotal!;
+    return diff > 0 ? diff : 0;
+  }
+
+  void markAsViewed() {
+    _lastSeenTotal = _totalRows;
+    notifyListeners();
+  }
+
   Future<void> fetchUsers({int? page, int? perPage, bool forceRefresh = false}) async {
     if (_isLoading) return;
     if (_isInitialized && !forceRefresh && page == null && perPage == null) return;

@@ -31,6 +31,21 @@ class UpdateInterestViewModel extends ChangeNotifier {
   int get totalRows => _totalRows;
   int get rowsPerPage => _rowsPerPage;
   String get sortOrder => _sortOrder;
+  DateTime? _lastViewedAt;
+
+  int get newCount {
+    if (_lastViewedAt == null) return 0;
+    return _history.where((item) {
+      final dateStr = item['created_at'] ?? item['effective_date'];
+      if (dateStr == null) return false;
+      return DateTime.parse(dateStr).isAfter(_lastViewedAt!);
+    }).length;
+  }
+
+  void markAsViewed() {
+    _lastViewedAt = DateTime.now();
+    notifyListeners();
+  }
 
   Future<void> loadData({bool forceRefresh = false}) async {
     if (_isLoading) return;
