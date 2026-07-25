@@ -30,11 +30,11 @@ class Kernel extends ConsoleKernel
             ->onSuccess(fn() => \Log::info('Weekly automated backup completed.'));
 
         // 🚀 Monthly Full System Backup using Spatie
-        $schedule->command('backup:run --only-to-disk=dropbox')->monthlyOn(1, '02:00')
+        $schedule->command('backup:run --only-to-disk=dropbox')
+            ->weeklyOn($this->dayToNumber($backupDay), $backupTime)
             ->withoutOverlapping()
-            ->onFailure(fn() => \Log::error('Monthly full system backup failed.'))
-            ->onSuccess(fn() => \Log::info('Monthly full system backup completed.'));
-
+            ->onFailure(fn() => \Log::error('Weekly automated backup failed.'))
+            ->onSuccess(fn() => \Log::info('Weekly automated backup completed.'));
         // 🚀 Automated Log Archival
         $schedule->command('logs:archive')->dailyAt('04:00')
             ->withoutOverlapping()
@@ -100,5 +100,18 @@ class Kernel extends ConsoleKernel
         $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
+    }
+    private function dayToNumber(string $day): int
+    {
+        return match (strtolower($day)) {
+            'monday' => 1,
+            'tuesday' => 2,
+            'wednesday' => 3,
+            'thursday' => 4,
+            'friday' => 5,
+            'saturday' => 6,
+            'sunday' => 0,
+            default => 1,
+        };
     }
 }
