@@ -117,20 +117,26 @@ class ApiService {
     final token = await getToken();
     final url = '$baseUrl/${_cleanEndpoint(endpoint)}';
 
+    debugPrint('DEBUG: [ApiService] DELETE Request URL -> $url');
+    debugPrint('DEBUG: [ApiService] DELETE Request Body -> $body');
+
     if (body != null) {
+      final jsonBody = jsonEncode({...body, '_method': 'DELETE'});
+      debugPrint('DEBUG: [ApiService] DELETE via POST spoofing payload -> $jsonBody');
+
       final response = await http.post(
         Uri.parse(url),
         headers: _headers(token, headers),
-        body: jsonEncode({...body, '_method': 'DELETE'}),
+        body: jsonBody,
       );
-      return _handleResponse(response, 'DELETE', url, triggerUnauthorized: triggerUnauthorized);
+      return _handleResponse(response, 'DELETE (Spoofed)', url, triggerUnauthorized: triggerUnauthorized);
     }
 
     final response = await http.delete(
       Uri.parse(url),
       headers: _headers(token, headers),
     );
-    return _handleResponse(response, 'DELETE', url, triggerUnauthorized: triggerUnauthorized);
+    return _handleResponse(response, 'DELETE (Direct)', url, triggerUnauthorized: triggerUnauthorized);
   }
 
   Future<dynamic> uploadFile(String endpoint, String filePath, {Map<String, String>? headers, bool triggerUnauthorized = true}) async {

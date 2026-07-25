@@ -98,37 +98,46 @@ class UserManagementViewModel extends ChangeNotifier {
     _currentPage = 1;
     fetchUsers(forceRefresh: true);
   }
-  // 1. Single Delete / Move to Trash
+  // 1. Single Delete / Move to Trash with Debug Logs
   Future<void> deleteUser(String id) async {
+    debugPrint('🗑️ [ViewModel] deleteUser called with ID: $id');
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _userRepository.deleteUser(id); // Calls your repository method
+      await _userRepository.deleteUser(id);
+      debugPrint('✅ [ViewModel] deleteUser successful for ID: $id');
 
-      // Refresh the current page or list
       await fetchUsers(forceRefresh: true);
-    } catch (e) {
-      debugPrint('Error deleting user: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [ViewModel] ERROR deleting user ID $id: $e');
+      debugPrint('🔍 [ViewModel] Stack trace: $stackTrace');
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  // 2. Bulk Delete / Move to Trash (Multiple IDs)
+  // 2. Bulk Delete / Move to Trash with Debug Logs
   Future<void> deleteUsers(List<String> ids) async {
-    if (ids.isEmpty) return;
+    debugPrint('🗑️ [ViewModel] bulkDeleteUsers called with IDs: $ids');
+    if (ids.isEmpty) {
+      debugPrint('⚠️ [ViewModel] bulkDeleteUsers aborted: ID list is empty.');
+      return;
+    }
 
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _userRepository.bulkDeleteUsers(ids); // Calls your repository method
+      await _userRepository.bulkDeleteUsers(ids);
+      debugPrint('✅ [ViewModel] bulkDeleteUsers successful for IDs: $ids');
 
-      // Refresh list and reset page if needed
       await fetchUsers(forceRefresh: true);
-    } catch (e) {
-      debugPrint('Error bulk deleting users: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [ViewModel] ERROR bulk deleting users: $e');
+      debugPrint('🔍 [ViewModel] Stack trace: $stackTrace');
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
