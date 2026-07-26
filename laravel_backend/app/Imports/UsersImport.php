@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Imports;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -105,16 +106,19 @@ class UsersImport implements ToCollection, WithHeadingRow
         return ['valid' => $valid, 'errors' => $errors];
     }
 
-    private function createUser($row)
-    {
-        User::create([
-            'username'  => $row['username'],
-            'email'     => $row['email'],
-            'password'  => Hash::make('password123'),
-            'firstname' => $row['firstname'],
-            'lastname'  => $row['lastname'],
-            'role'      => $row['role'],
-            'status'    => $row['status'],
-        ]);
-    }
+
+     private function createUser($row)
+     {
+         DB::transaction(function () use ($row) {
+             User::create([
+                 'username'  => $row['username'],
+                 'email'     => $row['email'],
+                 'password'  => Hash::make('password123'),
+                 'firstname' => $row['firstname'],
+                 'lastname'  => $row['lastname'],
+                 'role'      => $row['role'],
+                 'status'    => $row['status'],
+             ]);
+         });
+     }
 }
